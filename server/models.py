@@ -126,6 +126,7 @@ class  Campaign(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key =True)
     campaignName = db.Column(db.String())
     description = db.Column(db.String())
+    banner = db.Column(db.String(255), unique=False)
     startDate = db.Column (db.String())
     endDate = db.Column(db.String())
     targetAmount = db.Column(db.Float())
