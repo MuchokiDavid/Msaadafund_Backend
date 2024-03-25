@@ -2,7 +2,7 @@
 from flask import Flask
 from flask_migrate import Migrate
 from flask_restful import Api
-from models import db, User, Donation, Withdraw, Campaign, Organisation
+from models import db, User, Donation, Campaign, Organisation
 
 
 app = Flask(__name__)
