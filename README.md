@@ -1,6 +1,6 @@
-# Msaada Mshinani - Backend
+# Msaada Mashinani - Backend
 
-Welcome to the backend repository for Msaada Mshinani, an automated donation platform dedicated to providing support and assistance to communities in need, with a focus on grassroots-level initiatives in Kenya.
+Welcome to the backend repository for Msaada Mashinani, an automated donation platform dedicated to providing support and assistance to communities in need, with a focus on grassroots-level initiatives in Kenya.
 
 ## Overview
 
