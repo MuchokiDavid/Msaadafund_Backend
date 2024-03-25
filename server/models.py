@@ -122,7 +122,7 @@ class Donation (db.Model, SerializerMixin):
 
 class  Campaign(db.Model, SerializerMixin):
     __tablename__='campaigns'
-    serialize_rules =('-organisation.campaigns','-withdrawals.campaign','-donations.campaign')
+    serialize_rules =('-organisation.campaigns','-donations.campaign')
     id = db.Column(db.Integer, primary_key =True)
     campaignName = db.Column(db.String())
     description = db.Column(db.String())
@@ -135,31 +135,24 @@ class  Campaign(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
     org_id = db.Column(db.String(), db.ForeignKey('organisations.id'))
-    withdrawals = db.relationship('Withdrawal', backref='campaign')
+    # withdrawals = db.relationship('Withdraw', backref='campaign'), Serial_rule: '-withdrawals.campaign',
     donations =db.relationship('Donation', backref='campaign')
 
     def __repr__ (self):
         return f"ID: {self.id} Campaign Name: {self.campaignName}  Description: {self.description} Start Date : {self.startDate} End Date:{self.endDate} Target Amount :{self.targetAmount} Wallet ID :{self.walletId} Organisation ID:{self.org_id}"
 
 
-class Withdraw (db.Model, SerializerMixin):
-    __tablename__="withdrawals"
-    serialize_rules =('-campaign.withdrawals')
-    id = db.Column(db.Integer, primary_key= True)
-    amount = db.Column(db.Float, nullable= False)
-    status = db.Column(db.String())
-    withdraw_method = db.Column(db.String())
-    intasend_id =  db.Column(db.String())
-    transaction_date = db.Column(db.DateTime, server_default=db.func.now())
-    campaign_id = db.Column(db.Integer, db.ForeignKey("campaigns.id"))
+# class Withdraw (db.Model, SerializerMixin):
+#     __tablename__="withdrawals"
+#     serialize_rules =('-campaign.withdrawals')
+#     id = db.Column(db.Integer, primary_key= True)
+#     amount = db.Column(db.Float, nullable= False)
+#     status = db.Column(db.String())
+#     withdraw_method = db.Column(db.String())
+#     intasend_id =  db.Column(db.String())
+#     transaction_date = db.Column(db.DateTime, server_default=db.func.now())
+#     campaign_id = db.Column(db.Integer, db.ForeignKey("campaigns.id"))
 
     
-    def __repr__(self):
-        return f"Withdrawal(\n" + \
-            f"    id='{self.id}',\n" + \
-            f"    amount='{self.amount}',\n" + \
-            f"    status :'{self.status}'\n" + \
-            f"    withdraw_method:'{self.withdraw_method}'\n" + \
-            f"    intasend_id: '{self.intasend_id}'\n" + \
-            f"    transaction_date: '{self.transaction_date}'\n" + \
-            f"    campaign_id: '{self.campaign_id}'\n)"
+#     def __repr__(self):
+#         return f"Id:'{self.id} Amount: {self.amount} Status: {self.status} Withdraw_method:{self.withdraw_method} Intasend_id:{self.intasend_id} Transaction_date:{self.transaction_date} Campaign_id: {self.campaign_id}"
