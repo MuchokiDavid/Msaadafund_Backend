@@ -78,4 +78,4 @@ This project is licensed under the [MIT License](https://opensource.org/licenses
 
 1. [David Muchoki](https://github.com/MuchokiDavid)
 2. [Clement Macharia](https://github.com/clementmw)
-3. [Joseph Mang'ara](https://github.com/)
+3. [Michael Korir](https://github.com/michaelkorir)
