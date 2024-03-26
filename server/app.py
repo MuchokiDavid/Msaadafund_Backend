@@ -157,26 +157,31 @@ class OrganisationDetail(Resource):
         db.session.commit()
         return {'message' : 'Organisation deleted successfully'}, 200
     
-    def patch(self,id):
-        data =request.get_json()
-        orgName = data['orgName']
-        orgEmail =data['orgEmail']
-        orgPhoneNumber = data['orgPhoneNumber']
-        orgAddress = data['orgAddress']
-        orgDescription = data['orgDescription']
+    def patch(self, id):
+        data = request.get_json()
+        orgName = data.get('orgName')
+        orgEmail = data.get('orgEmail')
+        orgPhoneNumber = data.get('orgPhoneNumber')
+        orgAddress = data.get('orgAddress')
+        orgDescription = data.get('orgDescription')
 
-        existing_org = Organisation.query.get(id)
+        existing_org = Organisation.query.filter_by(id=id).first()
         if not existing_org:
-            return {"Message":"Organisation does not exist"}, 404
-        else:
+            return {"Message": "Organisation does not exist"}, 404
+        
+        if orgName:
             existing_org.orgName = orgName
-            existing_org.orgEmail= orgEmail
-            existing_org.orgPhoneNumber= orgPhoneNumber
+        if orgEmail:
+            existing_org.orgEmail = orgEmail
+        if orgPhoneNumber:
+            existing_org.orgPhoneNumber = orgPhoneNumber
+        if orgAddress:
             existing_org.orgAddress = orgAddress
+        if orgDescription:
             existing_org.orgDescription = orgDescription
-            
-            db.session.commit()
-            return{"Message": "Organisation has been updated", "Data" : existing_org.serialize()}
+
+        db.session.commit()
+        return {"Message": "Organisation has been updated", "Data": existing_org.serialize()}
     
 
 api.add_resource(OrganisationDetail, '/organisations/<int:id>')
