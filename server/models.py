@@ -72,6 +72,7 @@ class Organisation(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable = True)
     campaigns = db.relationship('Campaign', backref='organisation')
+    accounts= db.relationship('Account', backref= 'organisation')
 
     @validates('orgPhoneNumber')
     def validate_phone_number(self, key, number):
@@ -98,6 +99,9 @@ class Organisation(db.Model, SerializerMixin):
     def check_password(self, attempted_password):
         return bcrypt.check_password_hash(self.orgPassword, attempted_password.encode('utf-8'))
     
+    def __repr__ (self):
+        return f"ID:{self.id} Organisation Name:{self.orgName}  Organisation Email:{self.orgEmail} Organisation Phone Number:{self.orgPhoneNumber} Organisation Address:{self.orgAddress} Organisation Description:{self.orgDescription} Organisation Created At:{self.created_at}"
+     
     def serialize(self):
         return {
             "id": self.id,
@@ -108,6 +112,25 @@ class Organisation(db.Model, SerializerMixin):
             "orgDescription": self.orgDescription,
             "created_at": self.created_at.strftime("%Y-%m-%d ")
         }
+
+#Account model  for organisation accounts to withdraw money to
+class Account(db.Model, SerializerMixin):
+    __tablename__=  'accounts'
+    id = db.Column(db.Integer, primary_key=True)
+    accountType = db.Column(db.String)
+    accountNumber= db.Column(db.String, unique=True)
+    orgId = db.Column(db.Integer, db.ForeignKey('organisations.id'),nullable=False)
+
+    def serialize(self):
+        """ Serialize the object into a dictionary"""
+        return {
+                'id': self.id,
+                'accountType': self.accountType,
+                'accountNumber': self.accountNumber,
+                'orgId': self.orgId
+               }
+    def __repr__(self):
+        return  f'Account: {self.accountNumber} Account_Type: {self.accountType}, Org ID: {self.orgId}'
 
 class Donation (db.Model, SerializerMixin):
     __tablename__ = 'donations'
