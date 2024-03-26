@@ -12,7 +12,7 @@ db = SQLAlchemy()
 bcrypt = Bcrypt()
 class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
-    serialize_rules = ('-donations.user')
+    serialize_rules = ('-donations.user',)
 
     id = db.Column(db.Integer, primary_key=True)
     firstName = db.Column(db.String(100), nullable=False)
@@ -60,7 +60,7 @@ class User(db.Model, SerializerMixin):
 
 class Organisation(db.Model, SerializerMixin):
     __tablename__ = 'organisations'
-    serialize_rules = ('-campaigns.organisation')
+    serialize_rules = ('-campaigns.organisation',)
 
     id = db.Column(db.Integer, primary_key=True)
     orgName = db.Column(db.String(64), unique=True, nullable = False)
