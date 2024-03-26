@@ -184,7 +184,7 @@ class campaignItem(Resource):
         description = data.get('description')
         endDate = data.get('endDate')
         targetAmount = float(data.get('targetAmount'))
-        isActive= data.get('isActive', True)
+        isActive= data.get('isActive')
 
         existing_campaign = Campaign.query.get(id)
         if not existing_campaign:
@@ -206,13 +206,13 @@ class campaignItem(Resource):
     def delete(self,id):
         campaign = Campaign.query.get(id)
         if not campaign:
-            return "User not found", 404
+            return "Campaign not found", 404
         else:
             campaign.isActive = False       
             # db.session.delete(campaign)
             db.session.commit()
 
-            return {"message": "User deleted successfully"},200   
+            return {"message": "Campaign deleted successfully"},200   
 
 api.add_resource(campaignItem, '/campaigns/<int:id>')
 
