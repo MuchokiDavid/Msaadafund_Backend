@@ -118,7 +118,7 @@ api.add_resource(userDataByid, '/users/<int:id>')
 class campaignData(Resource):
     # @jwt_required()
     def get(self):
-        all_campaigns = [campaign.to_dict() for campaign in Campaign.query.all()]
+        all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=True).all()]
         response = make_response(jsonify(all_campaigns), 200)
         return response
     
@@ -127,13 +127,13 @@ class campaignData(Resource):
         data=request.get_json()
         campaignName = data.get('name')
         description = data.get('description')
+        category= data.get('category')
         banner= data.get('banner')
         startDate = data.get('startDate')
         endDate = data.get('endDate')
         targetAmount = float(data.get('targetAmount'))
-        isActive= data.get('isActive', True)
+        isActive= data.get('isActive') 
         org_id= data.get('orgId')
-        print(org_id)
 
         if not (campaignName and description and startDate and endDate):
             return jsonify({"Error":"Please provide complete information"}),400
@@ -144,11 +144,12 @@ class campaignData(Resource):
 
         new_campaign = Campaign(campaignName= campaignName, 
                                 description= description, 
+                                category= category,
                                 banner= banner,
                                 startDate=startDate, 
                                 endDate= endDate, 
                                 targetAmount=targetAmount, 
-                                isActive= bool(isActive),
+                                isActive= bool(isActive), # bool("") => False
                                 org_id= org_id
                                 )
             
@@ -168,8 +169,17 @@ class campaignData(Resource):
 
 api.add_resource(campaignData, '/campaigns')
 
+#Get inactive campaigns
+@app.route('/getinactive', methods=['GET'])
+def  getInactiveCampaign():
+    """Return a list of all inactive campaigns"""
+    all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=False).all()]
+    response = make_response(jsonify(all_campaigns), 200)
+    return response
+    
+
 #Get  specific campaign details by id
-class campaignItem(Resource):
+class campaignById(Resource):
     # @jwt_required
     def get(self,id):
         campaign = Campaign.query.get(id)
@@ -183,10 +193,11 @@ class campaignItem(Resource):
         data=request.get_json()
         description = data.get('description')
         endDate = data.get('endDate')
-        targetAmount = float(data.get('targetAmount'))
+        targetAmount = data.get('targetAmount')
         isActive= data.get('isActive')
 
-        existing_campaign = Campaign.query.get(id)
+        existing_campaign = Campaign.query.filter(id==id).first()
+
         if not existing_campaign:
             return jsonify({ "Error":"Campaign not found"}), 404
         if description:
@@ -196,11 +207,13 @@ class campaignItem(Resource):
         if targetAmount:
             existing_campaign.targetAmount = targetAmount
         if isActive:
+            isActive = True if isActive.lower() == 'true' else False
             existing_campaign.isActive = isActive
-            db.session.commit()
-            
-            response = make_response(jsonify(existing_campaign.to_dict()))
-            return response
+
+        db.session.commit()
+        
+        response = make_response(jsonify(existing_campaign.to_dict()))
+        return response
     
 
     def delete(self,id):
@@ -212,9 +225,9 @@ class campaignItem(Resource):
             # db.session.delete(campaign)
             db.session.commit()
 
-            return {"message": "Campaign deleted successfully"},200   
+            return {"message": "Campaign deactivated successfully"},200   
 
-api.add_resource(campaignItem, '/campaigns/<int:id>')
+api.add_resource(campaignById, '/campaigns/<int:id>')
 
         
 
