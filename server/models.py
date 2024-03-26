@@ -88,21 +88,30 @@ class Organisation(db.Model, SerializerMixin):
 
     # Password getter and setter methods
     @hybrid_property
-    def password_hash(self):
+    def password(self):
         return self.orgPassword
 
-    @password_hash.setter
-    def password_hash(self, password):
-        hashed_password = bcrypt.generate_password_hash(
-            password.encode('utf-8'))
-        self.orgPassword = hashed_password.decode('utf-8')
+    @password.setter
+    def password(self, plain_text_password):
+        self.orgPassword = bcrypt.generate_password_hash(
+            plain_text_password.encode('utf-8')).decode('utf-8')
 
-    def authenticate(self, password):
-        return bcrypt.check_password_hash(
-            self.hashed_password, password.encode('utf-8'))
+    def check_password(self, attempted_password):
+        return bcrypt.check_password_hash(self.orgPassword, attempted_password.encode('utf-8'))
     
     def __repr__ (self):
         return f"ID:{self.id} Organisation Name:{self.orgName}  Organisation Email:{self.orgEmail} Organisation Phone Number:{self.orgPhoneNumber} Organisation Address:{self.orgAddress} Organisation Description:{self.orgDescription} Organisation Created At:{self.created_at}"
+     
+    def serialize(self):
+        return {
+            "id": self.id,
+            "orgName": self.orgName,
+            "orgEmail": self.orgEmail,
+            "orgPhoneNumber": self.orgPhoneNumber,
+            "orgAddress": self.orgAddress,
+            "orgDescription": self.orgDescription,
+            "created_at": self.created_at.strftime("%Y-%m-%d ")
+        }
 
 #Account model  for organisation accounts to withdraw money to
 class Account(db.Model, SerializerMixin):
@@ -122,7 +131,6 @@ class Account(db.Model, SerializerMixin):
                }
     def __repr__(self):
         return  f'Account: {self.accountNumber} Account_Type: {self.accountType}, Org ID: {self.orgId}'
-    
 
 class Donation (db.Model, SerializerMixin):
     __tablename__ = 'donations'
