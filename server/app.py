@@ -5,8 +5,10 @@ from flask_restful import Api,Resource
 from models import db, User, Donation, Campaign, Organisation
 import os
 from dotenv import load_dotenv
+import random
 load_dotenv()
 from intasend import APIService
+import uuid
 from flask import request,jsonify,make_response
 from flask_bcrypt import Bcrypt
 
@@ -112,6 +114,7 @@ class userDataByid(Resource):
     
 api.add_resource(userDataByid, '/users/<int:id>')
 
+#get campaigns
 class campaignData(Resource):
     # @jwt_required()
     def get(self):
@@ -120,52 +123,100 @@ class campaignData(Resource):
         return response
     
     # @jwt_required()
+    # @app.route('/postcampaign', methods=['POST'])
     def post(self):
         data=request.get_json()
-        name = data.get("name")
-        description = data.get("description")
-        startDate = data.get("startDate")
-        endDate = data.get("endDate")
+        campaignName = data.get('name')
+        description = data.get('description')
+        banner= data.get('banner')
+        startDate = data.get('startDate')
+        endDate = data.get('endDate')
         targetAmount = float(data.get('targetAmount'))
         isActive= data.get('isActive', True)
-        org_id= int(data.get('orgId'))
+        org_id= data.get('orgId')
+        print(org_id)
 
-        available_org= Organisation.query.get(org_id)
-        if not (name and description and startDate and endDate):
+        if not (campaignName and description and startDate and endDate):
             return jsonify({"Error":"Please provide complete information"}),400
-        elif not available_org:
-            return jsonify({"Error":"Organisation doesnot exist."}),404
+        
+        available_org= Organisation.query.filter_by(id=org_id).first()
+        if not available_org:
+            return jsonify({"Error":"Organisation does not exist."}),404
 
-        newCampaign = Campaign(campaignName= name, 
-                               description= description, 
-                               startDate=startDate, 
-                               endDate= endDate, 
-                               targetAmount=targetAmount, 
-                               isActive= isActive,
-                               org_id= org_id
-                            )
+        new_campaign = Campaign(campaignName= campaignName, 
+                                description= description, 
+                                banner= banner,
+                                startDate=startDate, 
+                                endDate= endDate, 
+                                targetAmount=targetAmount, 
+                                isActive= bool(isActive),
+                                org_id= org_id
+                                )
+            
         #create wallet
-        response = service.wallets.create(currency="KES", label=f"{newCampaign.campaignName}", can_disburse=True)
+        intasend_response = service.wallets.create(currency="KES", label=f"Camp{uuid.uuid4()}", can_disburse=True)
 
-        if response.get('errors'):
-            return jsonify({"Error":response.get('errors')[0].get('detail')}),400
+        if intasend_response.get('errors'):
+            return jsonify({"Error":"Error creating wallet"}),400
 
-        newCampaign.wallet_id=response.get("wallet_id")
-        try:
-            db.session.add(newCampaign)
-            db.session.commit()
-            return jsonify(newCampaign.to_dict(), 201)
-        except Exception as e:
-            print(e)
-            return jsonify({"Error": "Something went wrong while creating your campaign"}),500
+        new_campaign.walletId=intasend_response.get("wallet_id")
+        print(new_campaign.walletId)
+        db.session.add(new_campaign)
+        db.session.commit()
+        return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.to_dict()}), 201)
+
 
 api.add_resource(campaignData, '/campaigns')
 
+#Get  specific campaign details by id
 class campaignItem(Resource):
+    # @jwt_required
+    def get(self,id):
+        campaign = Campaign.query.get(id)
+        if not campaign:
+            return {"Error":"Campaign not found"}, 404
+        response = make_response(jsonify(campaign.to_dict()))
+        return response
 
     # @jwt_required
-    def get(self, camp_id):
-        pass
+    def patch (self,id):
+        data=request.get_json()
+        description = data.get('description')
+        endDate = data.get('endDate')
+        targetAmount = float(data.get('targetAmount'))
+        isActive= data.get('isActive', True)
+
+        existing_campaign = Campaign.query.get(id)
+        if not existing_campaign:
+            return{ "Error":"Campaign not found"}, 404
+        if description:
+            existing_campaign.description = description
+        if endDate:
+            existing_campaign.endDate =endDate
+        if targetAmount:
+            existing_campaign.targetAmount = targetAmount
+        if isActive:
+            existing_campaign.isActive = isActive
+            db.session.commit()
+            
+            response = make_response(jsonify(existing_campaign.to_dict()))
+            return response
+    
+
+    def delete(self,id):
+        campaign = Campaign.query.get(id)
+        if not campaign:
+            return "User not found", 404
+        else:
+            campaign.isActive = False       
+            # db.session.delete(campaign)
+            db.session.commit()
+
+            return {"message": "User deleted successfully"},200   
+
+api.add_resource(campaignItem, '/campaigns/<int:id>')
+
+        
 
 
 if __name__  =="__main__":
