@@ -123,7 +123,6 @@ class campaignData(Resource):
         return response
     
     # @jwt_required()
-    # @app.route('/postcampaign', methods=['POST'])
     def post(self):
         data=request.get_json()
         campaignName = data.get('name')
@@ -158,9 +157,10 @@ class campaignData(Resource):
 
         if intasend_response.get('errors'):
             return jsonify({"Error":"Error creating wallet"}),400
-
+        
+        #add wallet id to instance
         new_campaign.walletId=intasend_response.get("wallet_id")
-        print(new_campaign.walletId)
+
         db.session.add(new_campaign)
         db.session.commit()
         return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.to_dict()}), 201)
@@ -188,7 +188,7 @@ class campaignItem(Resource):
 
         existing_campaign = Campaign.query.get(id)
         if not existing_campaign:
-            return{ "Error":"Campaign not found"}, 404
+            return jsonify({ "Error":"Campaign not found"}), 404
         if description:
             existing_campaign.description = description
         if endDate:
