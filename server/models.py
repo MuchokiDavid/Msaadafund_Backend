@@ -8,8 +8,8 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from flask_bcrypt import Bcrypt
 import re
 
-
 db = SQLAlchemy()
+bcrypt = Bcrypt()
 class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
     serialize_rules = ('-donations.user')
@@ -41,22 +41,20 @@ class User(db.Model, SerializerMixin):
             raise ValueError("E-mail not valid!!")
         return value
 
-    # Password getter and setter methods
+     # Password getter and setter methods
     @hybrid_property
-    def password_hash(self):
+    def password(self):
         return self.hashed_password
 
-    @password_hash.setter
-    def password_hash(self, password):
-        hashed_password = bcrypt.generate_password_hash(
-            password.encode('utf-8'))
-        self.hashed_password = hashed_password.decode('utf-8')
+    @password.setter
+    def password(self, plain_text_password):
+        self.hashed_password = bcrypt.generate_password_hash(
+            plain_text_password.encode('utf-8')).decode('utf-8')
 
-    def authenticate(self, password):
-        return bcrypt.check_password_hash(
-            self.hashed_password, password.encode('utf-8'))
+    def check_password(self, attempted_password):
+        return bcrypt.check_password_hash(self.hashed_password, attempted_password.encode('utf-8'))
     
-    def __repr__(self):
+    def serialize(self):
         return f"ID:{self.id} First Name :{self.firstName} Last Name :{self.lastName} Username:{self.username} Email:{self.email} Phone Number:{self.phoneNumber} National ID:{self.nationalId} Active:{self.isActive} Address:{self.address}"
     
 
