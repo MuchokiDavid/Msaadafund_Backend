@@ -115,14 +115,14 @@ class Donation (db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
 
-    # def serialize(self):
-    #     return {
-    #         'id': self.id,
-    #         'amount': self.amount,
-    #         'donationDate': self.donationDate,
-    #         'userId': self.user_id,
-    #         'campaignId': self.endDate,
-    #     }
+    def serialize(self):
+        return {
+            'id': self.id,
+            'amount': self.amount,
+            'donationDate': self.donationDate,
+            'userId': self.user_id,
+            'campaignId': self.endDate,
+        }
     
     def __repr__(self):
         return f"ID:{self.id} Amount:{self.amount} Date:{self.donationDate} User ID:{self.user_id} Campaign ID:{self.campaign_id}"
@@ -147,22 +147,22 @@ class  Campaign(db.Model, SerializerMixin):
     # withdrawals = db.relationship('Withdraw', backref='campaign'), Serial_rule: '-withdrawals.campaign',
     donations =db.relationship('Donation', backref='campaign')
 
-    # def serialize(self):
-    #     return {
-    #         'id': self.id,
-    #         'campaignName': self.campaignName,
-    #         'description': self.description,
-    #         'banner': self.banner,
-    #         'startDate': self.startDate,
-    #         'endDate': self.endDate,
-    #         'targetAmount': self.targetAmount,
-    #         'isActive': self.isActive,
-    #         'walletId': self.walletId,
-    #         'created_at': self.created_at.isoformat(),
-    #         'updated_at': self.updated_at.isoformat(),
-    #         'org_id': self.org_id,
-    #         'donations': [donation.serialize() for donation in self.donations]
-    #     }
+    def serialize(self):
+        return {
+            'id': self.id,
+            'campaignName': self.campaignName,
+            'description': self.description,
+            'banner': self.banner,
+            'startDate': self.startDate,
+            'endDate': self.endDate,
+            'targetAmount': self.targetAmount,
+            'isActive': self.isActive,
+            'walletId': self.walletId,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'org_id': self.org_id,
+            'donations': [donation.serialize() for donation in self.donations]
+        }
 
     def __repr__ (self):
         return f"ID: {self.id} Campaign Name: {self.campaignName}  Description: {self.description} Start Date : {self.startDate} End Date:{self.endDate} Target Amount :{self.targetAmount} Wallet ID :{self.walletId} Organisation ID:{self.org_id}"
