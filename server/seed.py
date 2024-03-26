@@ -43,9 +43,9 @@ with app.app_context():
         }
     ]
 
-    def hash_pass(passwrd):
-        hash_password= bcrypt.generate_password_hash(passwrd).decode('utf-8')
-        return hash_password
+    # def hash_pass(passwrd):
+    #     hash_password= bcrypt.generate_password_hash(passwrd).decode('utf-8')
+    #     return hash_password
 
     for data in users :
             user = User(
@@ -53,7 +53,7 @@ with app.app_context():
                 lastName=data.get('lastName') ,
                 username=data.get('username') ,
                 email=data.get( "email") ,
-                hashed_password=hash_pass(data.get('password') ),
+                hashed_password=data.get('password'),
                 nationalId=data.get('nationalId') ,
                 phoneNumber=data.get('phoneNumber'),
                 isActive=data.get('isActive') ,
@@ -68,7 +68,7 @@ with app.app_context():
     orgs = [
         {'orgName':'UN',
         'orgEmail':'charity@un.com',
-        'orgPassword':hash_pass('hashedpassword1'),
+        'orgPassword':'hashedpassword1',
         'orgPhoneNumber':'254721126928',
         'orgAddress':'123 Main St, City',
         'orgDescription': fake.sentence(nb_words=15)
@@ -76,7 +76,7 @@ with app.app_context():
 
         {'orgName':'UNDP',
         'orgEmail':'charity@undp.com',
-        'orgPassword':hash_pass('hashedpassword2'),
+        'orgPassword':'hashedpassword2',
         'orgPhoneNumber':'254723018212',
         'orgAddress':'123 Tommboya St, City',
         'orgDescription': fake.sentence(nb_words=15)
@@ -115,6 +115,7 @@ with app.app_context():
                     campaignName='AIDS',
                     description='Fight against Aids',
                     banner='https://img.freepik.com/free-photo/volunteer-holding-donate-box_23-2148687274.jpg?w=740&t=st=1711376202~exp=1711376802~hmac=a10082ac07c6a9fbccbd3f03d8628018fd4bef68e94064d860943faa1fbbece9',
+                    category='Health',
                     startDate=datetime.date(2019,6,1),
                     endDate= datetime.date(2020,12,31),
                     targetAmount= float(1000000),
