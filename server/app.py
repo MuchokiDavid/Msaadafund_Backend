@@ -5,7 +5,6 @@ from flask_restful import Api,Resource
 from models import db, User, Donation, Campaign, Organisation
 import os
 from dotenv import load_dotenv
-import random
 load_dotenv()
 from intasend import APIService
 import uuid
@@ -229,6 +228,26 @@ class campaignById(Resource):
 
 api.add_resource(campaignById, '/campaigns/<int:id>')
 
+#Get wallet balance for a campaign
+@app.route('/campaign_wallet/<int:id>', methods=['GET'])
+# @jwt_required()
+def check_wallet(id):
+    # current_user_id = get_jwt_identity()
+    # existing_campaign= Campaign.query.filter_by(id=id).first()
+    existing_campaign= Campaign.query.get(id)
+    if not existing_campaign:
+        return jsonify({ "Error":"Campaign not found"}), 404
+    wallet_id= existing_campaign.walletId
+    try:
+        response = service.wallets.details(wallet_id)
+        data = response
+        if data.get("errors"):
+            error_message = data.get("errors")
+            return  make_response({ "Error":error_message} , 400)
+
+        return {'wallet_details': response}, 200
+    except Exception as e:
+        return { "Error":"Internal server error"}
         
 
 
