@@ -2,7 +2,8 @@
 from flask import Flask
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation
+from models import db, User, Donation, Campaign, Organisation,Account
+from utility import check_wallet_balance
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -47,16 +48,16 @@ class userData (Resource):
 
         existing_username =  User.query.filter_by(username=username).first()
         if existing_username:
-            return {"Error":"Username already exists"}, 400
+            return {"error":"Username already exists"}, 400
         existing_email = User.query.filter_by(email=email).first()
         if existing_email:
-            return {"Error":"Email already exists"}, 400
+            return {"error":"Email already exists"}, 400
         exiting_nationalId = User.query.filter_by(nationalId=nationalId).first()
         if exiting_nationalId:
-            return {"Error":"National ID already exists"}, 400
+            return {"error":"National ID already exists"}, 400
         existing_phoneNumber = User.query.filter_by(phoneNumber=phoneNumber).first()
         if existing_phoneNumber:
-            return {"Error":"Phone number already exists"}, 400
+            return {"error":"Phone number already exists"}, 400
         
        
         
@@ -75,7 +76,7 @@ class userDataByid(Resource):
     def get(self,id):
         user = User.query.get(id)
         if not user:
-            return {"Error":"User not found"}, 404
+            return {"error":"User not found"}, 404
         response = make_response(jsonify(user.serialize()))
         return response
 
@@ -88,7 +89,7 @@ class userDataByid(Resource):
 
         existing_user = User.query.get(id)
         if not existing_user:
-            return{ "Error":"User not found"}, 404
+            return{ "error":"User not found"}, 404
         else:
             existing_user.firstName = firstName
             existing_user.lastName = lastName
@@ -135,11 +136,11 @@ class campaignData(Resource):
         org_id= data.get('orgId')
 
         if not (campaignName and description and startDate and endDate):
-            return jsonify({"Error":"Please provide complete information"}),400
+            return jsonify({"error":"Please provide complete information"}),400
         
         available_org= Organisation.query.filter_by(id=org_id).first()
         if not available_org:
-            return jsonify({"Error":"Organisation does not exist."}),404
+            return jsonify({"error":"Organisation does not exist."}),404
 
         new_campaign = Campaign(campaignName= campaignName, 
                                 description= description, 
@@ -156,7 +157,7 @@ class campaignData(Resource):
         intasend_response = service.wallets.create(currency="KES", label=f"Camp{uuid.uuid4()}", can_disburse=True)
 
         if intasend_response.get('errors'):
-            return jsonify({"Error":"Error creating wallet"}),400
+            return jsonify({"error":"error creating wallet"}),400
         
         #add wallet id to instance
         new_campaign.walletId=intasend_response.get("wallet_id")
@@ -183,7 +184,7 @@ class campaignById(Resource):
     def get(self,id):
         campaign = Campaign.query.get(id)
         if not campaign:
-            return {"Error":"Campaign not found"}, 404
+            return {"error":"Campaign not found"}, 404
         response = make_response(jsonify(campaign.to_dict()))
         return response
 
@@ -198,7 +199,7 @@ class campaignById(Resource):
         existing_campaign = Campaign.query.filter(id==id).first()
 
         if not existing_campaign:
-            return jsonify({ "Error":"Campaign not found"}), 404
+            return jsonify({ "error":"Campaign not found"}), 404
         if description:
             existing_campaign.description = description
         if endDate:
@@ -236,20 +237,105 @@ def check_wallet(id):
     # existing_campaign= Campaign.query.filter_by(id=id).first()
     existing_campaign= Campaign.query.get(id)
     if not existing_campaign:
-        return jsonify({ "Error":"Campaign not found"}), 404
+        return jsonify({ "error":"Campaign not found"}), 404
     wallet_id= existing_campaign.walletId
     try:
         response = service.wallets.details(wallet_id)
         data = response
         if data.get("errors"):
             error_message = data.get("errors")
-            return  make_response({ "Error":error_message} , 400)
+            return  make_response({ "error":error_message} , 400)
 
         return {'wallet_details': response}, 200
     except Exception as e:
-        return { "Error":"Internal server error"}
-        
+        return { "error":"Internal server error"}
+    
+class addAccount(Resource):
+    def get(self):
+        all_accounts= Account.query.all()
+        response_dict= [account.serialize() for account in all_accounts]
+        response= make_response(jsonify(response_dict), 200)
+        return response
 
+    def post(self):
+        data= request.get_json()
+        accountType= data.get('accountType')
+        accountNumber= data.get('accountNumber')
+        orgId= data.get('orgId')
+        try:
+            new_account= Account(accountType=accountType, accountNumber=accountNumber, orgId=orgId )
+            db.session.add(new_account)
+            db.session.commit()
+            return {"Message": "New account added successfully"}, 201
+        except Exception  as e:
+             return {"error": "Account already registered"},500  
+
+
+api.add_resource(addAccount, '/accounts')
+
+#Get account by id
+class accountById(Resource):
+    # @jwt_required()
+    def get(self, id):
+        account = Account.query.get(id)
+        if not account:
+            return {"error":"Account not found"}, 404
+        response = make_response(jsonify(account.serialize()))
+        return response
+    
+    def delete(self,id):
+        account = Account.query.get(id)
+        if not account:
+            return "Account not found", 404
+        else:     
+            db.session.delete(account)
+            db.session.commit()
+
+            return {"message": "Account deleted successfully"},200   
+
+api.add_resource(accountById , '/accounts/<int:id>')
+
+
+#Route to withdraw money to M-pesa number
+@app.route("/withdraw/mpesa",methods=["POST"])
+# @jwt_required()
+def mpesa_withdrawal():
+    data=request.get_json()
+    accountType= data.get("accountType")
+    accountNumber= data.get("accountNumber")
+    amount=float(data.get('amount'))
+    orgId= int(data.get('orgId'))# use jwt_identity
+    campaign=int(data.get("campaign"))
+
+    account= Account.query.filter_by(accountType=accountType,accountNumber=accountNumber,orgId=orgId).first()
+    if account is None:
+        return jsonify({"error": "No such account"}),404
+    
+    organisation= Organisation.query.get(orgId)
+    if not organisation:
+        return jsonify({"error":"Invalid organization ID"}),401
+    
+    campaigns= Campaign.query.filter_by(id=campaign, org_id=orgId, isActive=True).first()
+    if not campaigns:
+        return jsonify({"error":"Campaign does not exist or inactive."}),404
+    
+    #check wallet balance
+    if float(check_wallet_balance(campaigns.walletId))<float(amount):
+        return jsonify({"error":"Insufficient funds in the wallet!"})
+    try: 
+        if accountType=="M-Pesa":
+            transactions = [{'name': organisation.orgName, 'account': account.accountNumber, 'amount': int(amount)}]
+
+            response = service.transfer.mpesa(wallet_id=campaigns.walletId, currency='KES', transactions=transactions)
+            if response.get('errors'):
+                error_message= response.get('errors')[0].get('detail')
+                return jsonify({'Error':error_message})
+            return jsonify(response)
+        
+        else:
+            return jsonify({"error":"Please select M-pesa"}),404
+    except Exception as e :
+        return jsonify({"error":str(e)}),500
 
 if __name__  =="__main__":
     app.run (port =5555, debug =True)
