@@ -21,7 +21,7 @@ bcrypt = Bcrypt(app)
 # classes for users
 class userData (Resource):
     def get(self):
-        users = [user.serialize() for user in User.query.all()]
+        users = [user.serialize() for user in User.query.filter_by(isActive = True).all()]
         response = make_response(jsonify(users))
         return response
     
@@ -35,6 +35,7 @@ class userData (Resource):
         phoneNumber = data['phoneNumber']
         address = data['address']
         hashed_password  = data['password']
+        isActive = db.Column(db.Boolean, default=True)  # New field
 
         existing_username =  User.query.filter_by(username=username).first()
         if existing_username:
@@ -51,7 +52,16 @@ class userData (Resource):
         
        
         
-        new_user = User(firstName=firstName, lastName=lastName, username=username, email=email, nationalId=nationalId, phoneNumber=phoneNumber, address=address, password=hashed_password)
+        new_user = User(firstName=firstName, 
+                        lastName=lastName, 
+                        username=username, 
+                        email=email, 
+                        nationalId=nationalId,
+                        phoneNumber=phoneNumber, 
+                        address=address, 
+                        password=hashed_password,
+                        isActive=isActive
+                          )
       
         db.session.add(new_user)
         db.session.commit()
@@ -69,27 +79,34 @@ class userDataByid(Resource):
             return {"Error":"User not found"}, 404
         response = make_response(jsonify(user.serialize()))
         return response
-
-    def patch (self,id):
+    
+    def patch(self, id):
         data = request.get_json()
-        firstName = data['firstName']
-        lastName = data['lastName']
-        phoneNumber = data['phoneNumber']
-        address = data['address']
+        firstName = data.get('firstName')
+        lastName = data.get('lastName')
+        phoneNumber = data.get('phoneNumber')
+        address = data.get('address')
 
         existing_user = User.query.get(id)
         if not existing_user:
-            return{ "Error":"User not found"}, 404
-        else:
+            return {"Error": "User not found"}, 404
+
+        if firstName:
             existing_user.firstName = firstName
+        if lastName:
             existing_user.lastName = lastName
+        if phoneNumber:
             existing_user.phoneNumber = phoneNumber
+        if address:
             existing_user.address = address
-            db.session.commit()
-            
-            response = make_response(jsonify(existing_user.serialize()))
-            return response
-    
+        if 'isActive' in data:
+            existing_user.isActive = data['isActive']
+
+        db.session.commit()
+
+        response = make_response(jsonify(existing_user.serialize()))
+        return response
+  
 
     def delete(self,id):
         user = User.query.get(id)
@@ -97,7 +114,7 @@ class userDataByid(Resource):
             return "User not found", 404
         else:
             user.isActive = False       
-            db.session.delete(user)
+            # db.session.delete(user)
             db.session.commit()
 
             return {"message": "User deleted successfully"},200   
