@@ -135,6 +135,7 @@ class  Campaign(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key =True)
     campaignName = db.Column(db.String())
     description = db.Column(db.String())
+    category= db.Column(db.String())
     banner = db.Column(db.String(255), unique=False)
     startDate = db.Column (db.String())
     endDate = db.Column(db.String())
@@ -152,6 +153,7 @@ class  Campaign(db.Model, SerializerMixin):
             'id': self.id,
             'campaignName': self.campaignName,
             'description': self.description,
+            'category': self.category,
             'banner': self.banner,
             'startDate': self.startDate,
             'endDate': self.endDate,
@@ -165,7 +167,7 @@ class  Campaign(db.Model, SerializerMixin):
         }
 
     def __repr__ (self):
-        return f"ID: {self.id} Campaign Name: {self.campaignName}  Description: {self.description} Start Date : {self.startDate} End Date:{self.endDate} Target Amount :{self.targetAmount} Wallet ID :{self.walletId} Organisation ID:{self.org_id}"
+        return f"ID: {self.id} Campaign Name: {self.campaignName}  Description: {self.description} Category:{self.category} Start Date : {self.startDate} End Date:{self.endDate} Target Amount :{self.targetAmount} Wallet ID :{self.walletId} Organisation ID:{self.org_id}"
 
 
 # class Withdraw (db.Model, SerializerMixin):
