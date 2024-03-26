@@ -25,7 +25,7 @@ class User(db.Model, SerializerMixin):
     isActive = db.Column(db.Boolean(), default=True)
     address = db.Column(db.String(), nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     donations =db.relationship('Donation', backref='user')
     
 
@@ -70,7 +70,7 @@ class Organisation(db.Model, SerializerMixin):
     orgPhoneNumber = db.Column(db.String(),unique=True)
     orgDescription = db.Column (db.String())
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable = True)
     campaigns = db.relationship('Campaign', backref='organisation')
 
     @validates('orgPhoneNumber')
@@ -112,6 +112,17 @@ class Donation (db.Model, SerializerMixin):
     donationDate = db.Column(db.DateTime, server_default=db.func.now())
     user_id =  db.Column(db.Integer, db.ForeignKey('users.id'))
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'))
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
+
+    # def serialize(self):
+    #     return {
+    #         'id': self.id,
+    #         'amount': self.amount,
+    #         'donationDate': self.donationDate,
+    #         'userId': self.user_id,
+    #         'campaignId': self.endDate,
+    #     }
     
     def __repr__(self):
         return f"ID:{self.id} Amount:{self.amount} Date:{self.donationDate} User ID:{self.user_id} Campaign ID:{self.campaign_id}"
@@ -131,10 +142,27 @@ class  Campaign(db.Model, SerializerMixin):
     isActive = db.Column(db.Boolean(), default=True)
     walletId = db.Column (db.String(), unique =True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     org_id = db.Column(db.String(), db.ForeignKey('organisations.id'))
     # withdrawals = db.relationship('Withdraw', backref='campaign'), Serial_rule: '-withdrawals.campaign',
     donations =db.relationship('Donation', backref='campaign')
+
+    # def serialize(self):
+    #     return {
+    #         'id': self.id,
+    #         'campaignName': self.campaignName,
+    #         'description': self.description,
+    #         'banner': self.banner,
+    #         'startDate': self.startDate,
+    #         'endDate': self.endDate,
+    #         'targetAmount': self.targetAmount,
+    #         'isActive': self.isActive,
+    #         'walletId': self.walletId,
+    #         'created_at': self.created_at.isoformat(),
+    #         'updated_at': self.updated_at.isoformat(),
+    #         'org_id': self.org_id,
+    #         'donations': [donation.serialize() for donation in self.donations]
+    #     }
 
     def __repr__ (self):
         return f"ID: {self.id} Campaign Name: {self.campaignName}  Description: {self.description} Start Date : {self.startDate} End Date:{self.endDate} Target Amount :{self.targetAmount} Wallet ID :{self.walletId} Organisation ID:{self.org_id}"
