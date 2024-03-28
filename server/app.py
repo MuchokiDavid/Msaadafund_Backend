@@ -2,7 +2,7 @@
 from flask import Flask, request,jsonify,make_response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist
 from utility import check_wallet_balance
 import os
 from dotenv import load_dotenv
@@ -13,6 +13,8 @@ from flask import request,jsonify,make_response
 from flask_bcrypt import Bcrypt
 import requests
 import datetime
+from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
+from auth import auth_bp
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -21,6 +23,8 @@ service = APIService(token=token,publishable_key=publishable_key, test=True)
 
 app = Flask(__name__)
 
+app.config['JWT_SECRET_KEY'] = b'\xb2\xd3B\xb9 \xab\xc0By\x13\x10\x84\xb7M!\x11'
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 24 * 60 * 60
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///msaada.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 
@@ -28,6 +32,34 @@ migrate = Migrate(app, db)
 db.init_app(app)
 api = Api(app)
 bcrypt = Bcrypt(app)
+jwt = JWTManager()
+jwt.init_app(app)
+
+
+# register blueprint
+app.register_blueprint(auth_bp, url_prefix='/auth')
+
+# jwt error handler
+@jwt.expired_token_loader
+def expired_token(jwt_header,jwt_data):
+    return jsonify({'message': 'The token has expired.','error':'token expired'}), 401
+
+@jwt.invalid_token_loader
+def invalid_token(error):
+    return jsonify({'message': 'Does not contain a valid token.','error':'invalid token'}), 401
+
+@jwt.unauthorized_loader
+def missing_token(error):
+    return jsonify({'message': 'Request does not contain an access token.', 'error':'token missing'}), 401
+
+
+@jwt.token_in_blocklist_loader #check if the jwt is revocked
+def token_in_blocklist(jwt_header,jwt_data):
+    jti = jwt_data['jti']
+
+    token = db.session.query(TokenBlocklist).filter(TokenBlocklist.jti == jti).scalar()
+# if token is none : it will return false 
+    return token is not None
 
 
 # classes for users
@@ -37,50 +69,7 @@ class userData (Resource):
         response = make_response(jsonify(users))
         return response
     
-    def post(self):
-        data = request.get_json()
-        firstName = data['firstName']
-        lastName = data['lastName']
-        username = data['username']
-        email = data['email']
-        nationalId = data['nationalId']
-        phoneNumber = data['phoneNumber']
-        address = data['address']
-        hashed_password  = data['password']
-        isActive = db.Column(db.Boolean, default=True)  # New field
-
-        existing_username =  User.query.filter_by(username=username).first()
-        if existing_username:
-            return {"error":"Username already exists"}, 400
-        existing_email = User.query.filter_by(email=email).first()
-        if existing_email:
-            return {"error":"Email already exists"}, 400
-        exiting_nationalId = User.query.filter_by(nationalId=nationalId).first()
-        if exiting_nationalId:
-            return {"error":"National ID already exists"}, 400
-        existing_phoneNumber = User.query.filter_by(phoneNumber=phoneNumber).first()
-        if existing_phoneNumber:
-            return {"error":"Phone number already exists"}, 400
-        
-       
-        
-        new_user = User(firstName=firstName, 
-                        lastName=lastName, 
-                        username=username, 
-                        email=email, 
-                        nationalId=nationalId,
-                        phoneNumber=phoneNumber, 
-                        address=address, 
-                        password=hashed_password,
-                        isActive=isActive
-                          )
-      
-        db.session.add(new_user)
-        db.session.commit()
-
-        response = make_response(jsonify(new_user.serialize()),200)
-        return response
-
+   
 api.add_resource(userData, '/users')
 
     
@@ -125,8 +114,8 @@ class userDataByid(Resource):
         if not user:
             return "User not found", 404
         else:
-            user.isActive = False       
-            # db.session.delete(user)
+            # user.isActive = False       
+            db.session.delete(user)
             db.session.commit()
 
             return {"message": "User deleted successfully"},200   
