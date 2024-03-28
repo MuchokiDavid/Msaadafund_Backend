@@ -147,9 +147,9 @@ class Donation (db.Model, SerializerMixin):
         return {
             'id': self.id,
             'amount': self.amount,
-            'donationDate': self.donationDate,
+            'donationDate': self.donationDate.strftime("%Y-%m-%d"),
             'userId': self.user_id,
-            'campaignId': self.endDate,
+            'campaignId': self.campaign_id
         }
     
     def __repr__(self):
