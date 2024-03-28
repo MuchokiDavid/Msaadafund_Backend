@@ -307,34 +307,6 @@ class Organization(Resource):
         organizations = Organisation.query.all()
         serialized_organizations = [org.serialize() for org in organizations]
         return (serialized_organizations), 200
-    
-    def post(self):
-        data = request.get_json()
-        orgName = data['orgName']
-        orgEmail = data['orgEmail']
-        orgPassword = data['password']
-        orgAddress = data['orgAddress']
-        orgPhoneNumber = data['orgPhoneNumber']
-        orgDescription = data['orgDescription']
-
-        existing_orgName = Organisation.query.filter_by(orgName=orgName).first()
-        if existing_orgName:
-            return {"Message": "An organisation with this name already exists."},400
-        
-        existing_orgEmail =  Organisation.query.filter_by(orgEmail=orgEmail).first()
-        if existing_orgEmail:
-            return{"Message":"This email is already registered to an organization"},400
-        
-        existing_orgPhoneNumber =  Organisation.query.filter_by(orgPhoneNumber=orgPhoneNumber).first()
-        if existing_orgPhoneNumber:
-            return{"Message":"This Phone number is already registered to an organization"}, 400
-        
-        new_organisation =  Organisation(orgName=orgName, orgEmail=orgEmail, password=orgPassword,orgPhoneNumber=orgPhoneNumber, orgAddress=orgAddress, orgDescription=orgDescription)
-        db.session.add(new_organisation)
-        db.session.commit()
-
-        response = make_response(jsonify(new_organisation.serialize(),200))
-        return response
 
 api.add_resource(Organization, '/organisations')
 
@@ -423,6 +395,30 @@ def mpesa_withdrawal():
             return jsonify({"error":"Please select M-pesa"}),404
     except Exception as e :
         return jsonify({"error":str(e)}),500
+
+
+@app.route('/description', methods=["PUT"])
+@jwt_required()
+def update_org_description():
+    current_organisation_id = get_jwt_identity()
+
+    organization = Organisation.query.get(current_organisation_id)
+
+    if not organization:
+        return jsonify({'error': 'Organization not found'}), 404
+
+
+    data = request.get_json()
+    new_description = data.get('description')
+
+    if not new_description:
+        return jsonify({'error': 'New description is required'}), 400
+
+    organization.orgDescription = new_description
+
+    db.session.commit()
+
+    return jsonify({"message": "Description updated successfully"}), 200
 
 #route to handle donations
 class Donate(Resource):
@@ -566,6 +562,7 @@ def wallet_transactions(id):
         
     except Exception as e:
         return jsonify({"error": "An error occurred while processing your request"}),500
+
 
 if __name__  =="__main__":
     app.run (port =5555, debug =True)
