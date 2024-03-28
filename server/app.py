@@ -11,6 +11,8 @@ from intasend import APIService
 import uuid
 from flask import request,jsonify,make_response
 from flask_bcrypt import Bcrypt
+import requests
+import datetime
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
 from auth import auth_bp
 
@@ -421,6 +423,149 @@ def mpesa_withdrawal():
             return jsonify({"error":"Please select M-pesa"}),404
     except Exception as e :
         return jsonify({"error":str(e)}),500
+
+#route to handle donations
+class Donate(Resource):
+    # @jwt_required()
+    def get(self):
+        all_donations= Donation.query.all()
+        donate_dict= [donate.serialize() for donate in all_donations]
+        return (donate_dict), 200
+
+    # @jwt_required()
+    def post(self):
+        # current_user_id= get_jwt_udentity ()
+        # current_user= User.query.get
+        data= request.get_json()
+        email= data.get('email') #use current user email
+        phoneNumber= data.get("phoneNumber")
+        amount= data.get('amount')
+        campaign_id= data.get('campaignId')
+
+        if not email:
+            return jsonify({"error":"Email is required."}),400
+        
+        if not phoneNumber:
+            return jsonify({"error":"Phone number is required."}),400
+
+        if not amount:
+            return jsonify({"error":"Amount is required."}),400
+        
+        if int(amount) <5:
+            return jsonify({"error":"Donation must be above Kshs 5."}),400
+
+        try:
+            existing_campaign= Campaign.query.get(campaign_id)
+            if not existing_campaign:
+                return  jsonify({"error":"Campaign does not exist"}),404
+
+            service = APIService(token=token,publishable_key=publishable_key, test=True)
+
+            response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=email, phone_number=phoneNumber,
+                                            amount=amount, currency="KES", narrative="Deposit", 
+                                            mode="MPESA-STK-PUSH")
+            return jsonify(response)
+        
+        # new_donation=Donation(email,phoneNumber,float(amount),existing_campaign.id)
+            
+            # db.session.add(new_donation)
+            # db.session.commit()
+            # send_email(f'{new_donation.name()} has made a donation of ${new_donation.amount} to {new_donation.campaign().
+            # send_express_donation_email(email,phoneNumber,amount,existing_campaign.name)
+            # return jsonify(f'Thank you for your support! Your donation of ${amount} has been recorded and an email with further instructions
+        except Exception as e:
+            print (e)
+            return jsonify({"error": "An error occurred while processing your request"}),500
+
+api.add_resource(Donate, '/user/donations')
+
+#Express donations route for user who is not logged in
+@app.route('/express/donations', methods = ['POST'])
+def express_donation():
+    data= request.get_json()
+    email= "anonymous@gmail.com"
+    phoneNumber= data.get("phoneNumber")
+    amount= data.get('amount')
+    campaign_id= data.get('campaignId')
+
+    if not email:
+        return jsonify({"error":"Email is required."}),400
+    
+    if not phoneNumber:
+        return jsonify({"error":"Phone number is required."}),400
+
+    if not amount:
+        return jsonify({"error":"Amount is required."}),400
+    if int(amount) <5:
+            return jsonify({"error":"Donation must be above Kshs 5."}),400
+
+    try:
+        existing_campaign= Campaign.query.filter_by(id=campaign_id).first()
+        if not existing_campaign:
+            return  jsonify({"error":"Campaign does not exist"}),404
+
+        response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=email, phone_number=phoneNumber,
+                                        amount=amount, currency="KES", narrative="Deposit", 
+                                        mode="MPESA-STK-PUSH")
+        return jsonify(response)
+    
+     # new_donation=Donation(email,phoneNumber,float(amount),existing_campaign.id)
+        
+        # db.session.add(new_donation)
+        # db.session.commit()
+        # send_email(f'{new_donation.name()} has made a donation of ${new_donation.amount} to {new_donation.campaign().
+        # send_express_donation_email(email,phoneNumber,amount,existing_campaign.name)
+        # return jsonify(f'Thank you for your support! Your donation of ${amount} has been recorded and an email with further instructions
+    except Exception as e:
+        print (e)
+        return jsonify({"error": "An error occurred while processing your request"}),500
+
+# Get wallet transactions including transatype and filters
+@app.route('/wallet_transactions/<int:id>', methods=['POST'])
+# @jwt_required()  
+def wallet_transactions(id):
+    current_user_id = get_jwt_identity()
+    existing_org= Organisation.query.get(current_user_id)
+    if not existing_org:
+        return  jsonify({"Error":"Organisation does not exist"}),401
+    
+    data= request.get_json()
+    trans_type= data.get('trans_type')
+    start_date=data.get('start_date')
+    end_date=data.get('end_date')
+
+    existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
+    if not existing_campaign:
+        return  jsonify({"Error":"Campaign does not exist'"}),404
+    wallet_id= existing_campaign.walletId
+
+    url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
+    if trans_type:
+        url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}"
+    if  start_date and trans_type:
+        url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}Q&start_date={start_date}"
+    if start_date and end_date:
+        url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
+    if trans_type and end_date:
+        url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&end_date={end_date}"
+    if trans_type and start_date and end_date:
+        url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
+    if end_date:
+        url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&end_date={end_date}"
+    try:
+        headers = {
+            "accept": "application/json",
+            "Authorization": "Bearer " +token
+        }
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        if data.get("errors"):
+            error_message = data.get("errors")
+            return make_response(jsonify({"error":error_message}),400)
+        return jsonify(data.get("results")), 200
+        
+    except Exception as e:
+        return jsonify({"error": "An error occurred while processing your request"}),500
 
 if __name__  =="__main__":
     app.run (port =5555, debug =True)
