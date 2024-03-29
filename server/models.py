@@ -118,6 +118,7 @@ class Account(db.Model, SerializerMixin):
     __tablename__=  'accounts'
     id = db.Column(db.Integer, primary_key=True)
     accountType = db.Column(db.String)
+    accountName= db.Column(db.String)
     accountNumber= db.Column(db.String, unique=True)
     orgId = db.Column(db.Integer, db.ForeignKey('organisations.id'),nullable=False)
 
@@ -127,6 +128,7 @@ class Account(db.Model, SerializerMixin):
                 'id': self.id,
                 'accountType': self.accountType,
                 'accountNumber': self.accountNumber,
+                'accountName' : self.accountName,
                 'orgId': self.orgId
                }
     def __repr__(self):
