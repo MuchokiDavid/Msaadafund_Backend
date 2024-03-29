@@ -55,8 +55,20 @@ class User(db.Model, SerializerMixin):
         return bcrypt.check_password_hash(self.hashed_password, attempted_password.encode('utf-8'))
     
     def serialize(self):
-        return f"ID:{self.id} First Name :{self.firstName} Last Name :{self.lastName} Username:{self.username} Email:{self.email} Phone Number:{self.phoneNumber} National ID:{self.nationalId} Active:{self.isActive} Address:{self.address}"
-    
+        return {
+            'id': self.id,
+            'firstName': self.firstName,
+            'lastName': self.lastName,
+            'username': self.username,
+            'email': self.email,
+            'nationalId': self.nationalId,
+            'phoneNumber': self.phoneNumber,
+            'isActive': self.isActive,
+            'address': self.address,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }
+
 
 class Organisation(db.Model, SerializerMixin):
     __tablename__ = 'organisations'
@@ -188,8 +200,8 @@ class  Campaign(db.Model, SerializerMixin):
             'targetAmount': self.targetAmount,
             'isActive': self.isActive,
             'walletId': self.walletId,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
             'org_id': self.org_id,
             'donations': [donation.serialize() for donation in self.donations]
         }

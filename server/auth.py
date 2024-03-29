@@ -40,7 +40,7 @@ def register_user():
 
     existing_phone_number = User.query.filter_by(phoneNumber=phoneNumber).first()
     if existing_phone_number:
-        return jsonify({"error": "Phone number already exists"}), 400
+        return jsonify({"error": "Phone number already exists"}), 404
 
     # Creating new user instance
     new_user = User(firstName=firstName,

@@ -72,23 +72,36 @@ class userData (Resource):
    
 api.add_resource(userData, '/users')
 
-    
+# @app.route('/usersdata', methods=['GET']) 
+# @jwt_required()
+# def get():
+#     current_user = get_jwt_identity()
+#     user = User.query.filter_by(username=current_user).first()
+#     if not user:
+#         return {"error":"User not found"}, 404
+#     response = make_response(jsonify(user.serialize()),200)
+#     return response   
+
 class userDataByid(Resource):
-    def get(self,id):
-        user = User.query.get(id)
+    @jwt_required()
+    def get(self):
+        current_user = get_jwt_identity()
+        user = User.query.filter_by(username=current_user).first()
         if not user:
             return {"error":"User not found"}, 404
-        response = make_response(jsonify(user.serialize()))
+        response = make_response(jsonify(user.serialize()),200)
         return response
     
-    def patch(self, id):
+    @jwt_required()     
+    def patch(self):
+        current_user = get_jwt_identity()
         data = request.get_json()
         firstName = data.get('firstName')
         lastName = data.get('lastName')
         phoneNumber = data.get('phoneNumber')
         address = data.get('address')
 
-        existing_user = User.query.get(id)
+        existing_user = User.query.filter_by(username = current_user).first()
         if not existing_user:
             return{ "error":"User not found"}, 404
 
@@ -108,30 +121,86 @@ class userDataByid(Resource):
         response = make_response(jsonify(existing_user.serialize()))
         return response
   
-
-    def delete(self,id):
-        user = User.query.get(id)
+    @jwt_required()
+    def delete(self):
+        current_user = get_jwt_identity()
+        user = User.query.filter_by(username = current_user).first()
         if not user:
             return "User not found", 404
         else:
-            # user.isActive = False       
-            db.session.delete(user)
+            user.isActive = False       
+            # db.session.delete(user)
             db.session.commit()
 
-            return {"message": "User deleted successfully"},200   
+            return {"message": "User deactivated successfully"},200   
     
-api.add_resource(userDataByid, '/users/<int:id>')
+api.add_resource(userDataByid, '/usersdata')
 
 #get campaigns
 class campaignData(Resource):
     # @jwt_required()
     def get(self):
-        all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=True).all()]
+        all_campaigns = [campaign.serialize() for campaign in Campaign.query.filter_by(isActive=True).all()]
         response = make_response(jsonify(all_campaigns), 200)
         return response
     
-    # @jwt_required()
+
+api.add_resource(campaignData, '/campaigns')
+
+#Get inactive campaigns
+@app.route('/getinactive', methods=['GET'])
+def  getInactiveCampaign():
+    """Return a list of all inactive campaigns"""
+    all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=False).all()]
+    response = make_response(jsonify(all_campaigns), 200)
+    return response
+
+@app.route('/campaignpatch', methods=['PATCH'])
+@jwt_required()
+def patch ():
+    current_user = get_jwt_identity()
+    existing_organisation = Organisation.query.filter_by(id=current_user).first()
+
+    if not existing_organisation:
+        return {"error":"Organisation not found"}, 404
+    data=request.get_json()
+    description = data.get('description')
+    endDate = data.get('endDate')
+    targetAmount = data.get('targetAmount')
+    isActive= data.get('isActive')
+
+    existing_campaign = Campaign.query.filter_by(campaignName=data['name']).first()
+    if not existing_campaign:
+        return {"error":"Campaign not found"}, 404
+    if description:
+        existing_campaign.description = description
+    if endDate:
+        existing_campaign.endDate =endDate
+    if targetAmount:
+        existing_campaign.targetAmount = targetAmount
+    if isActive:
+        isActive = True if isActive.lower() == 'true' else False
+        existing_campaign.isActive = isActive
+
+    db.session.commit()
+    
+    response = make_response(jsonify(existing_campaign.serialize()))
+    return response
+
+#Get  specific campaign details by id
+class campaignById(Resource):
+    @jwt_required()
+    def get(self):
+        current_user = get_jwt_identity()
+        campaign = Campaign.query.filter_by(org_id=current_user).first()
+        if not campaign:
+            return {"error":"Campaign not found"}, 404
+        response = make_response(jsonify(campaign.serialize()))
+        return response
+    
+    @jwt_required()
     def post(self):
+        current_user = get_jwt_identity()
         data=request.get_json()
         campaignName = data.get('name')
         description = data.get('description')
@@ -140,15 +209,15 @@ class campaignData(Resource):
         startDate = data.get('startDate')
         endDate = data.get('endDate')
         targetAmount = float(data.get('targetAmount'))
-        isActive= data.get('isActive') 
-        org_id= data.get('orgId')
+        isActive= data.get('isActive') # issue 1 
 
         if not (campaignName and description and startDate and endDate):
             return jsonify({"error":"Please provide complete information"}),400
         
-        available_org= Organisation.query.filter_by(id=org_id).first()
+        available_org= Organisation.query.filter_by(id=current_user).first()
         if not available_org:
             return jsonify({"error":"Organisation does not exist."}),404
+        # print(available_org.orgName)
 
         new_campaign = Campaign(campaignName= campaignName, 
                                 description= description, 
@@ -158,7 +227,7 @@ class campaignData(Resource):
                                 endDate= endDate, 
                                 targetAmount=targetAmount, 
                                 isActive= bool(isActive), # bool("") => False
-                                org_id= org_id
+                                org_id=available_org.id
                                 )
             
         #create wallet
@@ -174,67 +243,27 @@ class campaignData(Resource):
         return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.to_dict()}), 201)
 
 
-api.add_resource(campaignData, '/campaigns')
-
-#Get inactive campaigns
-@app.route('/getinactive', methods=['GET'])
-def  getInactiveCampaign():
-    """Return a list of all inactive campaigns"""
-    all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=False).all()]
-    response = make_response(jsonify(all_campaigns), 200)
-    return response
     
-
-#Get  specific campaign details by id
-class campaignById(Resource):
-    # @jwt_required
-    def get(self,id):
-        campaign = Campaign.query.get(id)
-        if not campaign:
-            return {"error":"Campaign not found"}, 404
-        response = make_response(jsonify(campaign.to_dict()))
-        return response
-
-    # @jwt_required
-    def patch (self,id):
+    @jwt_required()
+    def delete(self):
         data=request.get_json()
-        description = data.get('description')
-        endDate = data.get('endDate')
-        targetAmount = data.get('targetAmount')
-        isActive= data.get('isActive')
-
-        existing_campaign = Campaign.query.filter(id==id).first()
-
-        if not existing_campaign:
-            return jsonify({ "error":"Campaign not found"}), 404
-        if description:
-            existing_campaign.description = description
-        if endDate:
-            existing_campaign.endDate =endDate
-        if targetAmount:
-            existing_campaign.targetAmount = targetAmount
-        if isActive:
-            isActive = True if isActive.lower() == 'true' else False
-            existing_campaign.isActive = isActive
-
-        db.session.commit()
+        current_user = get_jwt_identity()
+        organisation = Organisation.query.filter_by(id=current_user).first()
         
-        response = make_response(jsonify(existing_campaign.to_dict()))
-        return response
-    
-
-    def delete(self,id):
-        campaign = Campaign.query.get(id)
-        if not campaign:
+        if not organisation:
+            return {"Organisation not found"}, 404
+        
+        existing_campaign = Campaign.query.filter_by(campaignName=data['name']).first()
+        if not existing_campaign:
             return "Campaign not found", 404
         else:
-            campaign.isActive = False       
+            existing_campaign.isActive = False       
             # db.session.delete(campaign)
             db.session.commit()
 
             return {"message": "Campaign deactivated successfully"},200   
 
-api.add_resource(campaignById, '/campaigns/<int:id>')
+api.add_resource(campaignById, '/orgcampaigns')
 
 #Get wallet balance for a campaign
 @app.route('/campaign_wallet/<int:id>', methods=['GET'])
@@ -263,44 +292,64 @@ class addAccount(Resource):
         response_dict= [account.serialize() for account in all_accounts]
         response= make_response(jsonify(response_dict), 200)
         return response
-
-    def post(self):
-        data= request.get_json()
-        accountType= data.get('accountType')
-        accountNumber= data.get('accountNumber')
-        orgId= data.get('orgId')
-        try:
-            new_account= Account(accountType=accountType, accountNumber=accountNumber, orgId=orgId )
-            db.session.add(new_account)
-            db.session.commit()
-            return {"Message": "New account added successfully"}, 201
-        except Exception  as e:
-             return {"error": "Account already registered"},500  
-
-
+    
 api.add_resource(addAccount, '/accounts')
 
 #Get account by id
 class accountById(Resource):
-    # @jwt_required()
-    def get(self, id):
-        account = Account.query.get(id)
+    @jwt_required()
+    def get(self):
+        current_user = get_jwt_identity()
+        existing_organisation = Organisation.query.filter_by(id=current_user).first()
+        if not existing_organisation:
+            return {"error":"Organisation not found"}, 404
+        
+        account = Account.query.filter_by(orgId=existing_organisation.id).all()
         if not account:
             return {"error":"Account not found"}, 404
-        response = make_response(jsonify(account.serialize()))
+        data = [acc.serialize() for acc in account]
+        response = make_response(jsonify(data))
         return response
     
-    def delete(self,id):
-        account = Account.query.get(id)
+    @jwt_required()
+    def post(self):
+        current_user = get_jwt_identity()
+        existing_organisation = Organisation.query.filter_by(id=current_user).first()
+        if not existing_organisation:
+            return {"error":"Organisation not found"}, 404
+        
+        data= request.get_json()
+        accountType= data.get('accountType')
+        accountNumber= data.get('accountNumber')
+        try:
+            new_account= Account(accountType=accountType, accountNumber=accountNumber, orgId=existing_organisation.id )
+            db.session.add(new_account)
+            db.session.commit()
+            response = make_response(jsonify(new_account.serialize()),201)
+            return response
+        except Exception  as e:
+             return {"error": "Account already registered"},500  
+
+    
+    @jwt_required()
+    def delete(self):
+        data = request.get_json()
+        current_user = get_jwt_identity()
+        existing_organisation = Organisation.query.filter_by(id=current_user).first()
+        if not existing_organisation:
+            return {"error":"Organisation not found"}, 404
+        
+    
+        account = Account.query.filter_by(accountNumber=data['accountNumber']).first()
         if not account:
-            return "Account not found", 404
+            return {"error":"Account not found"}, 404
         else:     
             db.session.delete(account)
             db.session.commit()
 
             return {"message": "Account deleted successfully"},200   
 
-api.add_resource(accountById , '/accounts/<int:id>')
+api.add_resource(accountById , '/orgaccounts')
 
 class Organization(Resource):
     def get(self):
@@ -312,21 +361,27 @@ api.add_resource(Organization, '/organisations')
 
 
 class OrganisationDetail(Resource):
-    def get(self, id):
-        org = Organisation.query.get(id)
+    @jwt_required()
+    def get(self):
+        current_user = get_jwt_identity()
+        org = Organisation.query.filter_by(id=current_user).first()
         if not org :
             return {'message':'Organisation does not exist'}, 404
         return make_response(jsonify(org.serialize()))
-    
-    def delete(self, id):
-        org = Organisation.query.get(id)
+   
+    @jwt_required()
+    def delete(self):
+        current_user = get_jwt_identity()
+        org = Organisation.query.filter_by(id = current_user)
         if not org:
             return{'message': 'Organisation does not exist'} ,  404
         db.session.delete(org)
         db.session.commit()
         return {'message' : 'Organisation deleted successfully'}, 200
     
-    def patch(self, id):
+    @jwt_required()
+    def patch(self):
+        current_user = get_jwt_identity()
         data = request.get_json()
         orgName = data.get('orgName')
         orgEmail = data.get('orgEmail')
@@ -334,14 +389,14 @@ class OrganisationDetail(Resource):
         orgAddress = data.get('orgAddress')
         orgDescription = data.get('orgDescription')
 
-        existing_org = Organisation.query.filter_by(id=id).first()
+        existing_org = Organisation.query.filter_by(id=current_user).first()
         if not existing_org:
             return {"Message": "Organisation does not exist"}, 404
         
         if orgName:
             existing_org.orgName = orgName
         if orgEmail:
-            existing_org.orgEmail = orgEmail
+            existing_org.orgEmail = orgEmail  #issue 2
         if orgPhoneNumber:
             existing_org.orgPhoneNumber = orgPhoneNumber
         if orgAddress:
@@ -353,28 +408,29 @@ class OrganisationDetail(Resource):
         return {"Message": "Organisation has been updated", "Data": existing_org.serialize()}
     
 
-api.add_resource(OrganisationDetail, '/organisations/<int:id>')
+api.add_resource(OrganisationDetail, '/organisation')
 
-#Route to withdraw money to M-pesa number
+# Route to withdraw money to M-pesa number
 @app.route("/withdraw/mpesa",methods=["POST"])
-# @jwt_required()
+@jwt_required()
 def mpesa_withdrawal():
+    current_user = get_jwt_identity()
+    organisation = Organisation.query.filter_by(id=current_user).first()
+    if not organisation:
+         return {"error":"organisation cannot be found"},404
+    
     data=request.get_json()
     accountType= data.get("accountType")
     accountNumber= data.get("accountNumber")
     amount=float(data.get('amount'))
-    orgId= int(data.get('orgId'))# use jwt_identity
+    # orgId= int(data.get('orgId'))# use jwt_identity
     campaign=int(data.get("campaign"))
 
-    account= Account.query.filter_by(accountType=accountType,accountNumber=accountNumber,orgId=orgId).first()
+    account= Account.query.filter_by(accountType=accountType,accountNumber=accountNumber,orgId=organisation.id).first()
     if account is None:
         return jsonify({"error": "No such account"}),404
-    
-    organisation= Organisation.query.get(orgId)
-    if not organisation:
-        return jsonify({"error":"Invalid organization ID"}),401
-    
-    campaigns= Campaign.query.filter_by(id=campaign, org_id=orgId, isActive=True).first()
+
+    campaigns= Campaign.query.filter_by(id=campaign, org_id=organisation.id, isActive=True).first()
     if not campaigns:
         return jsonify({"error":"Campaign does not exist or inactive."}),404
     
@@ -422,27 +478,40 @@ def update_org_description():
 
 #route to handle donations
 class Donate(Resource):
-    # @jwt_required()
+    @jwt_required()
     def get(self):
-        all_donations= Donation.query.all()
-        donate_dict= [donate.serialize() for donate in all_donations]
-        return (donate_dict), 200
+        current_user = get_jwt_identity()
+        user = User.query.filter_by(username=current_user).first()
+        if not user:
+            return {"error": "User not found"}, 404
+        all_donations = Donation.query.filter_by(user_id=user.id).all()
+        if not all_donations:
+            return {"error": "No donations found"}, 404
+        response_dict = [donation.serialize() for donation in all_donations]
+        response = make_response(jsonify(response_dict),200)
+        return response
+       
 
-    # @jwt_required()
+    @jwt_required()
     def post(self):
-        # current_user_id= get_jwt_udentity ()
-        # current_user= User.query.get
+        current_user= get_jwt_identity()
+        user = User.query.filter_by(username=current_user).first()
+        if not user:
+            return {"error": "User not found"}, 404
         data= request.get_json()
-        email= data.get('email') #use current user email
-        phoneNumber= data.get("phoneNumber")
+        # email= data.get('email') #use current user email issue 3
+        # phoneNumber= data.get("phoneNumber")
+        # email = user.email 
+        # phoneNumber = user.phoneNumber
         amount= data.get('amount')
-        campaign_id= data.get('campaignId')
+        campaign_id= data.get('campaignId') #issue 4
 
-        if not email:
-            return jsonify({"error":"Email is required."}),400
+
+        # if not email:
+        #     return jsonify({"error":"Email is required."}),400
         
-        if not phoneNumber:
-            return jsonify({"error":"Phone number is required."}),400
+        # if not phoneNumber:
+        #     return jsonify({"error":"Phone number is required."}),400
 
         if not amount:
             return jsonify({"error":"Amount is required."}),400
@@ -453,11 +522,11 @@ class Donate(Resource):
         try:
             existing_campaign= Campaign.query.get(campaign_id)
             if not existing_campaign:
-                return  jsonify({"error":"Campaign does not exist"}),404
+                return {"error":"Campaign does not exist"},404
 
             service = APIService(token=token,publishable_key=publishable_key, test=True)
 
-            response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=email, phone_number=phoneNumber,
+            response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=user.email, phone_number=user.phoneNumber,
                                             amount=amount, currency="KES", narrative="Deposit", 
                                             mode="MPESA-STK-PUSH")
             return jsonify(response)
@@ -518,10 +587,10 @@ def express_donation():
 
 # Get wallet transactions including transatype and filters
 @app.route('/wallet_transactions/<int:id>', methods=['POST'])
-# @jwt_required()  
+@jwt_required()  
 def wallet_transactions(id):
     current_user_id = get_jwt_identity()
-    existing_org= Organisation.query.get(current_user_id)
+    existing_org= Organisation.query.filter_by(id=current_user_id).first()
     if not existing_org:
         return  jsonify({"Error":"Organisation does not exist"}),401
     
