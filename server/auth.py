@@ -71,7 +71,7 @@ def send_user_signup_mail(user):
 
 # login for user
 
-@auth_bp.post('/login')
+@auth_bp.post('/user/login')
 def login(): 
     data = request.get_json()
     username = data['username']
