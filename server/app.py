@@ -15,6 +15,7 @@ import requests
 from datetime import datetime
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
 from auth import auth_bp
+from flask_mail import Mail
 
 
 #fetch environment variables  for the api key and server url
@@ -28,6 +29,12 @@ app.config['JWT_SECRET_KEY'] = b'\xb2\xd3B\xb9 \xab\xc0By\x13\x10\x84\xb7M!\x11'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 24 * 60 * 60
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///msaada.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
+app.config['MAIL_SERVER'] = 'smtp.googlemail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'msaadamashinani@gmail.com'
+app.config['MAIL_PASSWORD'] = 'yaadxnrowrgglbmt'
+app.config['MAIL_DEFAULT_SENDER'] = 'msaadamashinani@gmail.com'
 
 migrate = Migrate(app, db)
 db.init_app(app)
@@ -35,7 +42,7 @@ api = Api(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager()
 jwt.init_app(app)
-
+mail = Mail(app)
 
 # register blueprint
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -145,6 +152,89 @@ class campaignData(Resource):
         response = make_response(jsonify(all_campaigns), 200)
         return response
     
+    @jwt_required()
+    def post(self):
+        current_user = get_jwt_identity()
+        data=request.get_json()
+        campaignName = data.get('name')
+        description = data.get('description')
+        category= data.get('category')
+        banner= data.get('banner')
+        startDateStr = data.get('startDate')
+        endDateStr = data.get('endDate')
+        targetAmount = float(data.get('targetAmount'))
+        # isActive= data.get('isActive') # issue 1 
+
+       
+        
+        available_org= Organisation.query.filter_by(id=current_user).first()
+        if not available_org:
+            return jsonify({"error":"Organisation does not exist."}),404
+        # print(available_org.orgName)
+
+        # Convert date strings to Python date objects
+        startDate = datetime.strptime(startDateStr, '%Y-%m-%d').date()
+        endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
+
+
+        current_date = datetime.now().date()
+        if startDate < current_date:
+            return {'error': 'cannot create a campaign in the past'}, 400 
+        if endDate < current_date:
+            return {'error':'enddate  should be greater than current date'} ,400  
+        if endDate < startDate:
+            return {'error': 'end date cannot be before start date'}, 400
+        
+
+        if not (campaignName and description and startDate and endDate):
+            return jsonify({"error":"Please provide complete information"}),400
+        
+        if startDate == current_date:
+            isActive = True
+        elif startDate > current_date:
+            isActive = False
+        elif endDate > current_date:
+            isActive = False
+
+
+        new_campaign = Campaign(campaignName= campaignName, 
+                                description= description, 
+                                category= category,
+                                banner= banner,
+                                startDate=startDate, 
+                                endDate= endDate, 
+                                targetAmount=targetAmount, 
+                                isActive= bool(isActive), # bool("") => False
+                                org_id=available_org.id
+                                )
+            
+        #create wallet
+        intasend_response = service.wallets.create(currency="KES", label=f"Camp{uuid.uuid4()}", can_disburse=True)
+
+        if intasend_response.get('errors'):
+            return jsonify({"error":"error creating wallet"}),400
+        
+        #add wallet id to instance
+        new_campaign.walletId=intasend_response.get("wallet_id")
+        db.session.add(new_campaign)
+        db.session.commit()
+        
+        send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate, endDate)
+
+        return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.serialize()}), 201)
+
+def send_post_campaign(organisation, campaignName, description, category, targetAmount, startDate, endDate):
+    subject = "Campaign Created Successfully"
+    body = f"Hello {organisation.orgName}! You have successfully created a campaign.\n\n" \
+           f"Campaign Name: {campaignName}\n" \
+           f"Description: {description}\n" \
+           f"Category: {category}.\n" \
+           f"Your target amount is Ksh: {targetAmount} \n" \
+           f"Start Date: {startDate}\n" \
+           f"End Date: {endDate} \n\n" \
+           f"Good luck  with your campaign!"
+
+    mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
 
 api.add_resource(campaignData, '/campaigns')
 
@@ -200,75 +290,6 @@ class campaignById(Resource):
         response = make_response(jsonify(data), 200)
         return response
        
-    
-    @jwt_required()
-    def post(self):
-        current_user = get_jwt_identity()
-        data=request.get_json()
-        campaignName = data.get('name')
-        description = data.get('description')
-        category= data.get('category')
-        banner= data.get('banner')
-        startDateStr = data.get('startDate')
-        endDateStr = data.get('endDate')
-        targetAmount = float(data.get('targetAmount'))
-        # isActive= data.get('isActive') # issue 1 
-
-       
-        
-        available_org= Organisation.query.filter_by(id=current_user).first()
-        if not available_org:
-            return jsonify({"error":"Organisation does not exist."}),404
-        # print(available_org.orgName)
-
-        # Convert date strings to Python date objects
-        startDate = datetime.strptime(startDateStr, '%Y-%m-%d').date()
-        endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
-
-
-        current_date = datetime.now().date()
-        if startDate and endDate < current_date:
-            return {'error': 'cannot create a campaign in the past'}, 400 
-        if endDate < startDate:
-            return {'error': 'end date cannot be before start date'}, 400
-        
-
-        if not (campaignName and description and startDate and endDate):
-            return jsonify({"error":"Please provide complete information"}),400
-        
-        if startDate == current_date:
-            isActive = True
-        elif startDate > current_date:
-            isActive = False
-        elif endDate > current_date:
-            isActive = False
-
-             
-        
-
-        new_campaign = Campaign(campaignName= campaignName, 
-                                description= description, 
-                                category= category,
-                                banner= banner,
-                                startDate=startDate, 
-                                endDate= endDate, 
-                                targetAmount=targetAmount, 
-                                isActive= bool(isActive), # bool("") => False
-                                org_id=available_org.id
-                                )
-            
-        #create wallet
-        intasend_response = service.wallets.create(currency="KES", label=f"Camp{uuid.uuid4()}", can_disburse=True)
-
-        if intasend_response.get('errors'):
-            return jsonify({"error":"error creating wallet"}),400
-        
-        #add wallet id to instance
-        new_campaign.walletId=intasend_response.get("wallet_id")
-        db.session.add(new_campaign)
-        db.session.commit()
-
-        return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.serialize()}), 201)
     
     @jwt_required()
     def delete(self):

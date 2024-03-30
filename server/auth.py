@@ -1,8 +1,8 @@
-from flask import Blueprint, jsonify, request, make_response
+from flask import  Blueprint, jsonify, request, make_response
 from models import User, bcrypt, db,TokenBlocklist, Organisation
 from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity,jwt_required,get_jwt
-
 auth_bp = Blueprint("auth", __name__)
+from app import mail
 
 # signup for user 
 @auth_bp.post("/user/register") 
@@ -55,14 +55,23 @@ def register_user():
     # Adding user to the database
     db.session.add(new_user)
     db.session.commit()
-
+    send_user_signup_mail(new_user)
     return jsonify({
         "message": "User registered successfully",
+        "user":new_user.serialize()
     }), 200
+
+
+def send_user_signup_mail(user):
+    subject = "Welcome to Msaada Mashinani"
+    body = f"Dear {user.firstName} {user.lastName},\n\n Thank you for registering on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
+    recipients = [user.email]
+    mail.send_message(subject=subject, recipients=recipients, body=body)
+
 
 # login for user
 
-@auth_bp.post('/user/login')
+@auth_bp.post('/login')
 def login(): 
     data = request.get_json()
     username = data['username']
@@ -81,7 +90,9 @@ def login():
             "tokens": {
                 "access": access_token,
                 "refresh": refresh_token
-            }
+            },
+            "user": user.serialize()
+
         }
 
     ), 200
@@ -119,8 +130,23 @@ def register_organisation():
     db.session.add(new_organisation)
     db.session.commit()
 
-    response = make_response(jsonify(new_organisation.serialize(),200))
-    return response
+    if send_registration_email(orgEmail, orgName):
+        return jsonify({"success": "Organization registered successfully and email sent",
+                        "organisation":new_organisation.serialize()
+                        }), 200
+    else:
+        return jsonify({"error": "Organization registered successfully but failed to send email"}), 500
+
+def send_registration_email(org_email, org_name):
+    subject = "Organization Registration Confirmation"
+    body = f"Hello {org_name},\n\nThank you for registering on our Msaada Mashinani Platform.\n\nRegards,\n Msaada Mashinani Team"
+    
+    try:
+        mail.send_message(subject=subject, recipients=[org_email], body=body)
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
 
 
 @auth_bp.post('/login/organisation')
@@ -142,8 +168,9 @@ def login_Organisation():
     return {
             'message': 'Logged in as {}'.format(organisation.orgName),
             'access_token': access_token,
-            'refresh_token': refresh_token
-         }
+            'refresh_token': refresh_token,
+            "organisation": organisation.serialize()},200
+
 
 # logout for user
 @auth_bp.get('/logout')
