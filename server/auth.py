@@ -1,11 +1,11 @@
 from flask import Blueprint, jsonify, request, make_response
-from models import User, bcrypt, db,TokenBlocklist
-from flask_jwt_extended import create_access_token,create_refresh_token,jwt_required,get_jwt
+from models import User, bcrypt, db,TokenBlocklist, Organisation
+from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity,jwt_required,get_jwt
 
 auth_bp = Blueprint("auth", __name__)
 
 # signup for user 
-@auth_bp.post("/register") 
+@auth_bp.post("/user/register") 
 def register_user():
     data = request.get_json()
     if not data:
@@ -40,7 +40,7 @@ def register_user():
 
     existing_phone_number = User.query.filter_by(phoneNumber=phoneNumber).first()
     if existing_phone_number:
-        return jsonify({"error": "Phone number already exists"}), 400
+        return jsonify({"error": "Phone number already exists"}), 404
 
     # Creating new user instance
     new_user = User(firstName=firstName,
@@ -62,7 +62,7 @@ def register_user():
 
 # login for user
 
-@auth_bp.post('/login')
+@auth_bp.post('/user/login')
 def login(): 
     data = request.get_json()
     username = data['username']
@@ -85,6 +85,65 @@ def login():
         }
 
     ), 200
+
+# signup organisation
+@auth_bp.post("/register/organisation") 
+def register_organisation():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid request data"}), 400
+    
+    orgName = data['name']
+    orgEmail = data['email']
+    orgPassword = data['password']
+    orgAddress = data['address']
+    orgPhoneNumber = data['phoneNumber']
+
+    if not orgName or not  orgEmail or not orgPassword or not orgAddress or not orgPhoneNumber:
+         return jsonify({'error':'Missing fields'}),400
+
+    
+    existing_orgName = Organisation.query.filter_by(orgName=orgName).first()
+    if existing_orgName:
+        return {"Message": "An organisation with this name already exists."},400
+    
+    existing_orgEmail =  Organisation.query.filter_by(orgEmail=orgEmail).first()
+    if existing_orgEmail:
+        return{"Message":"This email is already registered to an organization"},400
+    
+    existing_orgPhoneNumber =  Organisation.query.filter_by(orgPhoneNumber=orgPhoneNumber).first()
+    if existing_orgPhoneNumber:
+        return{"Message":"This Phone number is already registered to an organization"}, 400
+
+    new_organisation =  Organisation(orgName=orgName, orgEmail=orgEmail, password=orgPassword,orgPhoneNumber=orgPhoneNumber, orgAddress=orgAddress)
+    db.session.add(new_organisation)
+    db.session.commit()
+
+    response = make_response(jsonify(new_organisation.serialize(),200))
+    return response
+
+
+@auth_bp.post('/login/organisation')
+def login_Organisation(): 
+    data = request.get_json()
+    orgEmail = data.get('email')
+    password = data.get('password')
+
+    organisation  = Organisation.query.filter_by(orgEmail=orgEmail).first()
+    if not organisation :
+        return jsonify({"message":"Organisation does not exist"}),401
+
+    if not organisation.check_password(password):
+        return jsonify({"message":"Invalid Password"}),401
+
+    access_token = create_access_token(identity=organisation.id)
+    refresh_token = create_refresh_token(identity=organisation.id)
+
+    return {
+            'message': 'Logged in as {}'.format(organisation.orgName),
+            'access_token': access_token,
+            'refresh_token': refresh_token
+         }
 
 # logout for user
 @auth_bp.get('/logout')
