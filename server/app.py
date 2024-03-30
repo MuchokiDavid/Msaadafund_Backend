@@ -177,7 +177,7 @@ class campaignData(Resource):
 api.add_resource(campaignData, '/campaigns')
 
 #Get inactive campaigns
-@app.route('/getinactive', methods=['GET'])
+@app.route('/get_inactive_campaign', methods=['GET'])
 def  getInactiveCampaign():
     """Return a list of all inactive campaigns"""
     all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=False).all()]
@@ -383,18 +383,34 @@ class OrganisationDetail(Resource):
 
 api.add_resource(OrganisationDetail, '/organisations/<int:id>')
 
+#Route to get banks and their code in intersend API
+@app.route('/all_banks', methods=['GET'])
+def bank_data():
+    url = "https://payment.intasend.com/api/v1/send-money/bank-codes/ke/"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        return jsonify(data), 200
+        
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "An error occurred while processing your request"}),500
+
 #Route to withdraw money to M-pesa number
-@app.route("/withdraw/mpesa",methods=["POST"])
+@app.route("/withdraw",methods=["POST"])
 # @jwt_required()
-def mpesa_withdrawal():
+def campaign_money_withdrawal():
     data=request.get_json()
-    accountType= data.get("accountType")
-    accountNumber= data.get("accountNumber")
+    accountType= data.get("accountType")# M-Pesa or Bank
+    accountName= data.get("accountName")# KCB, M-Pesa, Equity,Family bank, etc
+    accountNumber= data.get("accountNumber")#bank account number and mpesa phone number
     amount=float(data.get('amount'))
     orgId= int(data.get('orgId'))# use jwt_identity
     campaign=int(data.get("campaign"))
+    # all_banks= bank_data()
+    # print(all_banks)
 
-    account= Account.query.filter_by(accountType=accountType,accountNumber=accountNumber,orgId=orgId).first()
+    account= Account.query.filter_by(accountType=accountType,accountName=accountName,accountNumber=accountNumber,orgId=orgId).first()
     if account is None:
         return jsonify({"error": "No such account"}),404
     
@@ -411,6 +427,7 @@ def mpesa_withdrawal():
         return jsonify({"error":"Insufficient funds in the wallet!"})
     try: 
         if accountType=="M-Pesa":
+            #Initiate intasend M-Pesa transaction
             transactions = [{'name': organisation.orgName, 'account': account.accountNumber, 'amount': int(amount)}]
 
             response = service.transfer.mpesa(wallet_id=campaigns.walletId, currency='KES', transactions=transactions)
@@ -419,9 +436,14 @@ def mpesa_withdrawal():
                 return jsonify({'Error':error_message})
             return jsonify(response)
         
+        elif accountType=="Bank":
+            return jsonify({"message":"Bank transaction will be here"})
         else:
-            return jsonify({"error":"Please select M-pesa"}),404
+            return jsonify({"message":"Select transaction"})
+
+        
     except Exception as e :
+        print(e)
         return jsonify({"error":str(e)}),500
 
 #route to handle donations
@@ -520,10 +542,41 @@ def express_donation():
         print (e)
         return jsonify({"error": "An error occurred while processing your request"}),500
 
-# Get wallet transactions including transatype and filters
-@app.route('/wallet_transactions/<int:id>', methods=['POST'])
-# @jwt_required()  
+#Get all campaign transactions
+@app.route('/all_transactions/<int:id>', methods=['GET'])
+@jwt_required()  
 def wallet_transactions(id):
+    current_user_id = get_jwt_identity()
+    existing_org= Organisation.query.get(current_user_id)
+    if not existing_org:
+        return  jsonify({"Error":"Organisation does not exist"}),401
+
+    #checking a if a campaign exist
+    existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
+    if not existing_campaign:
+        return  jsonify({"Error":"Campaign does not exist'"}),404
+    wallet_id= existing_campaign.walletId
+
+    url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
+    try:
+        headers = {
+            "accept": "application/json",
+            "Authorization": "Bearer " +token
+        }
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        if data.get("errors"):
+            error_message = data.get("errors")
+            return make_response(jsonify({"error":error_message}),400)
+        return jsonify(data.get("results")), 200
+        
+    except Exception as e:
+        return jsonify({"error": "An error occurred while processing your request"}),500
+
+# Get campaign transactions filters
+@app.route('/filter_transactions/<int:id>', methods=['POST'])
+# @jwt_required()  
+def wallet_transactions_filters(id):
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.get(current_user_id)
     if not existing_org:
@@ -539,7 +592,6 @@ def wallet_transactions(id):
         return  jsonify({"Error":"Campaign does not exist'"}),404
     wallet_id= existing_campaign.walletId
 
-    url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
     if trans_type:
         url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}"
     if  start_date and trans_type:
@@ -566,6 +618,7 @@ def wallet_transactions(id):
         
     except Exception as e:
         return jsonify({"error": "An error occurred while processing your request"}),500
+
 
 if __name__  =="__main__":
     app.run (port =5555, debug =True)
