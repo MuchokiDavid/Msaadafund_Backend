@@ -5,7 +5,7 @@ from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt
 auth_bp = Blueprint("auth", __name__)
 
 # signup for user 
-@auth_bp.post("/register") 
+@auth_bp.post("/user/register") 
 def register_user():
     data = request.get_json()
     if not data:
@@ -40,7 +40,7 @@ def register_user():
 
     existing_phone_number = User.query.filter_by(phoneNumber=phoneNumber).first()
     if existing_phone_number:
-        return jsonify({"error": "Phone number already exists"}), 400
+        return jsonify({"error": "Phone number already exists"}), 404
 
     # Creating new user instance
     new_user = User(firstName=firstName,
@@ -62,7 +62,7 @@ def register_user():
 
 # login for user
 
-@auth_bp.post('/login')
+@auth_bp.post('/user/login')
 def login(): 
     data = request.get_json()
     username = data['username']
