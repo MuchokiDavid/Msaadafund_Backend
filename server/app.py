@@ -15,6 +15,7 @@ import requests
 import datetime
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
 from auth import auth_bp
+from flask_mail import Mail
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -27,6 +28,13 @@ app.config['JWT_SECRET_KEY'] = b'\xb2\xd3B\xb9 \xab\xc0By\x13\x10\x84\xb7M!\x11'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 24 * 60 * 60
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///msaada.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
+app.config['MAIL_SERVER'] = 'smtp.googlemail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'msaadamashinani@gmail.com'
+app.config['MAIL_PASSWORD'] = 'yaadxnrowrgglbmt'
+app.config['MAIL_DEFAULT_SENDER'] = 'msaadamashinani@gmail.com'
+
 
 migrate = Migrate(app, db)
 db.init_app(app)
@@ -34,7 +42,7 @@ api = Api(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager()
 jwt.init_app(app)
-
+mail = Mail(app)
 
 # register blueprint
 app.register_blueprint(auth_bp, url_prefix='/auth')
@@ -131,7 +139,10 @@ class campaignData(Resource):
         return response
     
     # @jwt_required()
+    @jwt_required() 
     def post(self):
+        org_id = get_jwt_identity()
+
         data=request.get_json()
         campaignName = data.get('name')
         description = data.get('description')
@@ -141,7 +152,6 @@ class campaignData(Resource):
         endDate = data.get('endDate')
         targetAmount = float(data.get('targetAmount'))
         isActive= data.get('isActive') 
-        org_id= data.get('orgId')
 
         if not (campaignName and description and startDate and endDate):
             return jsonify({"error":"Please provide complete information"}),400
@@ -171,8 +181,20 @@ class campaignData(Resource):
         new_campaign.walletId=intasend_response.get("wallet_id")
         db.session.add(new_campaign)
         db.session.commit()
+
+        send_post_campaign(available_org, campaignName, description, category, targetAmount)
+
         return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.to_dict()}), 201)
 
+def send_post_campaign(organisation, campaignName, description, category, targetAmount):
+    subject = "Campaign Created Successfully"
+    body = f"A new campaign has been created successfully.\n\n" \
+           f"Campaign Name: {campaignName}\n" \
+           f"Description: {description}\n" \
+           f"Category: {category}.\n" \
+           f"Your target amount is Ksh: {targetAmount}"
+
+    mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
 
 api.add_resource(campaignData, '/campaigns')
 
