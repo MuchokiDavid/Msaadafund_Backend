@@ -22,7 +22,7 @@ class User(db.Model, SerializerMixin):
     hashed_password = db.Column(db.String(128), nullable=False)
     nationalId = db.Column(db.Integer, unique=True, nullable=False)
     phoneNumber = db.Column(db.String, unique=True)
-    isActive = db.Column(db.Boolean(), default=True)
+    isActive = db.Column(db.Boolean())
     address = db.Column(db.String(), nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)

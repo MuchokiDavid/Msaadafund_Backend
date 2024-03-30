@@ -12,9 +12,10 @@ import uuid
 from flask import request,jsonify,make_response
 from flask_bcrypt import Bcrypt
 import requests
-import datetime
+from datetime import datetime
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
 from auth import auth_bp
+
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -175,7 +176,7 @@ def patch ():
     if description:
         existing_campaign.description = description
     if endDate:
-        existing_campaign.endDate =endDate
+        existing_campaign.endDate = endDate
     if targetAmount:
         existing_campaign.targetAmount = targetAmount
     if isActive:
@@ -192,11 +193,13 @@ class campaignById(Resource):
     @jwt_required()
     def get(self):
         current_user = get_jwt_identity()
-        campaign = Campaign.query.filter_by(org_id=current_user).first()
+        campaign = Campaign.query.filter_by(org_id=current_user).all()
         if not campaign:
             return {"error":"Campaign not found"}, 404
-        response = make_response(jsonify(campaign.serialize()))
+        data = [camp.serialize() for camp in campaign]
+        response = make_response(jsonify(data), 200)
         return response
+       
     
     @jwt_required()
     def post(self):
@@ -206,18 +209,42 @@ class campaignById(Resource):
         description = data.get('description')
         category= data.get('category')
         banner= data.get('banner')
-        startDate = data.get('startDate')
-        endDate = data.get('endDate')
+        startDateStr = data.get('startDate')
+        endDateStr = data.get('endDate')
         targetAmount = float(data.get('targetAmount'))
-        isActive= data.get('isActive') # issue 1 
+        # isActive= data.get('isActive') # issue 1 
 
-        if not (campaignName and description and startDate and endDate):
-            return jsonify({"error":"Please provide complete information"}),400
+       
         
         available_org= Organisation.query.filter_by(id=current_user).first()
         if not available_org:
             return jsonify({"error":"Organisation does not exist."}),404
         # print(available_org.orgName)
+
+        # Convert date strings to Python date objects
+        startDate = datetime.strptime(startDateStr, '%Y-%m-%d').date()
+        endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
+
+
+        current_date = datetime.now().date()
+        if startDate and endDate < current_date:
+            return {'error': 'cannot create a campaign in the past'}, 400 
+        if endDate < startDate:
+            return {'error': 'end date cannot be before start date'}, 400
+        
+
+        if not (campaignName and description and startDate and endDate):
+            return jsonify({"error":"Please provide complete information"}),400
+        
+        if startDate == current_date:
+            isActive = True
+        elif startDate > current_date:
+            isActive = False
+        elif endDate > current_date:
+            isActive = False
+
+             
+        
 
         new_campaign = Campaign(campaignName= campaignName, 
                                 description= description, 
@@ -240,7 +267,8 @@ class campaignById(Resource):
         new_campaign.walletId=intasend_response.get("wallet_id")
         db.session.add(new_campaign)
         db.session.commit()
-        return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.to_dict()}), 201)
+
+        return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.serialize()}), 201)
 
 
     
@@ -384,7 +412,7 @@ class OrganisationDetail(Resource):
         current_user = get_jwt_identity()
         data = request.get_json()
         orgName = data.get('orgName')
-        orgEmail = data.get('orgEmail')
+        # orgEmail = data.get('orgEmail')
         orgPhoneNumber = data.get('orgPhoneNumber')
         orgAddress = data.get('orgAddress')
         orgDescription = data.get('orgDescription')
@@ -395,8 +423,8 @@ class OrganisationDetail(Resource):
         
         if orgName:
             existing_org.orgName = orgName
-        if orgEmail:
-            existing_org.orgEmail = orgEmail  #issue 2
+        # if orgEmail:
+        #     existing_org.orgEmail = orgEmail  #issue 2
         if orgPhoneNumber:
             existing_org.orgPhoneNumber = orgPhoneNumber
         if orgAddress:
@@ -453,28 +481,28 @@ def mpesa_withdrawal():
         return jsonify({"error":str(e)}),500
 
 
-@app.route('/description', methods=["PUT"])
-@jwt_required()
-def update_org_description():
-    current_organisation_id = get_jwt_identity()
+# @app.route('/description', methods=["PUT"])
+# @jwt_required()
+# def update_org_description():
+#     current_organisation_id = get_jwt_identity()
 
-    organization = Organisation.query.get(current_organisation_id)
+#     organization = Organisation.query.get(current_organisation_id)
 
-    if not organization:
-        return jsonify({'error': 'Organization not found'}), 404
+#     if not organization:
+#         return jsonify({'error': 'Organization not found'}), 404
 
 
-    data = request.get_json()
-    new_description = data.get('description')
+#     data = request.get_json()
+#     new_description = data.get('description')
 
-    if not new_description:
-        return jsonify({'error': 'New description is required'}), 400
+#     if not new_description:
+#         return jsonify({'error': 'New description is required'}), 400
 
-    organization.orgDescription = new_description
+#     organization.orgDescription = new_description
 
-    db.session.commit()
+#     db.session.commit()
 
-    return jsonify({"message": "Description updated successfully"}), 200
+#     return jsonify({"message": "Description updated successfully"}), 200
 
 #route to handle donations
 class Donate(Resource):
@@ -504,7 +532,7 @@ class Donate(Resource):
         # email = user.email 
         # phoneNumber = user.phoneNumber
         amount= data.get('amount')
-        campaign_id= data.get('campaignId') #issue 4
+        campaign_id= data.get('campaignId')
 
 
         # if not email:
@@ -529,6 +557,7 @@ class Donate(Resource):
             response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=user.email, phone_number=user.phoneNumber,
                                             amount=amount, currency="KES", narrative="Deposit", 
                                             mode="MPESA-STK-PUSH")
+            print (user.email)
             return jsonify(response)
         
         # new_donation=Donation(email,phoneNumber,float(amount),existing_campaign.id)
