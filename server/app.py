@@ -269,8 +269,6 @@ class campaignById(Resource):
         db.session.commit()
 
         return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.serialize()}), 201)
-
-
     
     @jwt_required()
     def delete(self):
@@ -292,6 +290,14 @@ class campaignById(Resource):
             return {"message": "Campaign deactivated successfully"},200   
 
 api.add_resource(campaignById, '/orgcampaigns')
+
+#Get inactive campaigns
+@app.route('/get_inactive_campaign', methods=['GET'])
+def  getInactiveCampaign():
+    """Return a list of all inactive campaigns"""
+    all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=False).all()]
+    response = make_response(jsonify(all_campaigns), 200)
+    return response
 
 #Get wallet balance for a campaign
 @app.route('/campaign_wallet/<int:id>', methods=['GET'])
@@ -438,23 +444,39 @@ class OrganisationDetail(Resource):
 
 api.add_resource(OrganisationDetail, '/organisation')
 
+#Route to get banks and their code in intersend API
+@app.route('/all_banks', methods=['GET'])
+def bank_data():
+    url = "https://payment.intasend.com/api/v1/send-money/bank-codes/ke/"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        return jsonify(data), 200
+        
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "An error occurred while processing your request"}),500
+
 # Route to withdraw money to M-pesa number
-@app.route("/withdraw/mpesa",methods=["POST"])
+@app.route("/withdraw",methods=["POST"])
 @jwt_required()
-def mpesa_withdrawal():
+def campaign_money_withdrawal():
     current_user = get_jwt_identity()
     organisation = Organisation.query.filter_by(id=current_user).first()
     if not organisation:
          return {"error":"organisation cannot be found"},404
     
     data=request.get_json()
-    accountType= data.get("accountType")
-    accountNumber= data.get("accountNumber")
+    accountType= data.get("accountType")# M-Pesa or Bank
+    accountName= data.get("accountName")# KCB, M-Pesa, Equity,Family bank, etc
+    accountNumber= data.get("accountNumber")#bank account number and mpesa phone number
     amount=float(data.get('amount'))
     # orgId= int(data.get('orgId'))# use jwt_identity
     campaign=int(data.get("campaign"))
-
-    account= Account.query.filter_by(accountType=accountType,accountNumber=accountNumber,orgId=organisation.id).first()
+    # all_banks= bank_data()
+    # print(all_banks)
+    
+    account= Account.query.filter_by(accountType=accountType,accountName=accountName,accountNumber=accountNumber,orgId=organisation.id).first()
     if account is None:
         return jsonify({"error": "No such account"}),404
 
@@ -467,6 +489,7 @@ def mpesa_withdrawal():
         return jsonify({"error":"Insufficient funds in the wallet!"})
     try: 
         if accountType=="M-Pesa":
+            #Initiate intasend M-Pesa transaction
             transactions = [{'name': organisation.orgName, 'account': account.accountNumber, 'amount': int(amount)}]
 
             response = service.transfer.mpesa(wallet_id=campaigns.walletId, currency='KES', transactions=transactions)
@@ -475,9 +498,14 @@ def mpesa_withdrawal():
                 return jsonify({'Error':error_message})
             return jsonify(response)
         
+        elif accountType=="Bank":
+            return jsonify({"message":"Bank transaction will be here"})
         else:
-            return jsonify({"error":"Please select M-pesa"}),404
+            return jsonify({"message":"Select transaction"})
+
+        
     except Exception as e :
+        print(e)
         return jsonify({"error":str(e)}),500
 
 
@@ -614,12 +642,43 @@ def express_donation():
         print (e)
         return jsonify({"error": "An error occurred while processing your request"}),500
 
-# Get wallet transactions including transatype and filters
-@app.route('/wallet_transactions/<int:id>', methods=['POST'])
+#Get all campaign transactions
+@app.route('/all_transactions/<int:id>', methods=['GET'])
 @jwt_required()  
 def wallet_transactions(id):
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.filter_by(id=current_user_id).first()
+    if not existing_org:
+        return  jsonify({"Error":"Organisation does not exist"}),401
+
+    #checking a if a campaign exist
+    existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
+    if not existing_campaign:
+        return  jsonify({"Error":"Campaign does not exist'"}),404
+    wallet_id= existing_campaign.walletId
+
+    url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
+    try:
+        headers = {
+            "accept": "application/json",
+            "Authorization": "Bearer " +token
+        }
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        if data.get("errors"):
+            error_message = data.get("errors")
+            return make_response(jsonify({"error":error_message}),400)
+        return jsonify(data.get("results")), 200
+        
+    except Exception as e:
+        return jsonify({"error": "An error occurred while processing your request"}),500
+
+# Get campaign transactions filters
+@app.route('/filter_transactions/<int:id>', methods=['POST'])
+# @jwt_required()  
+def wallet_transactions_filters(id):
+    current_user_id = get_jwt_identity()
+    existing_org= Organisation.query.get(current_user_id)
     if not existing_org:
         return  jsonify({"Error":"Organisation does not exist"}),401
     
@@ -633,7 +692,6 @@ def wallet_transactions(id):
         return  jsonify({"Error":"Campaign does not exist'"}),404
     wallet_id= existing_campaign.walletId
 
-    url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
     if trans_type:
         url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}"
     if  start_date and trans_type:
