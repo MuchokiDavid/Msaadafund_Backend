@@ -291,13 +291,6 @@ class campaignById(Resource):
 
 api.add_resource(campaignById, '/orgcampaigns')
 
-#Get inactive campaigns
-@app.route('/get_inactive_campaign', methods=['GET'])
-def  getInactiveCampaign():
-    """Return a list of all inactive campaigns"""
-    all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=False).all()]
-    response = make_response(jsonify(all_campaigns), 200)
-    return response
 
 #Get wallet balance for a campaign
 @app.route('/campaign_wallet/<int:id>', methods=['GET'])
