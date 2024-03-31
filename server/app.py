@@ -14,9 +14,8 @@ from flask_bcrypt import Bcrypt
 import requests
 from datetime import datetime
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
-from auth import auth_bp
 from flask_mail import Mail
-
+from auth import auth_bp
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")

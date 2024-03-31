@@ -1,11 +1,15 @@
 from flask import  Blueprint, jsonify, request, make_response
 from models import User, bcrypt, db,TokenBlocklist, Organisation
 from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity,jwt_required,get_jwt
+
+
 auth_bp = Blueprint("auth", __name__)
-from app import mail
+
+# import mail from app
+
 
 # signup for user 
-@auth_bp.post("/user/register") 
+@auth_bp.route("/user/register", methods=["POST"])
 def register_user():
     data = request.get_json()
     if not data:
@@ -63,6 +67,7 @@ def register_user():
 
 
 def send_user_signup_mail(user):
+    from app import mail
     subject = "Welcome to Msaada Mashinani"
     body = f"Dear {user.firstName} {user.lastName},\n\n Thank you for registering on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
     recipients = [user.email]
@@ -70,8 +75,7 @@ def send_user_signup_mail(user):
 
 
 # login for user
-
-@auth_bp.post('/login')
+@auth_bp.route('/user/login', methods=["POST"])
 def login(): 
     data = request.get_json()
     username = data['username']
@@ -98,7 +102,7 @@ def login():
     ), 200
 
 # signup organisation
-@auth_bp.post("/register/organisation") 
+@auth_bp.route("/register/organisation", methods=["POST"])
 def register_organisation():
     data = request.get_json()
     if not data:
@@ -138,8 +142,9 @@ def register_organisation():
         return jsonify({"error": "Organization registered successfully but failed to send email"}), 500
 
 def send_registration_email(org_email, org_name):
+    from app import mail
     subject = "Organization Registration Confirmation"
-    body = f"Hello {org_name},\n\nThank you for registering on our Msaada Mashinani Platform.\n\nRegards,\n Msaada Mashinani Team"
+    body = f"Hello: {org_name},\n\nThank you for registering on our Msaada Mashinani Platform.\n\nRegards,\n Msaada Mashinani Team"
     
     try:
         mail.send_message(subject=subject, recipients=[org_email], body=body)
@@ -149,7 +154,7 @@ def send_registration_email(org_email, org_name):
         return False
 
 
-@auth_bp.post('/login/organisation')
+@auth_bp.route('/login/organisation',methods=['POST'])
 def login_Organisation(): 
     data = request.get_json()
     orgEmail = data.get('email')
