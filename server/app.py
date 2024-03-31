@@ -37,6 +37,8 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'msaadamashinani@gmail.com'
 app.config['MAIL_PASSWORD'] = 'yaadxnrowrgglbmt'
 app.config['MAIL_DEFAULT_SENDER'] = 'msaadamashinani@gmail.com'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+
 
 migrate = Migrate(app, db)
 db.init_app(app)
