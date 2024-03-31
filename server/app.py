@@ -16,6 +16,8 @@ from datetime import datetime
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
 from flask_mail import Mail
 from auth import auth_bp
+from flask_admin import Admin
+from flask_admin.contrib.sqla import ModelView
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -23,6 +25,7 @@ publishable_key= os.getenv('PUBLISHABLE_KEY')
 service = APIService(token=token,publishable_key=publishable_key, test=True)
 
 app = Flask(__name__)
+admin = Admin(app, name='My Admin Panel', template_mode='bootstrap4')
 
 app.config['JWT_SECRET_KEY'] = b'\xb2\xd3B\xb9 \xab\xc0By\x13\x10\x84\xb7M!\x11'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 24 * 60 * 60
@@ -37,6 +40,7 @@ app.config['MAIL_DEFAULT_SENDER'] = 'msaadamashinani@gmail.com'
 
 migrate = Migrate(app, db)
 db.init_app(app)
+# admin.init_app(app)
 api = Api(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager()
@@ -45,6 +49,14 @@ mail = Mail(app)
 
 # register blueprint
 app.register_blueprint(auth_bp, url_prefix='/auth')
+
+# Register the models with Flask-Admin
+admin.add_view(ModelView(User, db.session))
+admin.add_view(ModelView(Donation, db.session))
+admin.add_view(ModelView(Campaign, db.session))
+admin.add_view(ModelView(Organisation, db.session))
+admin.add_view(ModelView(Account, db.session))
+admin.add_view(ModelView(TokenBlocklist, db.session))
 
 # jwt error handler
 @jwt.expired_token_loader
