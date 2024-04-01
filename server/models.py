@@ -21,7 +21,7 @@ class User(db.Model, SerializerMixin):
     email = db.Column(db.String(254), unique=True, nullable=False)
     hashed_password = db.Column(db.String(128), nullable=False)
     nationalId = db.Column(db.Integer, unique=True, nullable=False)
-    phoneNumber = db.Column(db.String, unique=True)
+    phoneNumber = db.Column(db.String, unique=True,nullable=False)
     isActive = db.Column(db.Boolean())
     address = db.Column(db.String(), nullable=False)
     role= db.Column(db.String(), default= 'User', nullable=False)
@@ -70,7 +70,8 @@ class User(db.Model, SerializerMixin):
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }
-
+    def __repr__ (self):
+        return f"ID:{self.id} FirstName:{self.firstName}, LastName:{self.lastName},  Username:{self.username},  Email:{self.email}, Phone Number:{self.phoneNumber}"
 
 class Organisation(db.Model, SerializerMixin):
     __tablename__ = 'organisations'
@@ -115,7 +116,7 @@ class Organisation(db.Model, SerializerMixin):
         return bcrypt.check_password_hash(self.orgPassword, attempted_password.encode('utf-8'))
     
     def __repr__ (self):
-        return f"ID:{self.id} Organisation Name:{self.orgName}  Organisation Email:{self.orgEmail} Organisation Phone Number:{self.orgPhoneNumber} Organisation Address:{self.orgAddress} Organisation Description:{self.orgDescription} isVerified:{self.isVerified} Organisation Created At:{self.created_at}"
+        return f"ID:{self.id} Organisation Name:{self.orgName},  Organisation Email:{self.orgEmail}, Organisation Phone Number:{self.orgPhoneNumber}, Organisation Address:{self.orgAddress}, Organisation Description:{self.orgDescription}, isVerified:{self.isVerified}, Organisation Created At:{self.created_at}"
      
     def serialize(self):
         return {
@@ -133,9 +134,9 @@ class Organisation(db.Model, SerializerMixin):
 class Account(db.Model, SerializerMixin):
     __tablename__=  'accounts'
     id = db.Column(db.Integer, primary_key=True)
-    accountType = db.Column(db.String)
-    accountName= db.Column(db.String)
-    accountNumber= db.Column(db.String, unique=True)
+    accountType = db.Column(db.String, nullable=False)
+    accountName= db.Column(db.String, nullable=False)
+    accountNumber= db.Column(db.String, unique=True, nullable=False)
     orgId = db.Column(db.Integer, db.ForeignKey('organisations.id'),nullable=False)
 
     def serialize(self):
@@ -148,7 +149,7 @@ class Account(db.Model, SerializerMixin):
                 'orgId': self.orgId
                }
     def __repr__(self):
-        return  f'Account: {self.accountNumber} Account_Type: {self.accountType}, Org ID: {self.orgId}'
+        return  f'Account: {self.accountNumber}, Account_Type: {self.accountType}, Org ID: {self.orgId}'
 
 class Donation (db.Model, SerializerMixin):
     __tablename__ = 'donations'
@@ -171,7 +172,7 @@ class Donation (db.Model, SerializerMixin):
         }
     
     def __repr__(self):
-        return f"ID:{self.id} Amount:{self.amount} Date:{self.donationDate} User ID:{self.user_id} Campaign ID:{self.campaign_id}"
+        return f"ID:{self.id} Amount:{self.amount}, Date:{self.donationDate}, User ID:{self.user_id}, Campaign ID:{self.campaign_id}"
 
 
 
@@ -179,15 +180,15 @@ class  Campaign(db.Model, SerializerMixin):
     __tablename__='campaigns'
     serialize_rules =('-organisation.campaigns','-donations.campaign')
     id = db.Column(db.Integer, primary_key =True)
-    campaignName = db.Column(db.String())
-    description = db.Column(db.String())
-    category= db.Column(db.String())
+    campaignName = db.Column(db.String(),nullable=False)
+    description = db.Column(db.String(),nullable=False)
+    category= db.Column(db.String(),nullable=False)
     banner = db.Column(db.String(255), unique=False)
-    startDate = db.Column (db.String())
-    endDate = db.Column(db.String())
-    targetAmount = db.Column(db.Float())
+    startDate = db.Column (db.String(),nullable=False)
+    endDate = db.Column(db.String(),nullable=False)
+    targetAmount = db.Column(db.Float(),nullable=False)
     isActive = db.Column(db.Boolean(), default=True)
-    walletId = db.Column (db.String(), unique =True)
+    walletId = db.Column (db.String(), unique =True,nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     org_id = db.Column(db.String(), db.ForeignKey('organisations.id'))
@@ -213,7 +214,7 @@ class  Campaign(db.Model, SerializerMixin):
         }
 
     def __repr__ (self):
-        return f"ID: {self.id} Campaign Name: {self.campaignName}  Description: {self.description} Category:{self.category} Start Date : {self.startDate} End Date:{self.endDate} Target Amount :{self.targetAmount} Wallet ID :{self.walletId} Organisation ID:{self.org_id}"
+        return f"ID: {self.id}, Campaign Name: {self.campaignName},  Description: {self.description}, Category:{self.category}, Start Date : {self.startDate}, End Date:{self.endDate}, Target Amount :{self.targetAmount}, Wallet ID :{self.walletId}, Organisation ID:{self.org_id}"
 
 
 # class Withdraw (db.Model, SerializerMixin):
