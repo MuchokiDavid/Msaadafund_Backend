@@ -17,10 +17,17 @@ class  OrganisationAdminView(ModelView):
     column_filters=('orgName','orgEmail','orgAddress','orgDescription','isVerified')
 
 class DonationAdminView(ModelView):
-    pass
+    column_sortable_list=('amount','created_at','donationDate')
+    column_searchable_list=('campaign_id','user_id','donationDate')
+    column_list=('user_id','amount','donationDate','campaign_id', 'created_at')
+    column_labels=dict(user_id='User Id', amount='Amount', donationDate='Donation Date', created_at='Created At')
+    column_filters=column_list
 
 class CampaignAdminView(ModelView):
     pass
 
 class AccountAdminView(ModelView):
-    pass
+    column_sortable_list=('accountType','accountNumber','accountName')
+    column_searchable_list=('accountNumber','accountName','accountNumber')
+    column_list=('accountType','accountName','accountNumber','orgId')
+    column_labels=dict(accountType='Account Type',accountName= "Account Name", accountNumber='Account Number', orgId='Organization',)
