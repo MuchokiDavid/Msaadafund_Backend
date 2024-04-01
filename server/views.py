@@ -24,7 +24,11 @@ class DonationAdminView(ModelView):
     column_filters=column_list
 
 class CampaignAdminView(ModelView):
-    pass
+    column_sortable_list=('created_at', 'campaignName')
+    column_searchable_list=('campaignName', 'startDate','org_id')
+    column_list=('campaignName','targetAmount','org_id', 'isActive','startDate', 'endDate','description','walletId','created_at')
+    column_labels=dict(campaignName='Campaign Name',targetAmount='Budget', org_id='Organization', isActive='Active',startDate='Start Date', endDate='End Date',walletId ='WalletId',description='Description', created_at='Created On')
+    column_filters=('campaignName', 'startDate', 'endDate', 'targetAmount', 'org_id', 'isActive')
 
 class AccountAdminView(ModelView):
     column_sortable_list=('accountType','accountNumber','accountName')

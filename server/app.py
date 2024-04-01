@@ -55,8 +55,8 @@ app.register_blueprint(auth_bp, url_prefix='/auth')
 
 # Register the models with Flask-Admin
 admin.add_view(UserAdminView(User, db.session))
+admin.add_view(CampaignAdminView(Campaign, db.session))
 admin.add_view(DonationAdminView(Donation, db.session))
-admin.add_view(ModelView(Campaign, db.session))
 admin.add_view(OrganisationAdminView(Organisation, db.session))
 admin.add_view(AccountAdminView(Account, db.session))
 admin.add_view(ModelView(TokenBlocklist, db.session))
