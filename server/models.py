@@ -24,6 +24,7 @@ class User(db.Model, SerializerMixin):
     phoneNumber = db.Column(db.String, unique=True)
     isActive = db.Column(db.Boolean())
     address = db.Column(db.String(), nullable=False)
+    role= db.Column(db.String(), default= 'User', nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     donations =db.relationship('Donation', backref='user')
@@ -64,6 +65,7 @@ class User(db.Model, SerializerMixin):
             'nationalId': self.nationalId,
             'phoneNumber': self.phoneNumber,
             'isActive': self.isActive,
+            'role': self.role,
             'address': self.address,
             'created_at': self.created_at,
             'updated_at': self.updated_at
@@ -81,6 +83,7 @@ class Organisation(db.Model, SerializerMixin):
     orgAddress = db.Column(db.String(), nullable = False)
     orgPhoneNumber = db.Column(db.String(),unique=True)
     orgDescription = db.Column (db.String())
+    isVerified= db.Column(db.Boolean(), default=False, nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable = True)
     campaigns = db.relationship('Campaign', backref='organisation')
@@ -112,7 +115,7 @@ class Organisation(db.Model, SerializerMixin):
         return bcrypt.check_password_hash(self.orgPassword, attempted_password.encode('utf-8'))
     
     def __repr__ (self):
-        return f"ID:{self.id} Organisation Name:{self.orgName}  Organisation Email:{self.orgEmail} Organisation Phone Number:{self.orgPhoneNumber} Organisation Address:{self.orgAddress} Organisation Description:{self.orgDescription} Organisation Created At:{self.created_at}"
+        return f"ID:{self.id} Organisation Name:{self.orgName}  Organisation Email:{self.orgEmail} Organisation Phone Number:{self.orgPhoneNumber} Organisation Address:{self.orgAddress} Organisation Description:{self.orgDescription} isVerified:{self.isVerified} Organisation Created At:{self.created_at}"
      
     def serialize(self):
         return {
@@ -121,6 +124,7 @@ class Organisation(db.Model, SerializerMixin):
             "orgEmail": self.orgEmail,
             "orgPhoneNumber": self.orgPhoneNumber,
             "orgAddress": self.orgAddress,
+            "isVerified":self.isVerified,
             "orgDescription": self.orgDescription,
             "created_at": self.created_at.strftime("%Y-%m-%d ")
         }
