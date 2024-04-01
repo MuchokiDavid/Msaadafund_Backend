@@ -7,7 +7,6 @@ auth_bp = Blueprint("auth", __name__)
 
 # import mail from app
 
-
 # signup for user 
 @auth_bp.route("/user/register", methods=["POST"])
 def register_user():
@@ -65,7 +64,7 @@ def register_user():
         "user":new_user.serialize()
     }), 200
 
-
+#Function to send users email after sign up
 def send_user_signup_mail(user):
     from app import mail
     subject = "Welcome to Msaada Mashinani"
@@ -78,28 +77,30 @@ def send_user_signup_mail(user):
 @auth_bp.route('/user/login', methods=["POST"])
 def login(): 
     data = request.get_json()
-    username = data['username']
+    username = data.get('username')
     user = User.query.filter_by(username = username).first()
     if not user:
         return {'error': 'User not registered'}, 401 
-    
-    if not bcrypt.check_password_hash(user.hashed_password,data['password']):
-                return {'error': '401 Unauthorized'}, 401 
+    if user.role=='User':
+        if not bcrypt.check_password_hash(user.hashed_password,data.get('password')):
+                    return {'error': '401 Unauthorized'}, 401 
 
-    access_token = create_access_token(identity=user.username)
-    refresh_token = create_refresh_token(identity=user.username)  
-    return jsonify(
-        {
-            "message": "logged in",
-            "tokens": {
-                "access": access_token,
-                "refresh": refresh_token
-            },
-            "user": user.serialize()
+        access_token = create_access_token(identity=user.username)
+        refresh_token = create_refresh_token(identity=user.username)  
+        return jsonify(
+            {
+                "message": "logged in",
+                "tokens": {
+                    "access": access_token,
+                    "refresh": refresh_token
+                },
+                "user": user.serialize()
 
-        }
+            }
 
-    ), 200
+        ), 200
+    else: 
+        return jsonify({'error':'Unauthorised user'})
 
 # signup organisation
 @auth_bp.route("/register/organisation", methods=["POST"])
@@ -166,7 +167,11 @@ def login_Organisation():
 
     if not organisation.check_password(password):
         return jsonify({"message":"Invalid Password"}),401
-
+    
+    if organisation.isVerified==False:
+        send_org_verification_mail(organisation)
+        return {"message":"Account is not verified. Please check your email for verification"},403
+    
     access_token = create_access_token(identity=organisation.id)
     refresh_token = create_refresh_token(identity=organisation.id)
 
@@ -176,6 +181,13 @@ def login_Organisation():
             'refresh_token': refresh_token,
             "organisation": organisation.serialize()},200
 
+#Function to send verification to organisation
+def send_org_verification_mail(org):
+    from app import mail
+    subject = "Welcome to Msaada Mashinani"
+    body = f"Dear {org.orgName},\n\n Thank you for registering on our Msaada Mashinani Platform.\nYour account is not verified. Please reply to this email for verification\n Best regards,\n Msaada Mashinani Team"
+    recipients = [org.orgEmail]
+    mail.send_message(subject=subject, recipients=recipients, body=body)
 
 # logout for user
 @auth_bp.get('/logout')
