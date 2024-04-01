@@ -18,6 +18,7 @@ from flask_mail import Mail
 from auth import auth_bp
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
+from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -53,10 +54,10 @@ mail = Mail(app)
 app.register_blueprint(auth_bp, url_prefix='/auth')
 
 # Register the models with Flask-Admin
-admin.add_view(ModelView(User, db.session))
+admin.add_view(UserAdminView(User, db.session))
 admin.add_view(ModelView(Donation, db.session))
 admin.add_view(ModelView(Campaign, db.session))
-admin.add_view(ModelView(Organisation, db.session))
+admin.add_view(OrganisationAdminView(Organisation, db.session))
 admin.add_view(ModelView(Account, db.session))
 admin.add_view(ModelView(TokenBlocklist, db.session))
 
@@ -252,44 +253,25 @@ def send_post_campaign(organisation, campaignName, description, category, target
 api.add_resource(campaignData, '/campaigns')
 
 #Get inactive campaigns
-@app.route('/getinactive', methods=['GET'])
+@app.route('/get_inactive', methods=['GET'])
 def  getInactiveCampaign():
     """Return a list of all inactive campaigns"""
     all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=False).all()]
     response = make_response(jsonify(all_campaigns), 200)
     return response
 
-@app.route('/campaignpatch', methods=['PATCH'])
-@jwt_required()
-def patch ():
-    current_user = get_jwt_identity()
-    existing_organisation = Organisation.query.filter_by(id=current_user).first()
+#Get one campaign by id in unprotected route
+# @app.route("/campaign/<int:campaignId>", methods=["GET"])
+# def readOne(campaignId):
+#     """Get the details of one specific campaign."""
+#     try:
+#         campaign = Campaign.query.get(campaignId)
+#     except Exception as e:
+#         print(e)
+#         return jsonify({"error":f"Invalid campaign ID: {campaignId}"}), 400
 
-    if not existing_organisation:
-        return {"error":"Organisation not found"}, 404
-    data=request.get_json()
-    description = data.get('description')
-    endDate = data.get('endDate')
-    targetAmount = data.get('targetAmount')
-    isActive= data.get('isActive')
-
-    existing_campaign = Campaign.query.filter_by(campaignName=data['name']).first()
-    if not existing_campaign:
-        return {"error":"Campaign not found"}, 404
-    if description:
-        existing_campaign.description = description
-    if endDate:
-        existing_campaign.endDate = endDate
-    if targetAmount:
-        existing_campaign.targetAmount = targetAmount
-    if isActive:
-        isActive = True if isActive.lower() == 'true' else False
-        existing_campaign.isActive = isActive
-
-    db.session.commit()
-    
-    response = make_response(jsonify(existing_campaign.serialize()))
-    return response
+#     # Return the serialized campaign
+#     return jsonify(campaign.serialize())
 
 #Get  specific campaign details by id
 class campaignById(Resource):
@@ -302,8 +284,30 @@ class campaignById(Resource):
         data = [camp.serialize() for camp in campaign]
         response = make_response(jsonify(data), 200)
         return response
-       
     
+    @jwt_required()
+    def patch (self):
+        data=request.get_json()
+        description = data.get('description')
+        endDate = data.get('endDate')
+        targetAmount = data.get('targetAmount')
+
+        current_user = get_jwt_identity()
+        existing_campaign = Campaign.query.filter_by(org_id=current_user).first()
+        if not existing_campaign:
+            return {"error":"Campaign not found"}, 404
+        if description:
+            existing_campaign.description = description
+        if endDate:
+            existing_campaign.endDate =endDate
+        if targetAmount:
+            existing_campaign.targetAmount = float(targetAmount)
+
+        db.session.commit()
+
+        response = make_response(jsonify(existing_campaign.serialize()))
+        return response
+
     @jwt_required()
     def delete(self):
         data=request.get_json()
@@ -323,7 +327,7 @@ class campaignById(Resource):
 
             return {"message": "Campaign deactivated successfully"},200   
 
-api.add_resource(campaignById, '/orgcampaigns')
+api.add_resource(campaignById, '/org_campaigns')
 
 
 #Get wallet balance for a campaign
