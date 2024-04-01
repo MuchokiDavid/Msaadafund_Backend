@@ -28,16 +28,16 @@ service = APIService(token=token,publishable_key=publishable_key, test=True)
 app = Flask(__name__)
 admin = Admin(app, name='My Admin Panel', template_mode='bootstrap4')
 
-app.config['JWT_SECRET_KEY'] = b'\xb2\xd3B\xb9 \xab\xc0By\x13\x10\x84\xb7M!\x11'
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 24 * 60 * 60
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///msaada.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
-app.config['MAIL_SERVER'] = 'smtp.googlemail.com'
-app.config['MAIL_PORT'] = 587
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
+app.config['MAIL_PORT'] = os.getenv('MAIL_PORT')
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'msaadamashinani@gmail.com'
-app.config['MAIL_PASSWORD'] = 'yaadxnrowrgglbmt'
-app.config['MAIL_DEFAULT_SENDER'] = 'msaadamashinani@gmail.com'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 
