@@ -1,8 +1,8 @@
-"""table
+"""Added roles and org verification
 
-Revision ID: 2a2d87b0a9dd
+Revision ID: 4c2edec2ab84
 Revises: 
-Create Date: 2024-03-28 01:16:53.663014
+Create Date: 2024-04-01 11:44:14.577399
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '2a2d87b0a9dd'
+revision = '4c2edec2ab84'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -26,12 +26,19 @@ def upgrade():
     sa.Column('orgAddress', sa.String(), nullable=False),
     sa.Column('orgPhoneNumber', sa.String(), nullable=True),
     sa.Column('orgDescription', sa.String(), nullable=True),
+    sa.Column('isVerified', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('orgEmail'),
     sa.UniqueConstraint('orgName'),
     sa.UniqueConstraint('orgPhoneNumber')
+    )
+    op.create_table('token_blocklist',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('jti', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -44,6 +51,7 @@ def upgrade():
     sa.Column('phoneNumber', sa.String(), nullable=True),
     sa.Column('isActive', sa.Boolean(), nullable=True),
     sa.Column('address', sa.String(), nullable=False),
+    sa.Column('role', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
@@ -55,6 +63,7 @@ def upgrade():
     op.create_table('accounts',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('accountType', sa.String(), nullable=True),
+    sa.Column('accountName', sa.String(), nullable=True),
     sa.Column('accountNumber', sa.String(), nullable=True),
     sa.Column('orgId', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['orgId'], ['organisations.id'], ),
@@ -100,5 +109,6 @@ def downgrade():
     op.drop_table('campaigns')
     op.drop_table('accounts')
     op.drop_table('users')
+    op.drop_table('token_blocklist')
     op.drop_table('organisations')
     # ### end Alembic commands ###
