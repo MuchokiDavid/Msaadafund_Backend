@@ -89,7 +89,7 @@ def login():
         refresh_token = create_refresh_token(identity=user.username)  
         return jsonify(
             {
-                "message": "logged in",
+                "message": 'Welcome {}'.format(user.firstName),
                 "tokens": {
                     "access": access_token,
                     "refresh": refresh_token
@@ -176,7 +176,7 @@ def login_Organisation():
         refresh_token = create_refresh_token(identity=organisation.id)
 
         return jsonify({
-                'message': 'Logged in as {}'.format(organisation.orgName),
+                'message': 'Welcome {}'.format(organisation.orgName),
                 'tokens':{
                     'access_token': access_token,
                     'refresh_token': refresh_token
