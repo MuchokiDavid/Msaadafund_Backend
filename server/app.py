@@ -67,15 +67,15 @@ admin.add_view(ModelView(TokenBlocklist, db.session))
 # jwt error handler
 @jwt.expired_token_loader
 def expired_token(jwt_header,jwt_data):
-    return jsonify({'message': 'The token has expired.','error':'token expired'}), 401
+    return jsonify({'error': 'The token has expired.','error':'token expired'}), 401
 
 @jwt.invalid_token_loader
 def invalid_token(error):
-    return jsonify({'message': 'Does not contain a valid token.','error':'invalid token'}), 401
+    return jsonify({'error': 'Does not contain a valid token.','error':'invalid token'}), 401
 
 @jwt.unauthorized_loader
 def missing_token(error):
-    return jsonify({'message': 'Request does not contain an access token.', 'error':'token missing'}), 401
+    return jsonify({'error': 'Request does not contain an access token.', 'error':'token missing'}), 401
 
 
 @jwt.token_in_blocklist_loader #check if the jwt is revocked
@@ -91,7 +91,7 @@ def token_in_blocklist(jwt_header,jwt_data):
 class userData (Resource):
     def get(self):
         users = [user.serialize() for user in User.query.filter_by(isActive = True).all()]
-        response = make_response(jsonify(users))
+        response = make_response(jsonify(users), 200)
         return response
   
 
@@ -131,7 +131,7 @@ class userDataByid(Resource):
 
         db.session.commit()
 
-        response = make_response(jsonify(existing_user.serialize()))
+        response = make_response(jsonify(existing_user.serialize()),200)
         return response
   
     @jwt_required()
@@ -139,7 +139,7 @@ class userDataByid(Resource):
         current_user = get_jwt_identity()
         user = User.query.filter_by(username = current_user).first()
         if not user:
-            return "User not found", 404
+            return jsonify({'error':"User not found"}), 404
         else:
             user.isActive = False       
             # db.session.delete(user)
@@ -224,7 +224,7 @@ class campaignData(Resource):
         
         send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate, endDate)
 
-        return make_response(jsonify({"success": "Campaign created successfully!", "data": new_campaign.serialize()}), 201)
+        return make_response(jsonify({"message": "Campaign created successfully!", "data": new_campaign.serialize()}), 201)
 
 def send_post_campaign(organisation, campaignName, description, category, targetAmount, startDate, endDate):
     subject = "Campaign Created Successfully"
@@ -292,7 +292,7 @@ class campaignById(Resource):
 
         db.session.commit()
 
-        response = make_response(jsonify(existing_campaign.serialize()))
+        response = make_response(jsonify(existing_campaign.serialize()), 200)
         return response
 
     @jwt_required()
@@ -302,11 +302,11 @@ class campaignById(Resource):
         organisation = Organisation.query.filter_by(id=current_user).first()
         
         if not organisation:
-            return {"Organisation not found"}, 404
+            return jsonify({'error':"Organisation not found"}), 404
         
         existing_campaign = Campaign.query.filter_by(campaignName=data['name']).first()
         if not existing_campaign:
-            return "Campaign not found", 404
+            return jsonify({'error':"Campaign not found"}), 404
         else:
             existing_campaign.isActive = False       
             # db.session.delete(campaign)
@@ -356,7 +356,7 @@ class accountById(Resource):
         if not account:
             return {"error":"Account not found"}, 404
         data = [acc.serialize() for acc in account]
-        response = make_response(jsonify(data))
+        response = make_response(jsonify(data),200)
         return response
     
     @jwt_required()
@@ -376,7 +376,7 @@ class accountById(Resource):
             response = make_response(jsonify(new_account.serialize()),201)
             return response
         except Exception  as e:
-             return {"error": "Account already registered"},500  
+             return {"error": "Account already registered"},400  
 
     
     @jwt_required()
@@ -409,7 +409,7 @@ class OrganisationDetail(Resource):
         current_user = get_jwt_identity()
         org = Organisation.query.filter_by(id=current_user).first()
         if not org :
-            return {'message':'Organisation does not exist'}, 404
+            return {'error':'Organisation does not exist'}, 404
         return make_response(jsonify(org.serialize()))
    
     @jwt_required()
@@ -417,10 +417,10 @@ class OrganisationDetail(Resource):
         current_user = get_jwt_identity()
         org = Organisation.query.filter_by(id = current_user)
         if not org:
-            return{'message': 'Organisation does not exist'} ,  404
+            return{'error': 'Organisation does not exist'} ,  404
         db.session.delete(org)
         db.session.commit()
-        return {'message' : 'Organisation deleted successfully'}, 200
+        return {'error' : 'Organisation deleted successfully'}, 200
     
     @jwt_required()
     def patch(self):
@@ -434,7 +434,7 @@ class OrganisationDetail(Resource):
 
         existing_org = Organisation.query.filter_by(id=current_user).first()
         if not existing_org:
-            return {"Message": "Organisation does not exist"}, 404
+            return {"error": "Organisation does not exist"}, 404
         
         if orgName:
             existing_org.orgName = orgName
@@ -448,7 +448,7 @@ class OrganisationDetail(Resource):
             existing_org.orgDescription = orgDescription
 
         db.session.commit()
-        return {"Message": "Organisation has been updated", "Data": existing_org.serialize()}
+        return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
 
 #Route to get banks and their code in intersend API
 @app.route('/api/v1.0/all_banks', methods=['GET'])
@@ -492,7 +492,7 @@ def campaign_money_withdrawal():
     
     #check wallet balance
     if float(check_wallet_balance(campaigns.walletId))<float(amount):
-        return jsonify({"error":"Insufficient funds in the wallet!"})
+        return jsonify({"error":"Insufficient funds in the wallet!"}),400
     try: 
         if accountType=="M-Pesa":
             #Initiate intasend M-Pesa transaction
@@ -501,13 +501,13 @@ def campaign_money_withdrawal():
             response = service.transfer.mpesa(wallet_id=campaigns.walletId, currency='KES', transactions=transactions)
             if response.get('errors'):
                 error_message= response.get('errors')[0].get('detail')
-                return jsonify({'Error':error_message})
+                return jsonify({'error':error_message})
             return jsonify(response)
         
         elif accountType=="Bank":
             return jsonify({"message":"Bank transaction will be here"})
         else:
-            return jsonify({"message":"Select transaction"})
+            return jsonify({"error":"Select transaction"}),400
 
         
     except Exception as e :
@@ -629,12 +629,12 @@ def wallet_transactions(id):
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.filter_by(id=current_user_id).first()
     if not existing_org:
-        return  jsonify({"Error":"Organisation does not exist"}),401
+        return  jsonify({"error":"Organisation does not exist"}),401
 
     #checking a if a campaign exist
     existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
     if not existing_campaign:
-        return  jsonify({"Error":"Campaign does not exist'"}),404
+        return  jsonify({"error":"Campaign does not exist'"}),404
     wallet_id= existing_campaign.walletId
 
     url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
@@ -660,7 +660,7 @@ def wallet_transactions_filters(id):
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.get(current_user_id)
     if not existing_org:
-        return  jsonify({"Error":"Organisation does not exist"}),401
+        return  jsonify({"error":"Organisation does not exist"}),401
     
     data= request.get_json()
     trans_type= data.get('trans_type')
@@ -669,7 +669,7 @@ def wallet_transactions_filters(id):
 
     existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
     if not existing_campaign:
-        return  jsonify({"Error":"Campaign does not exist'"}),404
+        return  jsonify({"error":"Campaign does not exist'"}),404
     wallet_id= existing_campaign.walletId
 
     if trans_type:

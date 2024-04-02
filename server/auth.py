@@ -121,26 +121,26 @@ def register_organisation():
     
     existing_orgName = Organisation.query.filter_by(orgName=orgName).first()
     if existing_orgName:
-        return {"Message": "An organisation with this name already exists."},400
+        return {"error": "An organisation with this name already exists."},400
     
     existing_orgEmail =  Organisation.query.filter_by(orgEmail=orgEmail).first()
     if existing_orgEmail:
-        return{"Message":"This email is already registered to an organization"},400
+        return{"error":"This email is already registered to an organization"},400
     
     existing_orgPhoneNumber =  Organisation.query.filter_by(orgPhoneNumber=orgPhoneNumber).first()
     if existing_orgPhoneNumber:
-        return{"Message":"This Phone number is already registered to an organization"}, 400
+        return{"error":"This Phone number is already registered to an organization"}, 400
 
     new_organisation =  Organisation(orgName=orgName, orgEmail=orgEmail, password=orgPassword,orgPhoneNumber=orgPhoneNumber, orgAddress=orgAddress)
     db.session.add(new_organisation)
     db.session.commit()
 
     if send_registration_email(orgEmail, orgName):
-        return jsonify({"success": "Organization registered successfully and email sent",
+        return jsonify({"message": "Organization registered successfully and email sent",
                         "organisation":new_organisation.serialize()
                         }), 200
     else:
-        return jsonify({"error": "Organization registered successfully but failed to send email"}), 500
+        return jsonify({"message": "Organization registered successfully but failed to send email"}), 500
 
 def send_registration_email(org_email, org_name):
     from app import mail
@@ -163,14 +163,14 @@ def login_Organisation():
     try:
         organisation  = Organisation.query.filter_by(orgEmail=orgEmail).first()
         if not organisation :
-            return jsonify({"message":"Organisation does not exist"}),401
+            return jsonify({"error":"Organisation does not exist"}),401
 
         if not organisation.check_password(password):
-            return jsonify({"message":"Invalid Password"}),401
+            return jsonify({"error":"Invalid Password"}),401
         
         if organisation.isVerified==False:
             send_org_verification_mail(organisation)
-            return {"message":"Account is not verified. Please check your email for verification"},403
+            return {"error":"Account is not verified. Please check your email for verification"},403
         
         access_token = create_access_token(identity=organisation.id)
         refresh_token = create_refresh_token(identity=organisation.id)
@@ -184,7 +184,7 @@ def login_Organisation():
                 "organisation": organisation.serialize()}),200
     except Exception as e:
         print(e)
-        return {'message':str(e)},500
+        return {'error':str(e)},500
 
 #Function to send verification to organisation
 def send_org_verification_mail(org):
