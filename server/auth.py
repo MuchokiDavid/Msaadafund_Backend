@@ -81,7 +81,7 @@ def login():
     user = User.query.filter_by(username = username).first()
     if not user:
         return {'error': 'User not registered'}, 401 
-    if user.role=='User':
+    if user.role=='User' or user.role == 'Admin':
         if not bcrypt.check_password_hash(user.hashed_password,data.get('password')):
                     return {'error': '401 Unauthorized'}, 401 
 

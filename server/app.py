@@ -16,6 +16,7 @@ from datetime import datetime
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
 from flask_mail import Mail
 from auth import auth_bp
+# from views import view_bp
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView
@@ -52,6 +53,8 @@ mail = Mail(app)
 
 # register blueprint
 app.register_blueprint(auth_bp, url_prefix='/auth')
+# register views
+# app.register_blueprint(view_bp, url_prefix ='/auths')
 
 # Register the models with Flask-Admin
 admin.add_view(UserAdminView(User, db.session))
