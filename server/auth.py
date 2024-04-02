@@ -160,26 +160,31 @@ def login_Organisation():
     data = request.get_json()
     orgEmail = data.get('email')
     password = data.get('password')
+    try:
+        organisation  = Organisation.query.filter_by(orgEmail=orgEmail).first()
+        if not organisation :
+            return jsonify({"message":"Organisation does not exist"}),401
 
-    organisation  = Organisation.query.filter_by(orgEmail=orgEmail).first()
-    if not organisation :
-        return jsonify({"message":"Organisation does not exist"}),401
+        if not organisation.check_password(password):
+            return jsonify({"message":"Invalid Password"}),401
+        
+        if organisation.isVerified==False:
+            send_org_verification_mail(organisation)
+            return {"message":"Account is not verified. Please check your email for verification"},403
+        
+        access_token = create_access_token(identity=organisation.id)
+        refresh_token = create_refresh_token(identity=organisation.id)
 
-    if not organisation.check_password(password):
-        return jsonify({"message":"Invalid Password"}),401
-    
-    if organisation.isVerified==False:
-        send_org_verification_mail(organisation)
-        return {"message":"Account is not verified. Please check your email for verification"},403
-    
-    access_token = create_access_token(identity=organisation.id)
-    refresh_token = create_refresh_token(identity=organisation.id)
-
-    return {
-            'message': 'Logged in as {}'.format(organisation.orgName),
-            'access_token': access_token,
-            'refresh_token': refresh_token,
-            "organisation": organisation.serialize()},200
+        return jsonify({
+                'message': 'Logged in as {}'.format(organisation.orgName),
+                'tokens':{
+                    'access_token': access_token,
+                    'refresh_token': refresh_token
+                },
+                "organisation": organisation.serialize()}),200
+    except Exception as e:
+        print(e)
+        return {'message':str(e)},500
 
 #Function to send verification to organisation
 def send_org_verification_mail(org):
