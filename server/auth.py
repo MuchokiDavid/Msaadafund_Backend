@@ -103,7 +103,7 @@ def login():
         return jsonify({'error':'Unauthorised user'})
 
 # signup organisation
-@auth_bp.route("/register/organisation", methods=["POST"])
+@auth_bp.route("/organisation/register", methods=["POST"])
 def register_organisation():
     data = request.get_json()
     if not data:
@@ -155,7 +155,7 @@ def send_registration_email(org_email, org_name):
         return False
 
 
-@auth_bp.route('/login/organisation',methods=['POST'])
+@auth_bp.route('/organisation/login',methods=['POST'])
 def login_Organisation(): 
     data = request.get_json()
     orgEmail = data.get('email')
