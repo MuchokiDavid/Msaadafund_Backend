@@ -27,6 +27,8 @@ werkzeug = "2.2.2"
 intasend-python = "*"
 flask-jwt-extended = "*"
 flask-login = "*"
+flask-admin = "*"
+flask-security = "*"
 
 [dev-packages]
 

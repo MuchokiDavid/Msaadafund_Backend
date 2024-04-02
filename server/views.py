@@ -1,93 +1,96 @@
 from models import User,db, bcrypt
 from flask_admin.contrib.sqla import  ModelView
-from flask import render_template,request,redirect,url_for,jsonify
-from app import app
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+# from flask import render_template,request,redirect,url_for,jsonify,Blueprint
+# from flask_login import LoginManager,current_user, UserMixin, login_user, logout_user, login_required
 
+# view_bp = Blueprint('view', __name__, template_folder='templates')
 
-login_manager= LoginManager(app)
-login_manager.login_view= 'login'
+# login_manager = LoginManager(view_bp)
+# login_manager.login_view = 'login'
+# # login_manager= LoginManager(app)
+# # login_manager.login_view= 'login'
 
-class UserLogin(UserMixin):
-    pass
+# class UserLogin(UserMixin):
+#     pass
 
-@login_manager.user_loader
-def load_user(id):
-    return User.query.get(int(id))
-
-@app.route('/admin/register', methods=['POST'])
-def register():
-    if request.method=='POST':
-        username = request.form['username']
-        firstName = request.form['firstName']
-        lastName = request.form['lastName']
-        username = request.form['username']
-        email = request.form['email']
-        nationalId = request.form['nationalId']
-        role= "Admin"
-        phoneNumber = request.form['phoneNumber']
-        address = request.form['address']
-        hashed_password = request.form['password']
-
-        if not all([firstName, lastName, username, email, nationalId, phoneNumber, address, hashed_password]):
-            return jsonify({"error": "Missing required fields"}), 400
-
-        # Checking for existing user data
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
-            return jsonify({"error": "Username already exists"}), 400
-
-        existing_email = User.query.filter_by(email=email).first()
-        if existing_email:
-            return jsonify({"error": "Email already exists"}), 400
-
-        existing_national_id = User.query.filter_by(nationalId=nationalId).first()
-        if existing_national_id:
-            return jsonify({"error": "National ID already exists"}), 400
-
-        existing_phone_number = User.query.filter_by(phoneNumber=phoneNumber).first()
-        if existing_phone_number:
-            return jsonify({"error": "Phone number already exists"}), 404
-
-        new_admin=User(username=username,
-                       firstname=firstName,
-                       lastname=lastName,
-                       email=email,
-                       nationalId=nationalId,
-                       role=role,
-                       phoneNumber=phoneNumber,
-                       address=address, 
-                       password=hashed_password)
-        db.session.add(new_admin)
-        db.session.commit()
-        return redirect(url_for('login'))
+# @login_manager.user_loader
+# def load_user(user_id):
+#     return User.query.get(user_id)
     
-@app.route('/admin/login', methods=['GET', 'POST'])
-def login():
-    from models import bcrypt
-    if request.method == 'POST':
-        # Authenticate the user and log them in
-        if request.method == 'POST':
-            user = User.query.filter_by(username=request.form['username']).first()
-            if user and bcrypt.check_password_hash(user.password, request.form['password']):
-                login_user(user)
-                return redirect(url_for('admin.index'))
-    return render_template('login.html')
+# @view_bp.route('/register', methods=['GET,POST'])
+# def register():
+#     if request.method=='POST':
+#         username = request.form['username']
+#         firstName = request.form['firstName']
+#         lastName = request.form['lastName']
+#         email = request.form['email']
+#         nationalId = request.form['nationalId']
+#         role= "Admin"
+#         phoneNumber = request.form['phoneNumber']
+#         address = request.form['address']
+#         hashed_password = request.form['password']
 
-@app.route('/admin/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
+#         if not all([firstName, lastName, username, email, nationalId, phoneNumber, address, hashed_password]):
+#             return jsonify({"error": "Missing required fields"}), 400
+
+#         # Checking for existing user data
+#         existing_user = User.query.filter_by(username=username).first()
+#         if existing_user:
+#             return jsonify({"error": "Username already exists"}), 400
+
+#         existing_email = User.query.filter_by(email=email).first()
+#         if existing_email:
+#             return jsonify({"error": "Email already exists"}), 400
+
+#         existing_national_id = User.query.filter_by(nationalId=nationalId).first()
+#         if existing_national_id:
+#             return jsonify({"error": "National ID already exists"}), 400
+
+#         existing_phone_number = User.query.filter_by(phoneNumber=phoneNumber).first()
+#         if existing_phone_number:
+#             return jsonify({"error": "Phone number already exists"}), 404
+
+#         new_admin=User(username=username,
+#                        firstName=firstName,
+#                        lastName=lastName,
+#                        email=email,
+#                        nationalId=nationalId,
+#                        role=role,
+#                        phoneNumber=phoneNumber,
+#                        address=address, 
+#                        password=hashed_password)
+#         db.session.add(new_admin)
+#         db.session.commit()
+#         return redirect(url_for('login'))
+
+#     return render_template('register.html')
+   
+    
+# @view_bp.route('/login', methods=['GET', 'POST'])
+# def login():
+#     if request.method == 'POST':
+#         # Authenticate the user and log them in
+#         if request.method == 'POST':
+#             user = User.query.filter_by(username=request.form['username']).first()
+#             if user and bcrypt.check_password_hash(user.password, request.form['password']):
+#                 # login_user(user)
+#                 # return {"message":"success"}
+#                 return redirect(url_for('index.html'))
+#     # return render_template('login.html')
+
+# @view_bp.route('/admin/logout')
+# @login_required
+# def logout():
+#     logout_user()
+#     return redirect(url_for('login'))
 
 class  UserAdminView(ModelView):
-    def is_accessible(self):
-        return current_user.is_authenticated and current_user.role == 'Admin'
-    
+#     def is_accessible(self):
+#         return not current_user.is_authenticated and current_user.role == 'Admin'
     column_sortable_list=('created_at','firstName','lastName')
     column_searchable_list = ('firstName','lastName','username','email','phoneNumber','nationalId', 'role')
     column_list=('firstName','lastName','username','email','phoneNumber','nationalId','address', 'role','created_at')
-    # column_labels=dict(name= 'Name',username='Username',email="Email", role ='Role')
+    column_labels=dict(name= 'Name',username='Username',email="Email", role ='Role')
     column_filters=column_list
 
 class  OrganisationAdminView(ModelView):
