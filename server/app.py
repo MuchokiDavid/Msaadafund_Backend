@@ -52,7 +52,7 @@ jwt.init_app(app)
 mail = Mail(app)
 
 # register blueprint
-app.register_blueprint(auth_bp, url_prefix='/auth')
+app.register_blueprint(auth_bp, url_prefix='/api/v1.0/auth')
 # register views
 # app.register_blueprint(view_bp, url_prefix ='/auths')
 
@@ -93,19 +93,7 @@ class userData (Resource):
         users = [user.serialize() for user in User.query.filter_by(isActive = True).all()]
         response = make_response(jsonify(users))
         return response
-    
-   
-api.add_resource(userData, '/users')
-
-# @app.route('/usersdata', methods=['GET']) 
-# @jwt_required()
-# def get():
-#     current_user = get_jwt_identity()
-#     user = User.query.filter_by(username=current_user).first()
-#     if not user:
-#         return {"error":"User not found"}, 404
-#     response = make_response(jsonify(user.serialize()),200)
-#     return response   
+  
 
 class userDataByid(Resource):
     @jwt_required()
@@ -158,8 +146,6 @@ class userDataByid(Resource):
             db.session.commit()
 
             return {"message": "User deactivated successfully"},200   
-    
-api.add_resource(userDataByid, '/usersdata')
 
 #get campaigns
 class campaignData(Resource):
@@ -253,10 +239,8 @@ def send_post_campaign(organisation, campaignName, description, category, target
 
     mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
 
-api.add_resource(campaignData, '/campaigns')
-
 #Get inactive campaigns
-@app.route('/get_inactive', methods=['GET'])
+@app.route('/api/v1.0/get_inactive', methods=['GET'])
 def  getInactiveCampaign():
     """Return a list of all inactive campaigns"""
     all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=False).all()]
@@ -330,11 +314,9 @@ class campaignById(Resource):
 
             return {"message": "Campaign deactivated successfully"},200   
 
-api.add_resource(campaignById, '/org_campaigns')
-
 
 #Get wallet balance for a campaign
-@app.route('/campaign_wallet/<int:id>', methods=['GET'])
+@app.route('/api/v1.0/campaign_wallet/<int:id>', methods=['GET'])
 # @jwt_required()
 def check_wallet(id):
     # current_user_id = get_jwt_identity()
@@ -360,8 +342,6 @@ class addAccount(Resource):
         response_dict= [account.serialize() for account in all_accounts]
         response= make_response(jsonify(response_dict), 200)
         return response
-    
-api.add_resource(addAccount, '/accounts')
 
 #Get account by id
 class accountById(Resource):
@@ -417,16 +397,11 @@ class accountById(Resource):
 
             return {"message": "Account deleted successfully"},200   
 
-api.add_resource(accountById , '/orgaccounts')
-
 class Organization(Resource):
     def get(self):
         organizations = Organisation.query.all()
         serialized_organizations = [org.serialize() for org in organizations]
         return (serialized_organizations), 200
-
-api.add_resource(Organization, '/organisations')
-
 
 class OrganisationDetail(Resource):
     @jwt_required()
@@ -474,12 +449,9 @@ class OrganisationDetail(Resource):
 
         db.session.commit()
         return {"Message": "Organisation has been updated", "Data": existing_org.serialize()}
-    
-
-api.add_resource(OrganisationDetail, '/organisation')
 
 #Route to get banks and their code in intersend API
-@app.route('/all_banks', methods=['GET'])
+@app.route('/api/v1.0/all_banks', methods=['GET'])
 def bank_data():
     url = "https://payment.intasend.com/api/v1/send-money/bank-codes/ke/"
     try:
@@ -492,7 +464,7 @@ def bank_data():
         return jsonify({"error": "An error occurred while processing your request"}),500
 
 # Route to withdraw money to M-pesa number
-@app.route("/withdraw",methods=["POST"])
+@app.route("/api/v1.0/withdraw",methods=["POST"])
 @jwt_required()
 def campaign_money_withdrawal():
     current_user = get_jwt_identity()
@@ -543,30 +515,6 @@ def campaign_money_withdrawal():
         return jsonify({"error":str(e)}),500
 
 
-# @app.route('/description', methods=["PUT"])
-# @jwt_required()
-# def update_org_description():
-#     current_organisation_id = get_jwt_identity()
-
-#     organization = Organisation.query.get(current_organisation_id)
-
-#     if not organization:
-#         return jsonify({'error': 'Organization not found'}), 404
-
-
-#     data = request.get_json()
-#     new_description = data.get('description')
-
-#     if not new_description:
-#         return jsonify({'error': 'New description is required'}), 400
-
-#     organization.orgDescription = new_description
-
-#     db.session.commit()
-
-#     return jsonify({"message": "Description updated successfully"}), 200
-
-#route to handle donations
 class Donate(Resource):
     @jwt_required()
     def get(self):
@@ -633,10 +581,8 @@ class Donate(Resource):
             print (e)
             return jsonify({"error": "An error occurred while processing your request"}),500
 
-api.add_resource(Donate, '/user/donations')
-
 #Express donations route for user who is not logged in
-@app.route('/express/donations', methods = ['POST'])
+@app.route('/api/v1.0/express/donations', methods = ['POST'])
 def express_donation():
     data= request.get_json()
     email= "anonymous@gmail.com"
@@ -677,7 +623,7 @@ def express_donation():
         return jsonify({"error": "An error occurred while processing your request"}),500
 
 #Get all campaign transactions
-@app.route('/all_transactions/<int:id>', methods=['GET'])
+@app.route('/api/v1.0/all_transactions/<int:id>', methods=['GET'])
 @jwt_required()  
 def wallet_transactions(id):
     current_user_id = get_jwt_identity()
@@ -708,7 +654,7 @@ def wallet_transactions(id):
         return jsonify({"error": "An error occurred while processing your request"}),500
 
 # Get campaign transactions filters
-@app.route('/filter_transactions/<int:id>', methods=['POST'])
+@app.route('/api/v1.0/filter_transactions/<int:id>', methods=['POST'])
 # @jwt_required()  
 def wallet_transactions_filters(id):
     current_user_id = get_jwt_identity()
@@ -752,6 +698,16 @@ def wallet_transactions_filters(id):
         
     except Exception as e:
         return jsonify({"error": "An error occurred while processing your request"}),500
+
+api.add_resource(userData, '/api/v1.0/users')
+api.add_resource(userDataByid, '/api/v1.0/usersdata')
+api.add_resource(campaignData, '/api/v1.0/campaigns')
+api.add_resource(campaignById, '/api/v1.0/org_campaigns')    
+api.add_resource(addAccount, '/api/v1.0/accounts')
+api.add_resource(accountById , '/api/v1.0/orgaccounts')
+api.add_resource(Organization, '/api/v1.0/organisations')
+api.add_resource(OrganisationDetail, '/api/v1.0/organisation')
+api.add_resource(Donate, '/api/v1.0/user/donations')
 
 
 if __name__  =="__main__":
