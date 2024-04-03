@@ -2,7 +2,7 @@
 from flask import Flask, request,jsonify,make_response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry
 from utility import check_wallet_balance
 import os
 from dotenv import load_dotenv
@@ -698,6 +698,40 @@ def wallet_transactions_filters(id):
         
     except Exception as e:
         return jsonify({"error": "An error occurred while processing your request"}),500
+
+#Function to send enquiry mail
+def send_enquiry_mail(recipients,message,subject,from_email,name):
+    try:
+        subject = subject
+        body = f"{message}\n\nRegards\n{name}\n{from_email}\nWebsite"
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+        return jsonify({"message": "Message sent successfully!"}), 200
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "Error sending the Message! Please try again later."}), 400
+
+#Route to send email to us in the contact form
+@app.route("/api/v1.0/contact_form", methods=["POST"])
+def contact_us():
+    data = request.get_json()
+    name = data.get("name")
+    subject = data.get("subject")
+    message = data.get("message")
+    from_email = data.get("from_email")
+    recipients = ["msaadacontact@gmail.com"]
+
+    if  not all([name,subject,message,from_email]):
+       return jsonify({"error":"Missing required field(s)"}),400
+    try:    
+        msg = Enquiry(name=name,email=from_email, subject=subject, message=message)
+        db.session.add(msg)
+        db.session.commit()
+        send_enquiry_mail(recipients,message,subject,from_email,name)
+        return  jsonify({"message":"Your message has been received and will be responded to shortly."}),200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error":f"Email already exists in our database.\n {str(e)}"}),400
+
 
 api.add_resource(userData, '/api/v1.0/users')
 api.add_resource(userDataByid, '/api/v1.0/usersdata')
