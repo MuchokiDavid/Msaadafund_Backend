@@ -239,3 +239,15 @@ class TokenBlocklist(db.Model):
 
     def __repr__ (self):
         return f"<token {self.jti}>"
+    
+class Enquiry(db.Model):
+    __tablename__="enquiries"
+    id= db.Column(db.Integer, primary_key= True)
+    name= db.Column(db.String())
+    email= db.Column(db.String())
+    subject= db.Column(db.String())
+    message= db.Column(db.String())
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    def __repr__(self):
+        return f"name: {self.name} email: {self.email} subject: {self.subject}"
