@@ -1,8 +1,8 @@
-"""Added roles and org verification
+"""USer fields changed
 
-Revision ID: 4c2edec2ab84
+Revision ID: c06287998967
 Revises: 
-Create Date: 2024-04-01 11:44:14.577399
+Create Date: 2024-04-03 13:01:52.813349
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '4c2edec2ab84'
+revision = 'c06287998967'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -47,24 +47,23 @@ def upgrade():
     sa.Column('username', sa.String(length=64), nullable=False),
     sa.Column('email', sa.String(length=254), nullable=False),
     sa.Column('hashed_password', sa.String(length=128), nullable=False),
-    sa.Column('nationalId', sa.Integer(), nullable=False),
-    sa.Column('phoneNumber', sa.String(), nullable=True),
+    sa.Column('nationalId', sa.Integer(), nullable=True),
+    sa.Column('phoneNumber', sa.String(), nullable=False),
     sa.Column('isActive', sa.Boolean(), nullable=True),
-    sa.Column('address', sa.String(), nullable=False),
+    sa.Column('address', sa.String(), nullable=True),
     sa.Column('role', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
-    sa.UniqueConstraint('nationalId'),
     sa.UniqueConstraint('phoneNumber'),
     sa.UniqueConstraint('username')
     )
     op.create_table('accounts',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('accountType', sa.String(), nullable=True),
-    sa.Column('accountName', sa.String(), nullable=True),
-    sa.Column('accountNumber', sa.String(), nullable=True),
+    sa.Column('accountType', sa.String(), nullable=False),
+    sa.Column('accountName', sa.String(), nullable=False),
+    sa.Column('accountNumber', sa.String(), nullable=False),
     sa.Column('orgId', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['orgId'], ['organisations.id'], ),
     sa.PrimaryKeyConstraint('id'),
@@ -72,15 +71,15 @@ def upgrade():
     )
     op.create_table('campaigns',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('campaignName', sa.String(), nullable=True),
-    sa.Column('description', sa.String(), nullable=True),
-    sa.Column('category', sa.String(), nullable=True),
+    sa.Column('campaignName', sa.String(), nullable=False),
+    sa.Column('description', sa.String(), nullable=False),
+    sa.Column('category', sa.String(), nullable=False),
     sa.Column('banner', sa.String(length=255), nullable=True),
-    sa.Column('startDate', sa.String(), nullable=True),
-    sa.Column('endDate', sa.String(), nullable=True),
-    sa.Column('targetAmount', sa.Float(), nullable=True),
+    sa.Column('startDate', sa.String(), nullable=False),
+    sa.Column('endDate', sa.String(), nullable=False),
+    sa.Column('targetAmount', sa.Float(), nullable=False),
     sa.Column('isActive', sa.Boolean(), nullable=True),
-    sa.Column('walletId', sa.String(), nullable=True),
+    sa.Column('walletId', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('org_id', sa.String(), nullable=True),

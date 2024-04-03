@@ -20,10 +20,10 @@ class User(db.Model, SerializerMixin):
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(254), unique=True, nullable=False)
     hashed_password = db.Column(db.String(128), nullable=False)
-    nationalId = db.Column(db.Integer, unique=True, nullable=False)
+    nationalId = db.Column(db.Integer)
     phoneNumber = db.Column(db.String, unique=True,nullable=False)
     isActive = db.Column(db.Boolean(), default=True)
-    address = db.Column(db.String(), nullable=False)
+    address = db.Column(db.String())
     role= db.Column(db.String(), default= 'User', nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
@@ -239,3 +239,15 @@ class TokenBlocklist(db.Model):
 
     def __repr__ (self):
         return f"<token {self.jti}>"
+    
+class Enquiry(db.Model):
+    __tablename__="enquiries"
+    id= db.Column(db.Integer, primary_key= True)
+    name= db.Column(db.String())
+    email= db.Column(db.String())
+    subject= db.Column(db.String())
+    message= db.Column(db.String())
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    def __repr__(self):
+        return f"name: {self.name} email: {self.email} subject: {self.subject}"
