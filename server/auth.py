@@ -19,13 +19,13 @@ def register_user():
     lastName = data.get('lastName')
     username = data.get('username')
     email = data.get('email')
-    nationalId = data.get('nationalId')
+    # nationalId = data.get('nationalId')
     phoneNumber = data.get('phoneNumber')
-    address = data.get('address')
+    # address = data.get('address')
     hashed_password = data.get('password')
 
     # Validating if required fields are present
-    if not all([firstName, lastName, username, email, nationalId, phoneNumber, address, hashed_password]):
+    if not all([firstName, lastName, username, email, phoneNumber, hashed_password]):
         return jsonify({"error": "Missing required fields"}), 400
 
     # Checking for existing user data
@@ -37,32 +37,35 @@ def register_user():
     if existing_email:
         return jsonify({"error": "Email already exists"}), 400
 
-    existing_national_id = User.query.filter_by(nationalId=nationalId).first()
-    if existing_national_id:
-        return jsonify({"error": "National ID already exists"}), 400
+    # existing_national_id = User.query.filter_by(nationalId=nationalId).first()
+    # if existing_national_id:
+    #     return jsonify({"error": "National ID already exists"}), 400
 
     existing_phone_number = User.query.filter_by(phoneNumber=phoneNumber).first()
     if existing_phone_number:
         return jsonify({"error": "Phone number already exists"}), 404
+    try:
+        # Creating new user instance
+        new_user = User(firstName=firstName,
+                        lastName=lastName,
+                        username=username,
+                        email=email,
+                        # nationalId=nationalId,
+                        phoneNumber=phoneNumber,
+                        # address=address,
+                        password=hashed_password)
 
-    # Creating new user instance
-    new_user = User(firstName=firstName,
-                    lastName=lastName,
-                    username=username,
-                    email=email,
-                    nationalId=nationalId,
-                    phoneNumber=phoneNumber,
-                    address=address,
-                    password=hashed_password)
-
-    # Adding user to the database
-    db.session.add(new_user)
-    db.session.commit()
-    send_user_signup_mail(new_user)
-    return jsonify({
-        "message": "User registered successfully",
-        "user":new_user.serialize()
-    }), 200
+        # Adding user to the database
+        db.session.add(new_user)
+        db.session.commit()
+        send_user_signup_mail(new_user)
+        return jsonify({
+            "message": "User registered successfully",
+            "user":new_user.serialize()
+        }), 200
+    except  Exception as e:
+        print("Error in user register route: ", str(e))
+        return jsonify({"error": "Failed to create account"}), 500
 
 #Function to send users email after sign up
 def send_user_signup_mail(user):
@@ -130,17 +133,21 @@ def register_organisation():
     existing_orgPhoneNumber =  Organisation.query.filter_by(orgPhoneNumber=orgPhoneNumber).first()
     if existing_orgPhoneNumber:
         return{"error":"This Phone number is already registered to an organization"}, 400
+    try:
+        new_organisation =  Organisation(orgName=orgName, orgEmail=orgEmail, password=orgPassword,orgPhoneNumber=orgPhoneNumber, orgAddress=orgAddress)
+        db.session.add(new_organisation)
+        db.session.commit()
 
-    new_organisation =  Organisation(orgName=orgName, orgEmail=orgEmail, password=orgPassword,orgPhoneNumber=orgPhoneNumber, orgAddress=orgAddress)
-    db.session.add(new_organisation)
-    db.session.commit()
-
-    if send_registration_email(orgEmail, orgName):
-        return jsonify({"message": "Organization registered successfully and email sent",
-                        "organisation":new_organisation.serialize()
-                        }), 200
-    else:
-        return jsonify({"message": "Organization registered successfully but failed to send email"}), 500
+        if send_registration_email(orgEmail, orgName):
+            return jsonify({"message": "Organization registered successfully and email sent",
+                            "organisation":new_organisation.serialize()
+                            }), 200
+        else:
+            return jsonify({"message": "Organization registered successfully but failed to send email"}), 500
+    except  Exception as e:
+        print(e)
+        db.session.rollback()
+        return jsonify({"error": "Registration Failed"}), 500
 
 def send_registration_email(org_email, org_name):
     from app import mail
