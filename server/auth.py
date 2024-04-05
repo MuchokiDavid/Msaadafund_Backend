@@ -81,29 +81,28 @@ def send_user_signup_mail(user):
 def login(): 
     data = request.get_json()
     username = data.get('username')
-    user = User.query.filter_by(username = username).first()
+    user = User.query.filter_by(username=username).first()
+    
     if not user:
-        return {'error': 'User not registered'}, 401 
-    if user.role=='User' or user.role == 'Admin':
-        if not bcrypt.check_password_hash(user.hashed_password,data.get('password')):
-                    return {'error': '401 Unauthorized'}, 401 
+        return jsonify({'error': 'User not registered'}), 401 
+    
+    if user.role in ('User', 'Admin'):
+        if not bcrypt.check_password_hash(user.hashed_password, data.get('password')):
+            return jsonify({'error': 'Invalid credentials'}), 401 
 
-        access_token = create_access_token(identity=user.username)
-        refresh_token = create_refresh_token(identity=user.username)  
-        return jsonify(
-            {
-                "message": 'Welcome {}'.format(user.firstName),
-                "tokens": {
-                    "access": access_token,
-                    "refresh": refresh_token
-                },
-                "user": user.serialize()
-
-            }
-
-        ), 200
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)  
+        
+        return jsonify({
+            "message": 'Welcome {}'.format(user.firstName),
+            "tokens": {
+                "access": access_token,
+                "refresh": refresh_token
+            },
+            "user": user.serialize()
+        }), 200
     else: 
-        return jsonify({'error':'Unauthorised user'})
+        return jsonify({'error':'Unauthorized user'}), 401
 
 # signup organisation
 @auth_bp.route("/organisation/register", methods=["POST"])
