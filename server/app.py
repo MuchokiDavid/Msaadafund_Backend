@@ -1,4 +1,6 @@
 #Flask app
+import random
+import string
 from flask import Flask, request,jsonify,make_response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
@@ -14,7 +16,7 @@ from flask_bcrypt import Bcrypt
 import requests
 from datetime import datetime
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
-from flask_mail import Mail
+from flask_mail import Mail, Message
 from auth import auth_bp
 # from views import view_bp
 from flask_admin import Admin
@@ -40,6 +42,7 @@ app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['OTP_STORAGE'] = {}
 
 
 migrate = Migrate(app, db)
@@ -731,6 +734,49 @@ def contact_us():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error":f"Email already exists in our database.\n {str(e)}"}),400
+
+def generate_otp():
+    otp = ''.join(random.choices(string.digits, k=6))
+    return otp
+
+# Generate otp
+def send_otp(email, otp):
+    msg = Message('Password Reset OTP', recipients=[email])
+    msg.body = f'Your OTP is: {otp}'
+    mail.send(msg)
+
+# forgot password reset
+@app.route('/api/v1.0/forgot_password', methods=['POST'])
+def forgot_password():
+    email = request.json.get('email')
+    user = User.query.filter_by(email=email).first()
+    if user is None:
+        return jsonify({"error": "No account associated with this email found!"}), 404
+    else:
+        otp = generate_otp()
+        app.config['OTP_STORAGE'][email] = otp
+        send_otp(email, otp)
+        return jsonify({'message': 'OTP sent to your email'}), 200
+
+# verify OTP and update password
+@app.route('/api/v1.0/reset_password', methods=['PATCH'])
+def reset_password():
+    email = request.json.get('email')
+    otp_entered = request.json.get('otp')
+    new_password = request.json.get('new_password')
+
+    user = User.query.filter_by(email=email).first()
+
+    if user and email in app.config['OTP_STORAGE'] and app.config['OTP_STORAGE'][email] == otp_entered:
+        user.password = new_password
+        
+        db.session.commit()
+        # delete otp after being used
+        # del app.config['OTP_STORAGE'][email]
+        
+        return jsonify({'message': 'Password reset successfully'}), 200
+    else:
+        return jsonify({'error': 'Invalid OTP or email'}), 400
 
 
 api.add_resource(userData, '/api/v1.0/users')
