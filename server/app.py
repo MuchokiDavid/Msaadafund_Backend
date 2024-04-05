@@ -1,5 +1,4 @@
 #Flask app
-from flask_bcrypt import generate_password_hash
 import random
 import string
 from flask import Flask, request,jsonify,make_response
@@ -773,7 +772,7 @@ def reset_password():
         
         db.session.commit()
         # delete otp after being used
-        del app.config['OTP_STORAGE'][email]
+        # del app.config['OTP_STORAGE'][email]
         
         return jsonify({'message': 'Password reset successfully'}), 200
     else:
