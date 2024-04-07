@@ -518,14 +518,14 @@ def webhook():
         
         invoice_id = payload.get('invoice_id')
         state = payload.get('state')
+        donating_user=''
 
         donation = Donation.query.filter_by(invoice_id=invoice_id).first()
         if not donation:
             return  jsonify({"status":"Donation record not found"}),404
         if donation.user_id:
             donating_user= User.query.get(donation.user_id)
-        if not donating_user:
-            return jsonify({'error':'User not found'})
+
         donation_campaign= Campaign.query.get(donation.campaign_id)
         if not donation_campaign:
             return jsonify({'error':'campaign not listed'})
@@ -537,11 +537,13 @@ def webhook():
         if state == "COMPLETE":
             donation.status = "COMPLETE"
             db.session.commit()
-            sendMail.send_mail_on_donation_completion(donation.amount, 
-                                                      donation.donationDate, 
-                                                      donating_user.Firstname, 
-                                                      donation_campaign.campaignName, 
-                                                      campaign_organisation.orgName)
+            if donating_user:
+                sendMail.send_mail_on_donation_completion(donation.amount, 
+                                                        donation.donationDate, 
+                                                        donating_user.Firstname, 
+                                                        donation_campaign.campaignName,
+                                                        donating_user.email, 
+                                                        campaign_organisation.orgName)
         elif state == "PROCESSING":
             donation.status = "PROCESSING"
             db.session.commit()
@@ -549,11 +551,13 @@ def webhook():
             donation.status="FAILED"
             db.session.delete(donation)
             db.session.commit()
-            sendMail.send_mail_donation_not_successiful(donation.amount, 
-                                                      donation.donationDate, 
-                                                      donating_user.Firstname, 
-                                                      donation_campaign.campaignName, 
-                                                      campaign_organisation.orgName)
+            if  donating_user:
+                sendMail.send_mail_donation_not_successiful(donation.amount, 
+                                                        donation.donationDate, 
+                                                        donating_user.firstname, 
+                                                        donation_campaign.campaignName, 
+                                                        donating_user.email,
+                                                        campaign_organisation.orgName)
         
         return jsonify({'message': 'Webhook received successfully'})
     except (ValueError, TypeError):
@@ -638,10 +642,9 @@ class Donate(Resource):
         campaign_id= data.get('campaignId')
 
         if not amount:
-            return jsonify({"error":"Amount is required."}),400
-        
+            return make_response(jsonify({"error":"Amount is required."}),400)
         if int(amount) <5:
-            return jsonify({"error":"Donation must be above Kshs 5."}),400
+                return make_response(jsonify({"error":"Donation must be above Kshs 5."}),400)
 
         try:
             existing_campaign= Campaign.query.get(campaign_id)
