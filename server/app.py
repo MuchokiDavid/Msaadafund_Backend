@@ -5,7 +5,7 @@ from flask import Flask, request,jsonify,make_response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
 from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry
-from utility import check_wallet_balance
+from utility import check_wallet_balance, sendMail
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -232,23 +232,10 @@ class campaignData(Resource):
         db.session.add(new_campaign)
         db.session.commit()
         
-        send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate, endDate)
+        sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate, endDate)
 
         return make_response(jsonify({"message": "Campaign created successfully!"}), 201)
     # "data": new_campaign.serialize()
-
-def send_post_campaign(organisation, campaignName, description, category, targetAmount, startDate, endDate):
-    subject = "Campaign Created Successfully"
-    body = f"Hello {organisation.orgName}! You have successfully created a campaign.\n\n" \
-           f"Campaign Name: {campaignName}\n" \
-           f"Description: {description}\n" \
-           f"Category: {category}.\n" \
-           f"Your target amount is Ksh: {targetAmount} \n" \
-           f"Start Date: {startDate}\n" \
-           f"End Date: {endDate} \n\n" \
-           f"Good luck  with your campaign!"
-
-    mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
 
 #Get inactive campaigns
 @app.route('/api/v1.0/get_inactive', methods=['GET'])
@@ -534,14 +521,32 @@ def webhook():
         
         invoice_id = payload.get('invoice_id')
         state = payload.get('state')
+        donating_user=''
 
         donation = Donation.query.filter_by(invoice_id=invoice_id).first()
         if not donation:
             return  jsonify({"status":"Donation record not found"}),404
+        if donation.user_id:
+            donating_user= User.query.get(donation.user_id)
+
+        donation_campaign= Campaign.query.get(donation.campaign_id)
+        if not donation_campaign:
+            return jsonify({'error':'campaign not listed'})
+        
+        campaign_organisation= Organisation.query.get(donation_campaign.org_id)
+        if not campaign_organisation:
+            return jsonify({'error':'Organisation not found'})
         
         if state == "COMPLETE":
             donation.status = "COMPLETE"
             db.session.commit()
+            if donating_user:
+                sendMail.send_mail_on_donation_completion(donation.amount, 
+                                                        donation.donationDate, 
+                                                        donating_user.Firstname, 
+                                                        donation_campaign.campaignName,
+                                                        donating_user.email, 
+                                                        campaign_organisation.orgName)
         elif state == "PROCESSING":
             donation.status = "PROCESSING"
             db.session.commit()
@@ -549,6 +554,13 @@ def webhook():
             donation.status="FAILED"
             db.session.delete(donation)
             db.session.commit()
+            if  donating_user:
+                sendMail.send_mail_donation_not_successiful(donation.amount, 
+                                                        donation.donationDate, 
+                                                        donating_user.firstname, 
+                                                        donation_campaign.campaignName, 
+                                                        donating_user.email,
+                                                        campaign_organisation.orgName)
         
         return jsonify({'message': 'Webhook received successfully'})
     except (ValueError, TypeError):
@@ -558,7 +570,7 @@ def webhook():
 class  ExpressDonations(Resource):
     def post(self):
         data= request.get_json()
-        email= "anonymous@gmail.com"
+        email= "msaadaanonymous@gmail.com"
         phoneNumber= data.get("phoneNumber")
         amount= data.get('amount')
         campaign_id= data.get('campaignId')
@@ -633,10 +645,9 @@ class Donate(Resource):
         campaign_id= data.get('campaignId')
 
         if not amount:
-            return jsonify({"error":"Amount is required."}),400
-        
+            return make_response(jsonify({"error":"Amount is required."}),400)
         if int(amount) <5:
-            return jsonify({"error":"Donation must be above Kshs 5."}),400
+                return make_response(jsonify({"error":"Donation must be above Kshs 5."}),400)
 
         try:
             existing_campaign= Campaign.query.get(campaign_id)
@@ -746,17 +757,6 @@ def wallet_transactions_filters(id):
     except Exception as e:
         return jsonify({"error": "An error occurred while processing your request"}),500
 
-#Function to send enquiry mail
-def send_enquiry_mail(recipients,message,subject,from_email,name):
-    try:
-        subject = subject
-        body = f"{message}\n\nRegards\n{name}\n{from_email}\nWebsite"
-        mail.send_message(subject=subject, recipients=recipients, body=body)
-        return jsonify({"message": "Message sent successfully!"}), 200
-    except Exception as e:
-        print(e)
-        return jsonify({"error": "Error sending the Message! Please try again later."}), 400
-
 #Route to send email to us in the contact form
 @app.route("/api/v1.0/contact_form", methods=["POST"])
 def contact_us():
@@ -773,7 +773,7 @@ def contact_us():
         msg = Enquiry(name=name,email=from_email, subject=subject, message=message)
         db.session.add(msg)
         db.session.commit()
-        send_enquiry_mail(recipients,message,subject,from_email,name)
+        sendMail.send_enquiry_mail(recipients,message,subject,from_email,name)
         return  jsonify({"message":"Your message has been received and will be responded to shortly."}),200
     except Exception as e:
         db.session.rollback()
