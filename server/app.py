@@ -1,11 +1,9 @@
 #Flask app
-import random
-import string
 from flask import Flask, request,jsonify,make_response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
 from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry
-from utility import check_wallet_balance, sendMail
+from utility import check_wallet_balance, sendMail, OTPGenerator
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -245,7 +243,7 @@ def send_post_campaign(organisation, campaignName, description, category, target
         f"Good luck  with your campaign!"
 
 #       
-        return make_response(jsonify({"message": "Campaign created successfully!"}), 201)
+    return make_response(jsonify({"message": "Campaign created successfully!"}), 201)
     # "data": new_campaign.serialize()
 
 #get campaigns
@@ -800,15 +798,6 @@ def contact_us():
         db.session.rollback()
         return jsonify({"error":f"Email already exists in our database.\n {str(e)}"}),400
 
-def generate_otp():
-    otp = ''.join(random.choices(string.digits, k=6))
-    return otp
-
-# Generate otp
-def send_otp(email, otp):
-    msg = Message('Password Reset OTP', recipients=[email])
-    msg.body = f'Your OTP is: {otp}'
-    mail.send(msg)
 
 # forgot password reset
 @app.route('/api/v1.0/forgot_password', methods=['POST'])
@@ -818,9 +807,9 @@ def forgot_password():
     if user is None:
         return jsonify({"error": "No account associated with this email found!"}), 404
     else:
-        otp = generate_otp()
+        otp = OTPGenerator.generate_otp()
         app.config['OTP_STORAGE'][email] = otp
-        send_otp(email, otp)
+        OTPGenerator.send_otp(email, otp)
         return jsonify({'message': 'OTP sent to your email'}), 200
 
 # verify OTP and update password
@@ -836,8 +825,37 @@ def reset_password():
         user.password = new_password
         
         db.session.commit()
-        # delete otp after being used
-        # del app.config['OTP_STORAGE'][email]
+        
+        return jsonify({'message': 'Password reset successfully'}), 200
+    else:
+        return jsonify({'error': 'Invalid OTP or email'}), 400
+
+#organisation forget password   
+@app.route('/api/v1.0/org_forgot_password', methods=['POST'])
+def org_forgot_password():
+    orgEmail = request.json.get('email')
+    organisation = Organisation.query.filter_by(orgEmail=orgEmail).first()
+    if organisation is None:
+        return jsonify({"error": "No account associated with this email found!"}), 404
+    else:
+        otp = OTPGenerator.generate_otp()
+        app.config['OTP_STORAGE'][orgEmail] = otp
+        OTPGenerator.send_otp(orgEmail, otp)
+        return jsonify({'message': 'OTP sent to your email'}), 200
+
+# verify OTP and update password
+@app.route('/api/v1.0/org_reset_password', methods=['PATCH'])
+def org_reset_password():
+    orgEmail = request.json.get('email')
+    otp_entered = request.json.get('otp')
+    new_password = request.json.get('new_password')
+
+    organisation = Organisation.query.filter_by(orgEmail=orgEmail).first()
+
+    if organisation and orgEmail in app.config['OTP_STORAGE'] and app.config['OTP_STORAGE'][orgEmail] == otp_entered:
+        organisation.password = new_password
+        
+        db.session.commit()
         
         return jsonify({'message': 'Password reset successfully'}), 200
     else:
