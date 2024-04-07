@@ -1,6 +1,7 @@
 from flask import  Blueprint, jsonify, request, make_response
 from models import User, bcrypt, db,TokenBlocklist, Organisation
 from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity,jwt_required,get_jwt
+from utility import sendMail
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -58,7 +59,7 @@ def register_user():
         # Adding user to the database
         db.session.add(new_user)
         db.session.commit()
-        send_user_signup_mail(new_user)
+        sendMail.send_user_signup_mail(new_user)
         return jsonify({
             "message": "User registered successfully",
             "user":new_user.serialize()
@@ -66,15 +67,6 @@ def register_user():
     except  Exception as e:
         print("Error in user register route: ", str(e))
         return jsonify({"error": "Failed to create account"}), 500
-
-#Function to send users email after sign up
-def send_user_signup_mail(user):
-    from app import mail
-    subject = "Welcome to Msaada Mashinani"
-    body = f"Dear {user.firstName} {user.lastName},\n\n Thank you for registering on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
-    recipients = [user.email]
-    mail.send_message(subject=subject, recipients=recipients, body=body)
-
 
 # login for user
 @auth_bp.route('/user/login', methods=["POST"])
@@ -121,7 +113,6 @@ def register_organisation():
     if not orgName or not  orgEmail or not orgPassword or not orgAddress or not orgPhoneNumber:
          return jsonify({'error':'Missing fields'}),400
 
-    
     existing_orgName = Organisation.query.filter_by(orgName=orgName).first()
     if existing_orgName:
         return {"error": "An organisation with this name already exists."},400
@@ -138,7 +129,7 @@ def register_organisation():
         db.session.add(new_organisation)
         db.session.commit()
 
-        if send_registration_email(orgEmail, orgName):
+        if sendMail.send_registration_email(orgEmail, orgName):
             return jsonify({"message": "Organization registered successfully and email sent",
                             "organisation":new_organisation.serialize()
                             }), 200
@@ -148,18 +139,6 @@ def register_organisation():
         print(e)
         db.session.rollback()
         return jsonify({"error": "Registration Failed"}), 500
-
-def send_registration_email(org_email, org_name):
-    from app import mail
-    subject = "Organization Registration Confirmation"
-    body = f"Hello: {org_name},\n\nThank you for registering on our Msaada Mashinani Platform.\n\nRegards,\n Msaada Mashinani Team"
-    
-    try:
-        mail.send_message(subject=subject, recipients=[org_email], body=body)
-        return True
-    except Exception as e:
-        print(f"Error sending email: {e}")
-        return False
 
 
 @auth_bp.route('/organisation/login',methods=['POST'])
@@ -176,7 +155,7 @@ def login_Organisation():
             return jsonify({"error":"Invalid Password"}),401
         
         if organisation.isVerified==False:
-            send_org_verification_mail(organisation)
+            sendMail.send_org_verification_mail(organisation)
             return {"error":"Account is not verified. Please check your email for verification"},403
         
         access_token = create_access_token(identity=organisation.id)
@@ -193,13 +172,6 @@ def login_Organisation():
         print(e)
         return {'error':str(e)},500
 
-#Function to send verification to organisation
-def send_org_verification_mail(org):
-    from app import mail
-    subject = "Welcome to Msaada Mashinani"
-    body = f"Dear {org.orgName},\n\n Thank you for registering on our Msaada Mashinani Platform.\nYour account is not verified. Please reply to this email for verification\n Best regards,\n Msaada Mashinani Team"
-    recipients = [org.orgEmail]
-    mail.send_message(subject=subject, recipients=recipients, body=body)
 
 # logout for user
 @auth_bp.get('/logout')
