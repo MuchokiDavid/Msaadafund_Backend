@@ -1,6 +1,9 @@
 #helper function
 
 #function to check wallet balance
+import random
+import string
+from flask_mail import Message
 from flask import jsonify
 import os
 from dotenv import load_dotenv
@@ -96,3 +99,15 @@ class sendMail():
         body = f"Dear {user.firstName} {user.lastName},\n\n Thank you for registering on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [user.email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
+
+# Generate otp
+class  OTPGenerator():
+    def send_otp(email, otp):
+        from app import mail
+        msg = Message('Password Reset OTP', recipients=[email])
+        msg.body = f'Your OTP is: {otp}'
+        mail.send(msg)
+
+    def generate_otp():
+        otp = ''.join(random.choices(string.digits, k=6))
+        return otp
