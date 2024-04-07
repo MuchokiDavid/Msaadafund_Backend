@@ -1,6 +1,4 @@
 #Flask app
-import random
-import string
 from flask import Flask, request,jsonify,make_response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
