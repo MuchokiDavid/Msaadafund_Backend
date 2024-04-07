@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "4bf30345b1100810f0b9164f82b9afcc0c6b51b7df593b88bb96f709513adac6"
+            "sha256": "bcbb991f830908ea9119931512e63d40d815da6a76e3a857ef63485d8bd201ac"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -195,14 +195,21 @@
             "markers": "python_version >= '3.7'",
             "version": "==8.1.3"
         },
+        "cloudinary": {
+            "hashes": [
+                "sha256:922467259045ffdd81713b5ed2bc48f1d70f7f3e9812b8b0c206e99d665ed161"
+            ],
+            "index": "pypi",
+            "version": "==1.39.1"
+        },
         "faker": {
             "hashes": [
-                "sha256:998c29ee7d64429bd59204abffa9ba11f784fb26c7b9df4def78d1a70feb36a7",
-                "sha256:a5ddccbe97ab691fad6bd8036c31f5697cfaa550e62e000078d1935fa8a7ec2e"
+                "sha256:39d34c63f0d62ed574161e23fe32008917b923d18098ce94c2650fe16463b7d5",
+                "sha256:73f2bd886e8ce751e660c7d37a6c0a128aab5e1551359335bb79cfea0f4fabfc"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
-            "version": "==24.4.0"
+            "version": "==24.7.1"
         },
         "flask": {
             "hashes": [
