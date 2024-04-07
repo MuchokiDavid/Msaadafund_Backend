@@ -22,6 +22,8 @@ from auth import auth_bp
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView
+from cloudinary.uploader import upload
+import cloudinary.api
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -53,6 +55,13 @@ bcrypt = Bcrypt(app)
 jwt = JWTManager()
 jwt.init_app(app)
 mail = Mail(app)
+
+
+cloudinary.config( 
+  cloud_name = "dml7sp2zm", 
+  api_key = "111134481418281", 
+  api_secret = "Mr7c7aIxfPPx4p0xDLcqGjuoEl8" 
+)
 
 # register blueprint
 app.register_blueprint(auth_bp, url_prefix='/api/v1.0/auth')
@@ -149,6 +158,90 @@ class userDataByid(Resource):
             db.session.commit()
 
             return {"message": "User deactivated successfully"},200   
+        
+@app.route("/setCampaign", methods=["POST"])
+@jwt_required()
+def post():
+    current_user = get_jwt_identity()
+    campaignName = request.form.get('name')
+    description = request.form.get('description')
+    category = request.form.get('category')
+    startDateStr = request.form.get('startDate')
+    endDateStr = request.form.get('endDate')
+    targetAmount = float(request.form.get('targetAmount'))
+    banner = request.files.get('banner') 
+    
+    
+    available_org= Organisation.query.filter_by(id=current_user).first()
+    if not available_org:
+        return jsonify({"error":"Organisation does not exist."}),404
+    print(available_org.orgName)
+
+    # Convert date strings to Python date objects
+    startDate = datetime.strptime(startDateStr, '%Y-%m-%d').date()
+    endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
+
+    print(startDate, endDate)
+    current_date = datetime.now().date()
+    if startDate < current_date:
+        return {'error': 'cannot create a campaign in the past'}, 400 
+    if endDate < current_date:
+        return {'error':'enddate  should be greater than current date'} ,400  
+    if endDate < startDate:
+        return {'error': 'end date cannot be before start date'}, 400
+    
+
+    if not (campaignName and description and startDate and endDate):
+        return jsonify({"error":"Please provide complete information"}),400
+    
+    if startDate == current_date:
+        isActive = True
+    elif startDate > current_date:
+        isActive = False
+    elif endDate > current_date:
+        isActive = False
+
+    try:
+        # Upload the banner image to Cloudinary
+        result = upload(banner)
+        if "secure_url" in result:
+            new_campaign = Campaign(
+                campaignName=campaignName,
+                description=description,
+                category=category,
+                banner=result["secure_url"],
+                startDate=startDate,
+                endDate=endDate,
+                targetAmount=targetAmount,
+                isActive=isActive,
+                org_id=available_org.id
+            )
+            print(new_campaign.banner)
+            db.session.add(new_campaign)
+            db.session.commit()
+
+            send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
+            # response = make_response(jsonify(result["secure_url"],description))
+            return jsonify(result["secure_url"],description)
+
+            # return {"message": "Campaign created successfully"}, 200
+        else:
+            return {"error": "Failed to upload banner to Cloudinary"},404
+    except Exception as e:
+        return {"error": str(e)}, 404
+    
+def send_post_campaign(organisation, campaignName, description, category, targetAmount, startDate, endDate):
+    subject = "Campaign Created Successfully"
+    body = f"Hello {organisation.orgName}! You have successfully created a campaign.\n\n" \
+        f"Campaign Name: {campaignName}\n" \
+        f"Description: {description}\n" \
+        f"Category: {category}.\n" \
+        f"Your target amount is Ksh: {targetAmount} \n" \
+        f"Start Date: {startDate}\n" \
+        f"End Date: {endDate} \n\n" \
+        f"Good luck  with your campaign!"
+
+    mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
 
 #get campaigns
 class campaignData(Resource):
@@ -158,89 +251,7 @@ class campaignData(Resource):
         response = make_response(jsonify(all_campaigns), 200)
         return response
     
-    @jwt_required()
-    def post(self):
-        current_user = get_jwt_identity()
-        data=request.get_json()
-        campaignName = data.get('name')
-        description = data.get('description')
-        category= data.get('category')
-        banner= data.get('banner')
-        startDateStr = data.get('startDate')
-        endDateStr = data.get('endDate')
-        targetAmount = float(data.get('targetAmount'))
-        # isActive= data.get('isActive') # issue 1 
-
-       
-        
-        available_org= Organisation.query.filter_by(id=current_user).first()
-        if not available_org:
-            return jsonify({"error":"Organisation does not exist."}),404
-        # print(available_org.orgName)
-
-        # Convert date strings to Python date objects
-        startDate = datetime.strptime(startDateStr, '%Y-%m-%d').date()
-        endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
-
-
-        current_date = datetime.now().date()
-        if startDate < current_date:
-            return {'error': 'cannot create a campaign in the past'}, 400 
-        if endDate < current_date:
-            return {'error':'enddate  should be greater than current date'} ,400  
-        if endDate < startDate:
-            return {'error': 'end date cannot be before start date'}, 400
-        
-
-        if not (campaignName and description and startDate and endDate):
-            return jsonify({"error":"Please provide complete information"}),400
-        
-        if startDate == current_date:
-            isActive = True
-        elif startDate > current_date:
-            isActive = False
-        elif endDate > current_date:
-            isActive = False
-
-
-        new_campaign = Campaign(campaignName= campaignName, 
-                                description= description, 
-                                category= category,
-                                banner= banner,
-                                startDate=startDate, 
-                                endDate= endDate, 
-                                targetAmount=targetAmount, 
-                                isActive= bool(isActive), # bool("") => False
-                                org_id=available_org.id
-                                )
-            
-        #create wallet
-        intasend_response = service.wallets.create(currency="KES", label=f"Camp{uuid.uuid4()}", can_disburse=True)
-
-        if intasend_response.get('errors'):
-            return jsonify({"error":"error creating wallet"}),400
-        
-        #add wallet id to instance
-        new_campaign.walletId=intasend_response.get("wallet_id")
-        db.session.add(new_campaign)
-        db.session.commit()
-        
-        send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate, endDate)
-
-        return make_response(jsonify({"message": "Campaign created successfully!", "data": new_campaign.serialize()}), 201)
-
-def send_post_campaign(organisation, campaignName, description, category, targetAmount, startDate, endDate):
-    subject = "Campaign Created Successfully"
-    body = f"Hello {organisation.orgName}! You have successfully created a campaign.\n\n" \
-           f"Campaign Name: {campaignName}\n" \
-           f"Description: {description}\n" \
-           f"Category: {category}.\n" \
-           f"Your target amount is Ksh: {targetAmount} \n" \
-           f"Start Date: {startDate}\n" \
-           f"End Date: {endDate} \n\n" \
-           f"Good luck  with your campaign!"
-
-    mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
+   
 
 #Get inactive campaigns
 @app.route('/api/v1.0/get_inactive', methods=['GET'])

@@ -29,6 +29,7 @@ flask-jwt-extended = "*"
 flask-login = "*"
 flask-admin = "*"
 flask-security = "*"
+cloudinary = "*"
 
 [dev-packages]
 
