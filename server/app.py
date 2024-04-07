@@ -5,7 +5,7 @@ from flask import Flask, request,jsonify,make_response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
 from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry
-from utility import check_wallet_balance
+from utility import check_wallet_balance, sendMail
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -98,6 +98,10 @@ def token_in_blocklist(jwt_header,jwt_data):
 # if token is none : it will return false 
     return token is not None
 
+@app.route("/")
+def index():
+    """Home page."""""
+    return "<h3>Msaada Mashinani</h3>"
 
 # classes for users
 class userData (Resource):
@@ -189,8 +193,7 @@ def post():
         return {'error':'enddate  should be greater than current date'} ,400  
     if endDate < startDate:
         return {'error': 'end date cannot be before start date'}, 400
-    
-
+ 
     if not (campaignName and description and startDate and endDate):
         return jsonify({"error":"Please provide complete information"}),400
     
@@ -241,7 +244,9 @@ def send_post_campaign(organisation, campaignName, description, category, target
         f"End Date: {endDate} \n\n" \
         f"Good luck  with your campaign!"
 
-    mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
+#       
+        return make_response(jsonify({"message": "Campaign created successfully!"}), 201)
+    # "data": new_campaign.serialize()
 
 #get campaigns
 class campaignData(Resource):
@@ -434,7 +439,7 @@ class OrganisationDetail(Resource):
             return{'error': 'Organisation does not exist'} ,  404
         db.session.delete(org)
         db.session.commit()
-        return {'error' : 'Organisation deleted successfully'}, 200
+        return {'message' : 'Organisation deleted successfully'}, 200
     
     @jwt_required()
     def patch(self):
@@ -528,6 +533,112 @@ def campaign_money_withdrawal():
         print(e)
         return jsonify({"error":str(e)}),500
 
+#Intasend web hook for getting changes in transaction  status on mpesa stk push
+@app.route('/api/v1.0/intasend-webhook', methods = ['POST'])
+def webhook():
+    try:
+        payload = request.json
+        # print(payload)
+        
+        invoice_id = payload.get('invoice_id')
+        state = payload.get('state')
+        donating_user=''
+
+        donation = Donation.query.filter_by(invoice_id=invoice_id).first()
+        if not donation:
+            return  jsonify({"status":"Donation record not found"}),404
+        if donation.user_id:
+            donating_user= User.query.get(donation.user_id)
+
+        donation_campaign= Campaign.query.get(donation.campaign_id)
+        if not donation_campaign:
+            return jsonify({'error':'campaign not listed'})
+        
+        campaign_organisation= Organisation.query.get(donation_campaign.org_id)
+        if not campaign_organisation:
+            return jsonify({'error':'Organisation not found'})
+        
+        if state == "COMPLETE":
+            donation.status = "COMPLETE"
+            db.session.commit()
+            if donating_user:
+                sendMail.send_mail_on_donation_completion(donation.amount, 
+                                                        donation.donationDate, 
+                                                        donating_user.Firstname, 
+                                                        donation_campaign.campaignName,
+                                                        donating_user.email, 
+                                                        campaign_organisation.orgName)
+        elif state == "PROCESSING":
+            donation.status = "PROCESSING"
+            db.session.commit()
+        elif state== "FAILED":
+            donation.status="FAILED"
+            db.session.delete(donation)
+            db.session.commit()
+            if  donating_user:
+                sendMail.send_mail_donation_not_successiful(donation.amount, 
+                                                        donation.donationDate, 
+                                                        donating_user.firstname, 
+                                                        donation_campaign.campaignName, 
+                                                        donating_user.email,
+                                                        campaign_organisation.orgName)
+        
+        return jsonify({'message': 'Webhook received successfully'})
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid third party response'}), 400
+    
+#Express donations route for user who is not logged in
+class  ExpressDonations(Resource):
+    def post(self):
+        data= request.get_json()
+        email= "msaadaanonymous@gmail.com"
+        phoneNumber= data.get("phoneNumber")
+        amount= data.get('amount')
+        campaign_id= data.get('campaignId')
+
+        if not email:
+            return make_response(jsonify({"error":"Email is required."}),400)
+        
+        if not phoneNumber:
+            return make_response(jsonify({"error":"Phone number is required."}),400)
+
+        if not amount:
+            return make_response(jsonify({"error":"Amount is required."}),400)
+        if int(amount) <5:
+                return make_response(jsonify({"error":"Donation must be above Kshs 5."}),400)
+
+        
+        existing_campaign= Campaign.query.filter_by(id=campaign_id).first()
+        if not existing_campaign:
+            return  make_response(jsonify({"error":"Campaign does not exist"}),404)
+        wallet_id=existing_campaign.walletId
+        try:
+            response = service.wallets.fund(wallet_id=wallet_id, email=email, phone_number=phoneNumber,
+                                            amount=float(amount), currency="KES", narrative=f"Donation for {existing_campaign.campaignName}", 
+                                            mode="MPESA-STK-PUSH")
+            
+            # print(response)
+            data = response
+            if data.get("errors"):
+                error_message = data.get("errors")[0].get("detail")
+                return  make_response(jsonify({"message":error_message}))
+            # return jsonify(data)
+            new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, status= data.get('invoice').get('state'), invoice_id= data.get('invoice').get('invoice_id'))
+            
+            db.session.add(new_donation)
+            db.session.commit()
+            return make_response(jsonify({"message": "Donation initialised successfully!", "data": new_donation.serialize()}), 200)
+            # else:
+            #     return make_response(jsonify({'error':'Error making donation'}), 400)
+        except TypeError as ex:
+            print(ex)
+            return make_response(jsonify({"error":f"An error occured:{e}"}))
+        except ValueError:
+            return make_response(jsonify({"error": "Invalid value"}),400)  
+        except Exception as e:
+            print (e)
+            if e:
+                return make_response(jsonify({"error": f"Unexpected Error: {str(e)}"}), 400)
 
 class Donate(Resource):
     @jwt_required()
@@ -551,25 +662,13 @@ class Donate(Resource):
         if not user:
             return {"error": "User not found"}, 404
         data= request.get_json()
-        # email= data.get('email') #use current user email issue 3
-        # phoneNumber= data.get("phoneNumber")
-        # email = user.email 
-        # phoneNumber = user.phoneNumber
         amount= data.get('amount')
         campaign_id= data.get('campaignId')
 
-
-        # if not email:
-        #     return jsonify({"error":"Email is required."}),400
-        
-        # if not phoneNumber:
-        #     return jsonify({"error":"Phone number is required."}),400
-
         if not amount:
-            return jsonify({"error":"Amount is required."}),400
-        
+            return make_response(jsonify({"error":"Amount is required."}),400)
         if int(amount) <5:
-            return jsonify({"error":"Donation must be above Kshs 5."}),400
+                return make_response(jsonify({"error":"Donation must be above Kshs 5."}),400)
 
         try:
             existing_campaign= Campaign.query.get(campaign_id)
@@ -581,60 +680,26 @@ class Donate(Resource):
             response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=user.email, phone_number=user.phoneNumber,
                                             amount=amount, currency="KES", narrative="Deposit", 
                                             mode="MPESA-STK-PUSH")
-            print (user.email)
-            return jsonify(response)
-        
-        # new_donation=Donation(email,phoneNumber,float(amount),existing_campaign.id)
-            
-            # db.session.add(new_donation)
-            # db.session.commit()
-            # send_email(f'{new_donation.name()} has made a donation of ${new_donation.amount} to {new_donation.campaign().
-            # send_express_donation_email(email,phoneNumber,amount,existing_campaign.name)
-            # return jsonify(f'Thank you for your support! Your donation of ${amount} has been recorded and an email with further instructions
+            # new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, user_id=user.id)
+            data = response
+            if data.get("errors"):
+                error_message = data.get("errors")[0].get("detail")
+                return  make_response(jsonify({"message":error_message}))
+            # return jsonify(data)
+            try:
+                new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, user_id=user.id, status= data.get('invoice').get('state'), invoice_id= data.get('invoice').get('invoice_id'))
+                
+                db.session.add(new_donation)
+                db.session.commit()
+                return make_response(jsonify({"message": "Donation initialised successfully!", "data": new_donation.serialize()}), 200)
+            except  Exception as e:
+                print (e)
+                db.session.rollback()
+                return {"error":"An error occurred while processing your donation"}
         except Exception as e:
             print (e)
-            return jsonify({"error": "An error occurred while processing your request"}),500
+            return jsonify({"error": "An error occurred while processing your request. Please try again later"}), 500
 
-#Express donations route for user who is not logged in
-@app.route('/api/v1.0/express/donations', methods = ['POST'])
-def express_donation():
-    data= request.get_json()
-    email= "anonymous@gmail.com"
-    phoneNumber= data.get("phoneNumber")
-    amount= data.get('amount')
-    campaign_id= data.get('campaignId')
-
-    if not email:
-        return jsonify({"error":"Email is required."}),400
-    
-    if not phoneNumber:
-        return jsonify({"error":"Phone number is required."}),400
-
-    if not amount:
-        return jsonify({"error":"Amount is required."}),400
-    if int(amount) <5:
-            return jsonify({"error":"Donation must be above Kshs 5."}),400
-
-    try:
-        existing_campaign= Campaign.query.filter_by(id=campaign_id).first()
-        if not existing_campaign:
-            return  jsonify({"error":"Campaign does not exist"}),404
-
-        response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=email, phone_number=phoneNumber,
-                                        amount=amount, currency="KES", narrative="Deposit", 
-                                        mode="MPESA-STK-PUSH")
-        return jsonify(response)
-    
-     # new_donation=Donation(email,phoneNumber,float(amount),existing_campaign.id)
-        
-        # db.session.add(new_donation)
-        # db.session.commit()
-        # send_email(f'{new_donation.name()} has made a donation of ${new_donation.amount} to {new_donation.campaign().
-        # send_express_donation_email(email,phoneNumber,amount,existing_campaign.name)
-        # return jsonify(f'Thank you for your support! Your donation of ${amount} has been recorded and an email with further instructions
-    except Exception as e:
-        print (e)
-        return jsonify({"error": "An error occurred while processing your request"}),500
 
 #Get all campaign transactions
 @app.route('/api/v1.0/all_transactions/<int:id>', methods=['GET'])
@@ -643,7 +708,7 @@ def wallet_transactions(id):
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.filter_by(id=current_user_id).first()
     if not existing_org:
-        return  jsonify({"error":"Organisation does not exist"}),401
+        return  jsonify({"error":"Organisation does not exist"}),404
 
     #checking a if a campaign exist
     existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
@@ -713,17 +778,6 @@ def wallet_transactions_filters(id):
     except Exception as e:
         return jsonify({"error": "An error occurred while processing your request"}),500
 
-#Function to send enquiry mail
-def send_enquiry_mail(recipients,message,subject,from_email,name):
-    try:
-        subject = subject
-        body = f"{message}\n\nRegards\n{name}\n{from_email}\nWebsite"
-        mail.send_message(subject=subject, recipients=recipients, body=body)
-        return jsonify({"message": "Message sent successfully!"}), 200
-    except Exception as e:
-        print(e)
-        return jsonify({"error": "Error sending the Message! Please try again later."}), 400
-
 #Route to send email to us in the contact form
 @app.route("/api/v1.0/contact_form", methods=["POST"])
 def contact_us():
@@ -740,7 +794,7 @@ def contact_us():
         msg = Enquiry(name=name,email=from_email, subject=subject, message=message)
         db.session.add(msg)
         db.session.commit()
-        send_enquiry_mail(recipients,message,subject,from_email,name)
+        sendMail.send_enquiry_mail(recipients,message,subject,from_email,name)
         return  jsonify({"message":"Your message has been received and will be responded to shortly."}),200
     except Exception as e:
         db.session.rollback()
@@ -799,6 +853,7 @@ api.add_resource(accountById , '/api/v1.0/orgaccounts')
 api.add_resource(Organization, '/api/v1.0/organisations')
 api.add_resource(OrganisationDetail, '/api/v1.0/organisation')
 api.add_resource(Donate, '/api/v1.0/user/donations')
+api.add_resource(ExpressDonations, '/api/v1.0/express/donations')
 
 
 if __name__  =="__main__":

@@ -159,6 +159,8 @@ class Donation (db.Model, SerializerMixin):
     donationDate = db.Column(db.DateTime, server_default=db.func.now())
     user_id =  db.Column(db.Integer, db.ForeignKey('users.id'))
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'))
+    status= db.Column(db.String, nullable=False)
+    invoice_id=db.Column(db.String, nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
 
@@ -168,7 +170,9 @@ class Donation (db.Model, SerializerMixin):
             'amount': self.amount,
             'donationDate': self.donationDate.strftime("%Y-%m-%d"),
             'userId': self.user_id,
-            'campaignId': self.campaign_id
+            'campaignId': self.campaign_id,
+            'status': self.status,
+            'invoice_id':self.invoice_id
         }
     
     def __repr__(self):
@@ -207,8 +211,8 @@ class  Campaign(db.Model, SerializerMixin):
             'targetAmount': self.targetAmount,
             'isActive': self.isActive,
             'walletId': self.walletId,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'org_id': self.org_id,
             'donations': [donation.serialize() for donation in self.donations]
         }
