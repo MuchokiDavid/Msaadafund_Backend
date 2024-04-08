@@ -255,8 +255,16 @@ class campaignData(Resource):
         response = make_response(jsonify(all_campaigns), 200)
         return response
     
-   
-
+#Get all campaigns  by organization id
+class OrgCampaigns(Resource):
+    @jwt_required()
+    def get(self):
+        current_user = get_jwt_identity()
+        campaigns = Campaign.query.filter_by(org_id=current_user, isActive=True).all()
+        if not campaigns:
+            return {"error":"Campaign not found"}, 404
+        return make_response(jsonify({'campaigns':[camp.serialize() for camp in campaigns]}), 200)
+    
 #Get inactive campaigns
 @app.route('/api/v1.0/get_inactive', methods=['GET'])
 def  getInactiveCampaign():
@@ -349,14 +357,14 @@ def check_wallet(id):
     print(wallet_id)
     try:
         response = service.wallets.details(wallet_id)
-        data = response
-        if data.get("errors"):
-            error_message = data.get("errors")
+        print(response)
+        if response.get("errors"):
+            error_message = response.get("errors")
             return  make_response({ "error":error_message} , 400)
 
-        return {'wallet_details': response}, 200
+        return jsonify({'wallet_details': response}), 200
     except Exception as e:
-        return { "error":"Internal server error"}
+        return jsonify({ "error":"Internal server error"}), 400
     
 class addAccount(Resource):
     def get(self):
@@ -650,7 +658,7 @@ class Donate(Resource):
         user = User.query.filter_by(username=current_user).first()
         if not user:
             return {"error": "User not found"}, 404
-        all_donations = Donation.query.filter_by(user_id=user.id).all()
+        all_donations = Donation.query.filter_by(user_id=user.id, status='COMPLETE').all()
         if not all_donations:
             return {"error": "No donations found"}, 404
         response_dict = [donation.serialize() for donation in all_donations]
@@ -870,7 +878,8 @@ def org_reset_password():
 api.add_resource(userData, '/api/v1.0/users')
 api.add_resource(userDataByid, '/api/v1.0/usersdata')
 api.add_resource(campaignData, '/api/v1.0/campaigns')
-api.add_resource(campaignById, '/api/v1.0/org_campaigns')    
+api.add_resource(campaignById, '/api/v1.0/org_campaigns')
+api.add_resource(OrgCampaigns, '/api/v1.0/org_all_campaigns')    
 api.add_resource(addAccount, '/api/v1.0/accounts')
 api.add_resource(accountById , '/api/v1.0/orgaccounts')
 api.add_resource(Organization, '/api/v1.0/organisations')
