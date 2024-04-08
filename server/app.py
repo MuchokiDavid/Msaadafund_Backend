@@ -170,7 +170,7 @@ def post():
     category = request.form.get('category')
     startDateStr = request.form.get('startDate')
     endDateStr = request.form.get('endDate')
-    targetAmount = float(request.form.get('targetAmount'))
+    targetAmount = request.form.get('targetAmount')
     banner = request.files.get('banner') 
     
     
@@ -195,6 +195,7 @@ def post():
     if not (campaignName and description and startDate and endDate):
         return jsonify({"error":"Please provide complete information"}),400
     print(description)
+    
     if startDate == current_date:
         isActive = True
     elif startDate > current_date:
@@ -213,19 +214,38 @@ def post():
                 banner=result["secure_url"],
                 startDate=startDate,
                 endDate=endDate,
-                targetAmount=targetAmount,
+                targetAmount=float(targetAmount),
                 isActive=isActive,
                 org_id=available_org.id
             )
-            print(new_campaign.banner)
-            db.session.add(new_campaign)
-            db.session.commit()
 
-            sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
+            #create wallet
+            try:
+                response = service.wallets.create(currency="KES",  label=str(uuid.uuid4()), can_disburse=True)
+                print(response)
+
+                if response.get('type') == 'client_error':
+                    return jsonify({"error":response.get('errors')[0].get('detail')}),400
+
+                new_campaign.walletId=response.get("wallet_id")
+                print(new_campaign.walletId)
+            except Exception as e:
+                print(e)
+                return {"error": str(e)}, 404
+            
+            try:
+                db.session.add(new_campaign)
+                db.session.commit()
+                sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
             # response = make_response(jsonify(result["secure_url"],description))
-            return jsonify(result["secure_url"],description)
+                # return jsonify(result["secure_url"],description)
 
-            # return {"message": "Campaign created successfully"}, 200
+
+            except Exception as e:
+                print(e)
+                return jsonify({"Error": "Something went wrong while creating your campaign"}),500
+            return {new_campaign.serialize()}
+            
         else:
             return {"error": "Failed to upload banner to Cloudinary"},404
     except Exception as e:
