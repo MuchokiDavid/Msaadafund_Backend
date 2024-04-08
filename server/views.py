@@ -101,10 +101,10 @@ class  OrganisationAdminView(ModelView):
     column_filters=('orgName','orgEmail','orgAddress','orgDescription','isVerified')
 
 class DonationAdminView(ModelView):
-    column_sortable_list=('amount','created_at','donationDate')
+    column_sortable_list=('amount','created_at','donationDate','status')
     column_searchable_list=('campaign_id','user_id','donationDate')
-    column_list=('user_id','amount','donationDate','campaign_id', 'created_at')
-    column_labels=dict(user_id='User Id', amount='Amount', donationDate='Donation Date', created_at='Created At')
+    column_list=('user_id','amount','donationDate','campaign_id','status','invoice_id','created_at')
+    column_labels=dict(user_id='User Id', amount='Amount', donationDate='Donation Date',status='Status',invoice_id='Invoice',created_at='Created At')
     column_filters=column_list
 
 class CampaignAdminView(ModelView):
