@@ -251,10 +251,13 @@ def post():
 class campaignData(Resource):
     # @jwt_required()
     def get(self):
-        all_campaigns = [campaign.serialize() for campaign in Campaign.query.filter_by(isActive=True).all()]
-        response = make_response(jsonify(all_campaigns), 200)
+        page = request.args.get('page', default=1, type=int)
+        per_page = request.args.get('per_page', default=10, type=int)
+        campaigns = Campaign.query.filter_by(isActive=True).paginate(page=page, per_page=per_page)
+        data = [campaign.serialize() for campaign in campaigns.items]
+        response = make_response(jsonify(data), 200)
         return response
-    
+       
    
 
 #Get inactive campaigns
