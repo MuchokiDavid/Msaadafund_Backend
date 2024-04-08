@@ -163,11 +163,11 @@ class userDataByid(Resource):
 
             return {"message": "User deactivated successfully"},200   
         
-@app.route("/setCampaign", methods=["POST"])
+@app.route("/api/v1.0/setCampaign", methods=["POST"])
 @jwt_required()
 def post():
     current_user = get_jwt_identity()
-    campaignName = request.form.get('name')
+    campaignName = request.form.get('campaignName')
     description = request.form.get('description')
     category = request.form.get('category')
     startDateStr = request.form.get('startDate')
@@ -196,7 +196,7 @@ def post():
  
     if not (campaignName and description and startDate and endDate):
         return jsonify({"error":"Please provide complete information"}),400
-    
+    print(description)
     if startDate == current_date:
         isActive = True
     elif startDate > current_date:
@@ -223,7 +223,7 @@ def post():
             db.session.add(new_campaign)
             db.session.commit()
 
-            send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
+            sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
             # response = make_response(jsonify(result["secure_url"],description))
             return jsonify(result["secure_url"],description)
 
@@ -233,21 +233,6 @@ def post():
     except Exception as e:
         return {"error": str(e)}, 404
     
-def send_post_campaign(organisation, campaignName, description, category, targetAmount, startDate, endDate):
-    subject = "Campaign Created Successfully"
-    body = f"Hello {organisation.orgName}! You have successfully created a campaign.\n\n" \
-        f"Campaign Name: {campaignName}\n" \
-        f"Description: {description}\n" \
-        f"Category: {category}.\n" \
-        f"Your target amount is Ksh: {targetAmount} \n" \
-        f"Start Date: {startDate}\n" \
-        f"End Date: {endDate} \n\n" \
-        f"Good luck  with your campaign!"
-
-#       
-        return make_response(jsonify({"message": "Campaign created successfully!"}), 201)
-    # "data": new_campaign.serialize()
-
 #get campaigns
 class campaignData(Resource):
     # @jwt_required()
