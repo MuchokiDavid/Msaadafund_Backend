@@ -222,30 +222,25 @@ def post():
             #create wallet
             try:
                 response = service.wallets.create(currency="KES",  label=str(uuid.uuid4()), can_disburse=True)
-                print(response)
 
                 if response.get('type') == 'client_error':
                     return jsonify({"error":response.get('errors')[0].get('detail')}),400
 
                 new_campaign.walletId=response.get("wallet_id")
-                print(new_campaign.walletId)
             except Exception as e:
-                print(e)
                 return {"error": str(e)}, 404
             
             try:
                 db.session.add(new_campaign)
                 db.session.commit()
                 sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
-            # response = make_response(jsonify(result["secure_url"],description))
-                # return jsonify(result["secure_url"],description)
 
 
             except Exception as e:
                 print(e)
                 return jsonify({"Error": "Something went wrong while creating your campaign"}),500
-            return {new_campaign.serialize()}
-            
+            return jsonify(new_campaign.serialize()),200
+
         else:
             return {"error": "Failed to upload banner to Cloudinary"},404
     except Exception as e:
@@ -271,17 +266,17 @@ def  getInactiveCampaign():
     return response
 
 #Get one campaign by id in unprotected route
-# @app.route("/campaign/<int:campaignId>", methods=["GET"])
-# def readOne(campaignId):
-#     """Get the details of one specific campaign."""
-#     try:
-#         campaign = Campaign.query.get(campaignId)
-#     except Exception as e:
-#         print(e)
-#         return jsonify({"error":f"Invalid campaign ID: {campaignId}"}), 400
+@app.route("/campaign/<int:campaignId>", methods=["GET"])
+def readOne(campaignId):
+    """Get the details of one specific campaign."""
+    try:
+        campaign = Campaign.query.get(campaignId)
+    except Exception as e:
+        print(e)
+        return jsonify({"error":f"Invalid campaign ID: {campaignId}"}), 400
 
-#     # Return the serialized campaign
-#     return jsonify(campaign.serialize())
+    # Return the serialized campaign
+    return jsonify(campaign.serialize())
 
 #Get  specific campaign details by id
 class campaignById(Resource):
@@ -340,14 +335,18 @@ class campaignById(Resource):
 
 #Get wallet balance for a campaign
 @app.route('/api/v1.0/campaign_wallet/<int:id>', methods=['GET'])
-# @jwt_required()
+@jwt_required()
 def check_wallet(id):
-    # current_user_id = get_jwt_identity()
-    # existing_campaign= Campaign.query.filter_by(id=id).first()
-    existing_campaign= Campaign.query.get(id)
+    current_user_id = get_jwt_identity()
+    existing_org = Organisation.query.filter_by(id=current_user_id).first()
+    if not existing_org:
+        return jsonify({"error":"Organisation not found"}), 404
+    
+    existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
     if not existing_campaign:
         return jsonify({ "error":"Campaign not found"}), 404
     wallet_id= existing_campaign.walletId
+    print(wallet_id)
     try:
         response = service.wallets.details(wallet_id)
         data = response
