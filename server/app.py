@@ -402,8 +402,9 @@ class accountById(Resource):
         data= request.get_json()
         providers= data.get('providers')
         accountNumber= data.get('accountNumber')
+        pin=  data.get("pin")
         try:
-            new_account= Account(providers=providers, accountNumber=accountNumber, orgId=existing_organisation.id )
+            new_account= Account(providers=providers, accountNumber=accountNumber, pin=pin, orgId=existing_organisation.id )
             db.session.add(new_account)
             db.session.commit()
             response = make_response(jsonify(new_account.serialize()),201)

@@ -137,6 +137,7 @@ class Account(db.Model, SerializerMixin):
     # accountType = db.Column(db.String, nullable=False)#Remove
     providers= db.Column(db.String, nullable=False)
     accountNumber= db.Column(db.String, unique=True, nullable=False)
+    pin= db.Column(db.String(8), nullable= False)
     orgId = db.Column(db.Integer, db.ForeignKey('organisations.id'),nullable=False)
 
     def serialize(self):
@@ -146,6 +147,7 @@ class Account(db.Model, SerializerMixin):
                 # 'accountType': self.accountType,
                 'accountNumber': self.accountNumber,
                 'providers' : self.providers,
+                'pin': self.pin,
                 'orgId': self.orgId
                }
     def __repr__(self):
