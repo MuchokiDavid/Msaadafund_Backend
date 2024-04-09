@@ -400,10 +400,11 @@ class accountById(Resource):
             return {"error":"Organisation not found"}, 404
         
         data= request.get_json()
-        accountType= data.get('accountType')
+        providers= data.get('providers')
         accountNumber= data.get('accountNumber')
+        pin=  data.get("pin")
         try:
-            new_account= Account(accountType=accountType, accountNumber=accountNumber, orgId=existing_organisation.id )
+            new_account= Account(providers=providers, accountNumber=accountNumber, pin=pin, orgId=existing_organisation.id )
             db.session.add(new_account)
             db.session.commit()
             response = make_response(jsonify(new_account.serialize()),201)
@@ -506,8 +507,8 @@ def campaign_money_withdrawal():
          return {"error":"organisation cannot be found"},404
     
     data=request.get_json()
-    accountType= data.get("accountType")# M-Pesa or Bank
-    accountName= data.get("accountName")# KCB, M-Pesa, Equity,Family bank, etc
+    # accountType= data.get("accountType")# M-Pesa or Bank
+    providers= data.get("providers")# KCB, M-Pesa, Equity,Family bank, etc
     accountNumber= data.get("accountNumber")#bank account number and mpesa phone number
     amount=float(data.get('amount'))
     # orgId= int(data.get('orgId'))# use jwt_identity
@@ -515,7 +516,7 @@ def campaign_money_withdrawal():
     # all_banks= bank_data()
     # print(all_banks)
     
-    account= Account.query.filter_by(accountType=accountType,accountName=accountName,accountNumber=accountNumber,orgId=organisation.id).first()
+    account= Account.query.filter_by(providers=providers,accountNumber=accountNumber,orgId=organisation.id).first()
     if account is None:
         return jsonify({"error": "No such account"}),404
 
@@ -527,7 +528,7 @@ def campaign_money_withdrawal():
     if float(check_wallet_balance(campaigns.walletId))<float(amount):
         return jsonify({"error":"Insufficient funds in the wallet!"}),400
     try: 
-        if accountType=="M-Pesa":
+        if providers=="M-Pesa":
             #Initiate intasend M-Pesa transaction
             transactions = [{'name': organisation.orgName, 'account': account.accountNumber, 'amount': int(amount)}]
 
@@ -537,7 +538,7 @@ def campaign_money_withdrawal():
                 return jsonify({'error':error_message})
             return jsonify(response)
         
-        elif accountType=="Bank":
+        elif providers=="Bank":
             return jsonify({"message":"Bank transaction will be here"})
         else:
             return jsonify({"error":"Select transaction"}),400
