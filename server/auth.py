@@ -2,7 +2,7 @@ from flask import  Blueprint, jsonify, request, make_response
 from models import User, bcrypt, db,TokenBlocklist, Organisation
 from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity,jwt_required,get_jwt
 from utility import sendMail
-
+import re
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -73,7 +73,11 @@ def register_user():
 def login(): 
     data = request.get_json()
     username = data.get('username')
-    user = User.query.filter_by(username=username).first()
+
+    if re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', username):
+        user = User.query.filter_by(email=username).first()
+    else:
+        user = User.query.filter_by(username=username).first()
     
     if not user:
         return jsonify({'error': 'User not registered'}), 401 
