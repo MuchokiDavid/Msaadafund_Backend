@@ -115,8 +115,8 @@ class CampaignAdminView(ModelView):
     column_filters=('campaignName', 'startDate', 'endDate', 'targetAmount', 'org_id', 'isActive')
 
 class AccountAdminView(ModelView):
-    column_sortable_list=('accountType','accountNumber','accountName')
-    column_searchable_list=('accountNumber','accountName','accountNumber')
-    column_list=('accountType','accountName','accountNumber','orgId')
-    column_labels=dict(accountType='Account Type',accountName= "Account Name", accountNumber='Account Number', orgId='Organization')
+    column_sortable_list=('providers','accountNumber')
+    column_searchable_list=('providers','accountNumber')
+    column_list=('providers','accountNumber','orgId')
+    column_labels=dict(providers='Provider', accountNumber='Account Number', orgId='Organization')
     column_filters=column_sortable_list

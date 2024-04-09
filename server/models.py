@@ -134,8 +134,8 @@ class Organisation(db.Model, SerializerMixin):
 class Account(db.Model, SerializerMixin):
     __tablename__=  'accounts'
     id = db.Column(db.Integer, primary_key=True)
-    accountType = db.Column(db.String, nullable=False)
-    accountName= db.Column(db.String, nullable=False)
+    # accountType = db.Column(db.String, nullable=False)#Remove
+    providers= db.Column(db.String, nullable=False)
     accountNumber= db.Column(db.String, unique=True, nullable=False)
     orgId = db.Column(db.Integer, db.ForeignKey('organisations.id'),nullable=False)
 
@@ -143,13 +143,13 @@ class Account(db.Model, SerializerMixin):
         """ Serialize the object into a dictionary"""
         return {
                 'id': self.id,
-                'accountType': self.accountType,
+                # 'accountType': self.accountType,
                 'accountNumber': self.accountNumber,
-                'accountName' : self.accountName,
+                'providers' : self.providers,
                 'orgId': self.orgId
                }
     def __repr__(self):
-        return  f'Account: {self.accountNumber}, Account_Type: {self.accountType}, Org ID: {self.orgId}'
+        return  f'Account: {self.accountNumber}, Provider: {self.providers}, Org ID: {self.orgId}'
 
 class Donation (db.Model, SerializerMixin):
     __tablename__ = 'donations'
