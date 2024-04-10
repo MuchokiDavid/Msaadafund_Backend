@@ -177,13 +177,13 @@ def post():
     available_org= Organisation.query.filter_by(id=current_user).first()
     if not available_org:
         return jsonify({"error":"Organisation does not exist."}),404
-    print(available_org.orgName)
+    # print(available_org.orgName)
 
     # Convert date strings to Python date objects
     startDate = datetime.strptime(startDateStr, '%Y-%m-%d').date()
     endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
 
-    print(startDate, endDate)
+    # print(startDate, endDate)
     current_date = datetime.now().date()
     if startDate < current_date:
         return {'error': 'cannot create a campaign in the past'}, 400 
@@ -194,7 +194,7 @@ def post():
  
     if not (campaignName and description and startDate and endDate):
         return jsonify({"error":"Please provide complete information"}),400
-    print(description)
+    # print(description)
     
     if startDate == current_date:
         isActive = True
@@ -357,10 +357,10 @@ def check_wallet(id):
     if not existing_campaign:
         return jsonify({ "error":"Campaign not found"}), 404
     wallet_id= existing_campaign.walletId
-    print(wallet_id)
+    # print(wallet_id)
     try:
         response = service.wallets.details(wallet_id)
-        print(response)
+        # print(response)
         if response.get("errors"):
             error_message = response.get("errors")
             return  make_response({ "error":error_message} , 400)
