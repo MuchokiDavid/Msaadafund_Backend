@@ -663,14 +663,17 @@ def get():
     existing_org = Organisation.query.filter_by(id=current_user).first()
     if not existing_org:
         return {"error": "Organisation not found"}, 404
-    all_campaigns= Campaign.query.filter_by(org_id=existing_org.id).all()
-    all_campaign_id=[campaign.id for campaign in all_campaigns]
-    all_donations=Donation.query.filter(Donation.campaign_id.in_(all_campaign_id)).all()
-    if not all_donations:
-        return {"error": "No donations found"}, 404
-    response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE']
-    response = make_response(jsonify(response_dict),200)
-    return response
+    try:
+        all_campaigns= Campaign.query.filter_by(org_id=existing_org.id).all()
+        all_campaign_id=[campaign.id for campaign in all_campaigns]
+        all_donations=Donation.query.filter(Donation.campaign_id.in_(all_campaign_id)).all()
+        if not all_donations:
+            return {"error": "No donations found"}, 404
+        response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE']
+        response = make_response(jsonify(response_dict),200)
+        return response
+    except  Exception as e:
+        return make_response(jsonify({"error":"Internal Server Error:"+ str(e)}),500)
 
 #Handle donation for logged users
 class Donate(Resource):
