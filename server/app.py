@@ -700,6 +700,7 @@ class Donate(Resource):
         data= request.get_json()
         amount= data.get('amount')
         campaign_id= data.get('campaignId')
+        phoneNumber = data.get('phoneNumber')
 
         if not amount:
             return make_response(jsonify({"error":"Amount is required."}),400)
@@ -713,7 +714,7 @@ class Donate(Resource):
 
             service = APIService(token=token,publishable_key=publishable_key, test=True)
 
-            response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=user.email, phone_number=user.phoneNumber,
+            response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=user.email, phone_number=phoneNumber,
                                             amount=amount, currency="KES", narrative="Deposit", 
                                             mode="MPESA-STK-PUSH")
             # new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, user_id=user.id)
