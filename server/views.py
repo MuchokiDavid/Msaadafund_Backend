@@ -89,34 +89,34 @@ class  UserAdminView(ModelView):
 #         return not current_user.is_authenticated and current_user.role == 'Admin'
     column_sortable_list=('created_at','firstName','lastName')
     column_searchable_list = ('firstName','lastName','username','email','phoneNumber','nationalId', 'role')
-    column_list=('firstName','lastName','username','email','phoneNumber','nationalId','address', 'role','created_at')
+    column_list=('id','firstName','lastName','username','email','phoneNumber','nationalId','address', 'role','created_at')
     column_labels=dict(name= 'Name',username='Username',email="Email", role ='Role')
     column_filters=column_list
 
 class  OrganisationAdminView(ModelView):
     column_sortable_list=('created_at','orgName')
     column_searchable_list= ('orgName','orgEmail','orgAddress','orgDescription')
-    column_list=('orgName','orgEmail','orgAddress','orgDescription','isVerified','created_at')
+    column_list=('id','orgName','orgEmail','orgAddress','orgDescription','isVerified','created_at')
     column_labels=dict(orgName='Organization Name', orgEmail='Email',orgAddress='Office Address',orgDescription='Description', created_at='Created On')
     column_filters=('orgName','orgEmail','orgAddress','orgDescription','isVerified')
 
 class DonationAdminView(ModelView):
     column_sortable_list=('amount','created_at','donationDate','status')
     column_searchable_list=('campaign_id','user_id','donationDate')
-    column_list=('user_id','amount','donationDate','campaign_id','status','invoice_id','created_at')
+    column_list=('id','user_id','amount','donationDate','campaign_id','status','invoice_id','created_at')
     column_labels=dict(user_id='User Id', amount='Amount', donationDate='Donation Date',status='Status',invoice_id='Invoice',created_at='Created At')
     column_filters=column_list
 
 class CampaignAdminView(ModelView):
     column_sortable_list=('created_at', 'campaignName')
     column_searchable_list=('campaignName', 'startDate','org_id')
-    column_list=('campaignName','targetAmount','org_id', 'isActive','startDate', 'endDate','description','walletId','created_at')
+    column_list=('id','campaignName','targetAmount','org_id', 'isActive','startDate', 'endDate','description','walletId','created_at')
     column_labels=dict(campaignName='Campaign Name',targetAmount='Budget', org_id='Organization', isActive='Active',startDate='Start Date', endDate='End Date',walletId ='WalletId',description='Description', created_at='Created On')
     column_filters=('campaignName', 'startDate', 'endDate', 'targetAmount', 'org_id', 'isActive')
 
 class AccountAdminView(ModelView):
     column_sortable_list=('providers','accountNumber')
     column_searchable_list=('providers','accountNumber')
-    column_list=('providers','accountNumber','orgId')
+    column_list=('id','providers','accountNumber','orgId')
     column_labels=dict(providers='Provider', accountNumber='Account Number', orgId='Organization')
     column_filters=column_sortable_list
