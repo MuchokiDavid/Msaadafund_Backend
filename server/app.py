@@ -203,6 +203,19 @@ def post():
     elif endDate > current_date:
         isActive = False
 
+    # try:
+    if available_org:
+        all_campaigns= Campaign.query.filter_by(org_id= available_org.id).all()
+        available_campaigns= []
+        for c in all_campaigns:
+            if c.isActive:
+                available_campaigns.append(c)
+        if len(available_campaigns)>=12:
+            return make_response(jsonify({'error':'You cannot create more than  12 campaigns.'}),400)
+    # except  Exception as e :
+    #     print(e)
+    #     return {"error": "You cannot create more than 8 campaigns."},500
+
     try:
         # Upload the banner image to Cloudinary
         result = upload(banner)
@@ -238,8 +251,8 @@ def post():
 
             except Exception as e:
                 print(e)
-                return jsonify({"Error": "Something went wrong while creating your campaign"}),500
-            return jsonify(new_campaign.serialize()),200
+                return jsonify({"error": "Something went wrong while creating your campaign"}),500
+            return jsonify({"message":new_campaign.serialize()}),200
 
         else:
             return {"error": "Failed to upload banner to Cloudinary"},404
