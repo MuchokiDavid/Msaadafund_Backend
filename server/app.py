@@ -22,6 +22,7 @@ from flask_admin.contrib.sqla import ModelView
 from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView
 from cloudinary.uploader import upload
 import cloudinary.api
+import random
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -298,9 +299,18 @@ def  getInactiveCampaign():
 #Get featured campaigns
 @app.route('/api/v1.0/featured', methods= ['GET'])
 def featured_campaigns():
-    all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=True ,featured=True).all()]
-    response = make_response(jsonify(all_campaigns), 200)
-    return response
+    try:
+        featured_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=True ,featured=True).all()]
+        if len(featured_campaigns)>=4:
+            random_campaigns = random.sample(featured_campaigns, 4)
+            response = make_response(jsonify(random_campaigns), 200)
+            return response
+        else:
+            response= make_response(jsonify(featured_campaigns), 200)
+            return response
+    except  Exception as e:
+        print("Error occured : ",e)
+        return jsonify({"error": "An error occurred while retrieving the featured campaigns."})
 
 #Get one campaign by id in unprotected route
 @app.route("/campaign/<int:campaignId>", methods=["GET"])
