@@ -99,12 +99,27 @@ class sendMail():
         body = f"Dear {user.firstName} {user.lastName},\n\n Thank you for registering on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [user.email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
+    
+class Send_acc():    
+    def send_user_signup_account(email, providers, accountNumber, orgName):
+        from app import mail
+        subject = "Account Creation"
+        body = f"Dear {orgName},\n\n Thank you for registering your {providers} account with account number {accountNumber} on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+
 
 # Generate otp
 class  OTPGenerator():
     def send_otp(email, otp):
         from app import mail
         msg = Message('Password Reset OTP', recipients=[email])
+        msg.body = f'Your OTP is: {otp}'
+        mail.send(msg)
+
+    def send_pin_otp(email, otp):
+        from app import mail
+        msg = Message('Pin Reset OTP', recipients=[email])
         msg.body = f'Your OTP is: {otp}'
         mail.send(msg)
 
