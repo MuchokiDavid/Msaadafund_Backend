@@ -134,25 +134,34 @@ class Organisation(db.Model, SerializerMixin):
 class Account(db.Model, SerializerMixin):
     __tablename__=  'accounts'
     id = db.Column(db.Integer, primary_key=True)
-    # accountType = db.Column(db.String, nullable=False)#Remove
-    providers= db.Column(db.String, nullable=False)
-    accountNumber= db.Column(db.String, unique=True, nullable=False)
-    pin= db.Column(db.String(8), nullable= False)
-    orgId = db.Column(db.Integer, db.ForeignKey('organisations.id'),nullable=False)
+    providers = db.Column(db.String, nullable=False)
+    accountNumber = db.Column(db.String, unique=True, nullable=False)
+    hashed_pin = db.Column(db.String(8), nullable=False)
+    orgId = db.Column(db.Integer, db.ForeignKey('organisations.id'), nullable=False)
+
+    @hybrid_property
+    def pin(self):
+        return self.hashed_pin
+
+    @pin.setter
+    def pin(self, plain_text_pin):
+        self.hashed_pin = bcrypt.generate_password_hash(
+            plain_text_pin.encode('utf-8')).decode('utf-8')
+
+    def check_pin(self, attempted_pin):
+        return bcrypt.check_password_hash(self.hashed_pin, attempted_pin.encode('utf-8'))
+
+    def __repr__(self):
+        return f'Account: {self.accountNumber}, Provider: {self.providers}, Org ID: {self.orgId}'
 
     def serialize(self):
-        """ Serialize the object into a dictionary"""
         return {
-                'id': self.id,
-                # 'accountType': self.accountType,
-                'accountNumber': self.accountNumber,
-                'providers' : self.providers,
-                'pin': self.pin,
-                'orgId': self.orgId
-               }
-    def __repr__(self):
-        return  f'Account: {self.accountNumber}, Provider: {self.providers}, Org ID: {self.orgId}'
-
+            'id': self.id,
+            'accountNumber': self.accountNumber,
+            'providers': self.providers,
+            'orgId': self.orgId
+        }
+    
 class Donation (db.Model, SerializerMixin):
     __tablename__ = 'donations'
     serialize_rules =('-user.donations','-campaign.donations')
