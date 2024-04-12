@@ -68,7 +68,8 @@ class User(db.Model, SerializerMixin):
             'role': self.role,
             'address': self.address,
             'created_at': self.created_at,
-            'updated_at': self.updated_at
+            'updated_at': self.updated_at,
+            'donations': [donation.serialize() for donation in self.donations]
         }
     def __repr__ (self):
         return f"ID:{self.id} FirstName:{self.firstName}, LastName:{self.lastName},  Username:{self.username},  Email:{self.email}, Phone Number:{self.phoneNumber}"
@@ -127,7 +128,9 @@ class Organisation(db.Model, SerializerMixin):
             "orgAddress": self.orgAddress,
             "isVerified":self.isVerified,
             "orgDescription": self.orgDescription,
-            "created_at": self.created_at.strftime("%Y-%m-%d ")
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "accounts": [acc.serialize() for acc in self.accounts]
         }
 
 #Account model  for organisation accounts to withdraw money to
