@@ -1,8 +1,8 @@
-"""Editted accounts field
+"""Update table models
 
-Revision ID: 9f95e09a2b68
+Revision ID: 86e046f57ae5
 Revises: 
-Create Date: 2024-04-09 17:43:21.766134
+Create Date: 2024-04-11 23:15:49.399104
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '9f95e09a2b68'
+revision = '86e046f57ae5'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -72,6 +72,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('providers', sa.String(), nullable=False),
     sa.Column('accountNumber', sa.String(), nullable=False),
+    sa.Column('hashed_pin', sa.String(length=8), nullable=False),
     sa.Column('orgId', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['orgId'], ['organisations.id'], ),
     sa.PrimaryKeyConstraint('id'),
