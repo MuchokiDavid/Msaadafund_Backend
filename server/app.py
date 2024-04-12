@@ -3,7 +3,7 @@ from flask import Flask, request,jsonify,make_response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
 from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry
-from utility import check_wallet_balance, sendMail, OTPGenerator
+from utility import check_wallet_balance, sendMail, OTPGenerator, Send_acc
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -370,14 +370,6 @@ def check_wallet(id):
         return jsonify({ "error":"Internal server error"}), 400
     
 class addAccount(Resource):
-    def get(self):
-        all_accounts= Account.query.all()
-        response_dict= [account.serialize() for account in all_accounts]
-        response= make_response(jsonify(response_dict), 200)
-        return response
-
-#Get account by id
-class accountById(Resource):
     @jwt_required()
     def get(self):
         current_user = get_jwt_identity()
@@ -397,22 +389,37 @@ class accountById(Resource):
         current_user = get_jwt_identity()
         existing_organisation = Organisation.query.filter_by(id=current_user).first()
         if not existing_organisation:
-            return {"error":"Organisation not found"}, 404
+            return {"error": "Organisation not found"}, 400
         
-        data= request.get_json()
-        providers= data.get('providers')
-        accountNumber= data.get('accountNumber')
-        pin=  data.get("pin")
+        data = request.get_json()
+        if not data or 'providers' not in data or 'accountNumber' not in data or 'pin' not in data:
+            return {"error": "Invalid JSON data"}, 400
+
+        providers = data.get('providers')
+        accountNumber = data.get('accountNumber')
+        hashed_pin = data.get('pin')
+        email = existing_organisation.orgEmail 
+        orgName = existing_organisation.orgName
+
+        # Check if the account number already exists
+        existing_account = Account.query.filter_by(accountNumber=accountNumber).first()
+        if existing_account:
+            return {"error": "Account number already exists"}, 400
+
         try:
-            new_account= Account(providers=providers, accountNumber=accountNumber, pin=pin, orgId=existing_organisation.id )
+            new_account = Account(providers=providers, accountNumber=accountNumber, pin=hashed_pin, orgId=existing_organisation.id)
             db.session.add(new_account)
             db.session.commit()
-            response = make_response(jsonify(new_account.serialize()),201)
-            return response
-        except Exception  as e:
-             return {"error": "Account already registered"},400  
+            Send_acc.send_user_signup_account(email, new_account.providers, new_account.accountNumber, orgName)
+            return ({
+                "message": "Account registered successfully",
+                "user": new_account.serialize()
+            }), 200
+        except Exception as e:
+            return ({"error": "Failed to create account"}), 500
 
-    
+#Get account by id
+class accountById(Resource):
     @jwt_required()
     def delete(self):
         data = request.get_json()
@@ -430,6 +437,36 @@ class accountById(Resource):
             db.session.commit()
 
             return {"message": "Account deleted successfully"},200   
+        
+    # @jwt_required()
+    # def patch(self):
+    #     current_user = get_jwt_identity()
+
+    #     existing_organisation = Organisation.query.filter_by(id=current_user).first()
+    #     if not existing_organisation:
+    #         return {"error": "Organisation not found"}, 404
+
+    #     # Validate incoming JSON payload
+    #     data = request.get_json()
+    #     if not data or 'accountNumber' not in data or 'pin' not in data:
+    #         return {"error": "Invalid JSON data"}, 400
+
+    #     account_number = data['accountNumber']
+    #     new_pin = data['pin']
+
+    #     # Find the account by account number
+    #     account = Account.query.filter_by(accountNumber=account_number, orgId=existing_organisation.id).first()
+    #     if not account:
+    #         return {"error": "Account not found"}, 404
+
+    #     try:
+    #         account.pin = new_pin
+    #         db.session.commit()
+    #         response = make_response(jsonify(account.serialize()), 200)
+    #         return response
+    #     except Exception as e:
+    #         return {"error": str(e)}, 500
+
 
 class Organization(Resource):
     def get(self):
@@ -899,6 +936,41 @@ def org_reset_password():
         return jsonify({'message': 'Password reset successfully'}), 200
     else:
         return jsonify({'error': 'Invalid OTP or email'}), 400
+    
+@app.route('/api/v1.0/acc_forgot_pin', methods=['POST'])
+def acc_forgot_pin():
+    orgEmail = request.json.get('email')
+    organisation = Organisation.query.filter_by(orgEmail=orgEmail).first()
+    if organisation is None:
+        return jsonify({"error": "No account associated with this email found!"}), 404
+    else:
+        otp = OTPGenerator.generate_otp()
+        app.config['OTP_STORAGE'][orgEmail] = otp
+        OTPGenerator.send_pin_otp(orgEmail, otp)
+        return jsonify({'message': 'OTP sent to your email'}), 200
+
+@app.route('/api/v1.0/acc_reset_pin', methods=['PATCH'])
+def acc_reset_pin():
+    orgEmail = request.json.get('email')
+    otp_entered = request.json.get('otp')
+    new_pin = request.json.get('new_pin')
+
+    organisation = Organisation.query.filter_by(orgEmail=orgEmail).first()
+
+    if organisation and orgEmail in app.config['OTP_STORAGE'] and app.config['OTP_STORAGE'][orgEmail] == otp_entered:
+        account = Account.query.filter_by(orgId=organisation.id).first()
+        if not account:
+            return jsonify({'error': 'No account associated with this organization'}), 404
+        
+        try:
+            account.pin = new_pin
+            db.session.commit()
+            return jsonify({'message': 'PIN reset successfully'}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    else:
+        return jsonify({'error': 'Invalid OTP or email'}), 400
+
 
 
 api.add_resource(userData, '/api/v1.0/users')
