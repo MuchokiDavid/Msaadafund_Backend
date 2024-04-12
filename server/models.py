@@ -204,6 +204,7 @@ class  Campaign(db.Model, SerializerMixin):
     targetAmount = db.Column(db.Float(),nullable=False)
     isActive = db.Column(db.Boolean(), default=True)
     walletId = db.Column (db.String(), unique =True,nullable=False)
+    featured=db.Column(db.Boolean(), default= False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     org_id = db.Column(db.String(), db.ForeignKey('organisations.id'))
@@ -222,6 +223,7 @@ class  Campaign(db.Model, SerializerMixin):
             'targetAmount': self.targetAmount,
             'isActive': self.isActive,
             'walletId': self.walletId,
+            'featured': self.featured,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'org_id': self.org_id,
