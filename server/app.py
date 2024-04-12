@@ -66,6 +66,8 @@ app.register_blueprint(auth_bp, url_prefix='/api/v1.0/auth')
 # register views
 # app.register_blueprint(view_bp, url_prefix ='/auths')
 
+#============================FLask admin panel routes ======================================
+
 # Register the models with Flask-Admin
 admin.add_view(UserAdminView(User, db.session))
 admin.add_view(CampaignAdminView(Campaign, db.session))
@@ -101,6 +103,8 @@ def index():
     """Home page."""""
     return "<h3>Msaada Mashinani</h3>"
 
+#===============================User model routes==============================================================
+
 # classes for users
 class userData (Resource):
     def get(self):
@@ -108,7 +112,7 @@ class userData (Resource):
         response = make_response(jsonify(users), 200)
         return response
   
-
+#Get user by id
 class userDataByid(Resource):
     @jwt_required()
     def get(self):
@@ -160,6 +164,8 @@ class userDataByid(Resource):
             db.session.commit()
 
             return {"message": "User deactivated successfully"},200   
+        
+#===============================Campaign model routes==============================================================
         
 @app.route("/api/v1.0/setCampaign", methods=["POST"])
 @jwt_required()
@@ -289,6 +295,13 @@ def  getInactiveCampaign():
     response = make_response(jsonify(all_campaigns), 200)
     return response
 
+#Get featured campaigns
+@app.route('/api/v1.0/featured', methods= ['GET'])
+def featured_campaigns():
+    all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=True ,featured=True).all()]
+    response = make_response(jsonify(all_campaigns), 200)
+    return response
+
 #Get one campaign by id in unprotected route
 @app.route("/campaign/<int:campaignId>", methods=["GET"])
 def readOne(campaignId):
@@ -356,7 +369,7 @@ class campaignById(Resource):
 
             return {"message": "Campaign deactivated successfully"},200   
 
-
+#===================================Intasend balance API=====================================================
 #Get wallet balance for a campaign
 @app.route('/api/v1.0/campaign_wallet/<int:id>', methods=['GET'])
 @jwt_required()
@@ -381,6 +394,8 @@ def check_wallet(id):
         return jsonify({'wallet_details': response}), 200
     except Exception as e:
         return jsonify({ "error":"Internal server error"}), 400
+    
+#==================================Account model routes==============================================================
     
 class addAccount(Resource):
     @jwt_required()
@@ -450,37 +465,8 @@ class accountById(Resource):
             db.session.commit()
 
             return {"message": "Account deleted successfully"},200   
-        
-    # @jwt_required()
-    # def patch(self):
-    #     current_user = get_jwt_identity()
 
-    #     existing_organisation = Organisation.query.filter_by(id=current_user).first()
-    #     if not existing_organisation:
-    #         return {"error": "Organisation not found"}, 404
-
-    #     # Validate incoming JSON payload
-    #     data = request.get_json()
-    #     if not data or 'accountNumber' not in data or 'pin' not in data:
-    #         return {"error": "Invalid JSON data"}, 400
-
-    #     account_number = data['accountNumber']
-    #     new_pin = data['pin']
-
-    #     # Find the account by account number
-    #     account = Account.query.filter_by(accountNumber=account_number, orgId=existing_organisation.id).first()
-    #     if not account:
-    #         return {"error": "Account not found"}, 404
-
-    #     try:
-    #         account.pin = new_pin
-    #         db.session.commit()
-    #         response = make_response(jsonify(account.serialize()), 200)
-    #         return response
-    #     except Exception as e:
-    #         return {"error": str(e)}, 500
-
-
+#====================================Organisation model routes==============================================================
 class Organization(Resource):
     def get(self):
         organizations = Organisation.query.all()
@@ -533,6 +519,8 @@ class OrganisationDetail(Resource):
 
         db.session.commit()
         return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
+    
+#=====================================Intasend sdk routes==============================================================
 
 #Route to get banks and their code in intersend API
 @app.route('/api/v1.0/all_banks', methods=['GET'])
@@ -652,6 +640,8 @@ def webhook():
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid third party response'}), 400
     
+#===============================Donation routes==============================================================
+    
 #Express donations route for user who is not logged in
 class  ExpressDonations(Resource):
     def post(self):
@@ -762,8 +752,6 @@ class Donate(Resource):
             if not existing_campaign:
                 return {"error":"Campaign does not exist"},404
 
-            service = APIService(token=token,publishable_key=publishable_key, test=True)
-
             response = service.wallets.fund(wallet_id=existing_campaign.walletId, email=user.email, phone_number=phoneNumber,
                                             amount=amount, currency="KES", narrative="Deposit", 
                                             mode="MPESA-STK-PUSH")
@@ -787,7 +775,7 @@ class Donate(Resource):
             print (e)
             return jsonify({"error": "An error occurred while processing your request. Please try again later"}), 500
 
-
+#=======================================Intasend routes==============================================================
 #Get all campaign transactions
 @app.route('/api/v1.0/all_transactions/<int:id>', methods=['GET'])
 @jwt_required()  
@@ -865,6 +853,8 @@ def wallet_transactions_filters(id):
     except Exception as e:
         return jsonify({"error": "An error occurred while processing your request"}),500
 
+#===============================Contact us form route==============================================================
+
 #Route to send email to us in the contact form
 @app.route("/api/v1.0/contact_form", methods=["POST"])
 def contact_us():
@@ -887,8 +877,9 @@ def contact_us():
         db.session.rollback()
         return jsonify({"error":f"Email already exists in our database.\n {str(e)}"}),400
 
+#===============================Reset password routes==============================================================
 
-# forgot password reset
+# User forgot password reset
 @app.route('/api/v1.0/forgot_password', methods=['POST'])
 def forgot_password():
     email = request.json.get('email')
@@ -949,7 +940,8 @@ def org_reset_password():
         return jsonify({'message': 'Password reset successfully'}), 200
     else:
         return jsonify({'error': 'Invalid OTP or email'}), 400
-    
+
+#Forgot account pin
 @app.route('/api/v1.0/acc_forgot_pin', methods=['POST'])
 def acc_forgot_pin():
     orgEmail = request.json.get('email')
@@ -961,7 +953,7 @@ def acc_forgot_pin():
         app.config['OTP_STORAGE'][orgEmail] = otp
         OTPGenerator.send_pin_otp(orgEmail, otp)
         return jsonify({'message': 'OTP sent to your email'}), 200
-
+#Update pin
 @app.route('/api/v1.0/acc_reset_pin', methods=['PATCH'])
 def acc_reset_pin():
     orgEmail = request.json.get('email')
