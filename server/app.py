@@ -217,8 +217,11 @@ def post():
         for c in all_campaigns:
             if c.isActive:
                 available_campaigns.append(c)
+                if c.campaignName==campaignName:
+                    return {"error": "Campaign with this name already exists"},400
         if len(available_campaigns)>=12:
             return make_response(jsonify({'error':'You cannot create more than  12 campaigns.'}),400)
+            
     # except  Exception as e :
     #     print(e)
     #     return {"error": "You cannot create more than 8 campaigns."},500
@@ -787,19 +790,19 @@ class Donate(Resource):
 
 #=======================================Intasend routes==============================================================
 #Get all campaign transactions
-@app.route('/api/v1.0/all_transactions/<int:id>', methods=['GET'])
+@app.route('/api/v1.0/all_transactions/<string:wallet_id>', methods=['GET'])
 @jwt_required()  
-def wallet_transactions(id):
+def wallet_transactions(wallet_id):
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.filter_by(id=current_user_id).first()
     if not existing_org:
         return  jsonify({"error":"Organisation does not exist"}),404
 
     #checking a if a campaign exist
-    existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
-    if not existing_campaign:
-        return  jsonify({"error":"Campaign does not exist'"}),404
-    wallet_id= existing_campaign.walletId
+    # existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
+    # if not existing_campaign:
+    #     return  jsonify({"error":"Campaign does not exist'"}),404
+    # wallet_id= existing_campaign.walletId
 
     url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
     try:
