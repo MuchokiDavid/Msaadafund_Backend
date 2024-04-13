@@ -198,7 +198,7 @@ class  Campaign(db.Model, SerializerMixin):
     __tablename__='campaigns'
     serialize_rules =('-organisation.campaigns','-donations.campaign')
     id = db.Column(db.Integer, primary_key =True)
-    campaignName = db.Column(db.String(),nullable=False)
+    campaignName = db.Column(db.String(),nullable=False,unique=True)
     description = db.Column(db.String(),nullable=False)
     category= db.Column(db.String(),nullable=False)
     banner = db.Column(db.String(255), unique=False)
