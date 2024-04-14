@@ -303,7 +303,7 @@ def  getInactiveCampaign():
 @app.route('/api/v1.0/featured', methods= ['GET'])
 def featured_campaigns():
     try:
-        featured_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=True ,featured=True).all()]
+        featured_campaigns = [campaign.serialize() for campaign in Campaign.query.filter_by(isActive=True ,featured=True).all()]
         if len(featured_campaigns)>=4:
             random_campaigns = random.sample(featured_campaigns, 4)
             response = make_response(jsonify(random_campaigns), 200)
@@ -789,82 +789,70 @@ class Donate(Resource):
             return jsonify({"error": "An error occurred while processing your request. Please try again later"}), 500
 
 #=======================================Intasend routes==============================================================
-#Get all campaign transactions
-@app.route('/api/v1.0/all_transactions/<string:wallet_id>', methods=['GET'])
-@jwt_required()  
-def wallet_transactions(wallet_id):
-    current_user_id = get_jwt_identity()
-    existing_org= Organisation.query.filter_by(id=current_user_id).first()
-    if not existing_org:
-        return  jsonify({"error":"Organisation does not exist"}),404
-
-    #checking a if a campaign exist
-    # existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
-    # if not existing_campaign:
-    #     return  jsonify({"error":"Campaign does not exist'"}),404
-    # wallet_id= existing_campaign.walletId
-
-    url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
-    try:
-        headers = {
-            "accept": "application/json",
-            "Authorization": "Bearer " +token
-        }
-        response = requests.get(url, headers=headers)
-        data = response.json()
-        if data.get("errors"):
-            error_message = data.get("errors")
-            return make_response(jsonify({"error":error_message}),400)
-        return jsonify(data.get("results")), 200
-        
-    except Exception as e:
-        return jsonify({"error": "An error occurred while processing your request"}),500
-
 # Get campaign transactions filters
-@app.route('/api/v1.0/filter_transactions/<int:id>', methods=['POST'])
-# @jwt_required()  
-def wallet_transactions_filters(id):
+@app.route('/api/v1.0/filter_transactions/<string:wallet_id>', methods=['POST','GET'])
+@jwt_required()  
+def wallet_transactions_filters(wallet_id):
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.get(current_user_id)
     if not existing_org:
         return  jsonify({"error":"Organisation does not exist"}),401
     
-    data= request.get_json()
-    trans_type= data.get('trans_type')
-    start_date=data.get('start_date')
-    end_date=data.get('end_date')
+    if request.method== 'GET':
+        url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
+        try:
+            headers = {
+                "accept": "application/json",
+                "Authorization": "Bearer " +token
+            }
+            response = requests.get(url, headers=headers)
+            data = response.json()
+            if data.get("errors"):
+                error_message = data.get("errors")
+                return make_response(jsonify({"error":error_message}),400)
+            return jsonify(data.get("results")), 200
+            
+        except Exception as e:
+            return jsonify({"error": "An error occurred while processing your request"}),500
 
-    existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
-    if not existing_campaign:
-        return  jsonify({"error":"Campaign does not exist'"}),404
-    wallet_id= existing_campaign.walletId
+    if request.method == 'POST':
+        data= request.get_json()
+        trans_type= data.get('trans_type')
+        start_date=data.get('start_date')
+        end_date=data.get('end_date')
 
-    if trans_type:
-        url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}"
-    if  start_date and trans_type:
-        url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}Q&start_date={start_date}"
-    if start_date and end_date:
-        url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
-    if trans_type and end_date:
-        url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&end_date={end_date}"
-    if trans_type and start_date and end_date:
-        url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
-    if end_date:
-        url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&end_date={end_date}"
-    try:
-        headers = {
-            "accept": "application/json",
-            "Authorization": "Bearer " +token
-        }
-        response = requests.get(url, headers=headers)
-        data = response.json()
-        if data.get("errors"):
-            error_message = data.get("errors")
-            return make_response(jsonify({"error":error_message}),400)
-        return jsonify(data.get("results")), 200
-        
-    except Exception as e:
-        return jsonify({"error": "An error occurred while processing your request"}),500
+        # existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
+        # if not existing_campaign:
+        #     return  jsonify({"error":"Campaign does not exist'"}),404
+        # wallet_id= existing_campaign.walletId
+        # if wallet_id:
+        url=f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
+        if trans_type:
+            url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}"
+        if  start_date and trans_type:
+            url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}Q&start_date={start_date}"
+        if start_date and end_date:
+            url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
+        if trans_type and end_date:
+            url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&end_date={end_date}"
+        if trans_type and start_date and end_date:
+            url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
+        if end_date:
+            url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&end_date={end_date}"
+        try:
+            headers = {
+                "accept": "application/json",
+                "Authorization": "Bearer " +token
+            }
+            response = requests.get(url, headers=headers)
+            data = response.json()
+            if data.get("errors"):
+                error_message = data.get("errors")
+                return make_response(jsonify({"error":error_message}),400)
+            return jsonify(data.get("results")), 200
+            
+        except Exception as e:
+            return jsonify({"error": "An error occurred while processing your request"}),500
 
 #===============================Contact us form route==============================================================
 
