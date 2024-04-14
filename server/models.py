@@ -230,6 +230,15 @@ class  Campaign(db.Model, SerializerMixin):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'org_id': self.org_id,
+            'organisation': {
+            'id': self.organisation.id,
+            'orgName': self.organisation.orgName,
+            'orgEmail': self.organisation.orgEmail,
+            'orgAddress': self.organisation.orgAddress,
+            'orgPhoneNumber': self.organisation.orgPhoneNumber,
+            'orgDescription': self.organisation.orgDescription,
+            'isVerified': self.organisation.isVerified,
+            },
             'donations': [donation.serialize() for donation in self.donations]
         }
 
