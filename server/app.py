@@ -23,6 +23,7 @@ from views import UserAdminView,DonationAdminView,CampaignAdminView,Organisation
 from cloudinary.uploader import upload
 import cloudinary.api
 import random
+from flask_cors import CORS
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -48,6 +49,7 @@ app.config['OTP_STORAGE'] = {}
 
 migrate = Migrate(app, db)
 db.init_app(app)
+CORS(app)
 # admin.init_app(app)
 api = Api(app)
 bcrypt = Bcrypt(app)
