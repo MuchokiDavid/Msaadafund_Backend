@@ -129,7 +129,6 @@ class Organisation(db.Model, SerializerMixin):
             "isVerified":self.isVerified,
             "orgDescription": self.orgDescription,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M:%S"),
             "accounts": [acc.serialize() for acc in self.accounts]
         }
 
