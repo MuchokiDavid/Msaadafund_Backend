@@ -159,7 +159,7 @@ def login_Organisation():
         
         if organisation.isVerified==False:
             sendMail.send_org_verification_mail(organisation)
-            return {"error":"Account is not verified. Please check your email for verification"},403
+            return {"error":"Account is not verified. Please contact us for verification"},403
         
         access_token = create_access_token(identity=organisation.id)
         refresh_token = create_refresh_token(identity=organisation.id)
