@@ -107,11 +107,11 @@ def register_organisation():
     if not data:
         return jsonify({"error": "Invalid request data"}), 400
     
-    orgName = data['name']
-    orgEmail = data['email']
-    orgPassword = data['password']
-    orgAddress = data['address']
-    orgPhoneNumber = data['phoneNumber']
+    orgName = data.get('name')
+    orgEmail = data.get('email')
+    orgPassword = data.get('password')
+    orgAddress = data.get('address')
+    orgPhoneNumber = data.get('phoneNumber')
 
     if not orgName or not  orgEmail or not orgPassword or not orgAddress or not orgPhoneNumber:
          return jsonify({'error':'Missing fields'}),400
