@@ -108,10 +108,10 @@ class DonationAdminView(ModelView):
     column_filters=column_list
 
 class CampaignAdminView(ModelView):
-    column_sortable_list=('created_at', 'campaignName', 'featured')
+    column_sortable_list=('created_at', 'campaignName', 'featured','category')
     column_searchable_list=('campaignName', 'startDate','org_id')
-    column_list=('id','campaignName','targetAmount','org_id', 'isActive','startDate', 'endDate','description','walletId','featured','created_at', 'updated_at')
-    column_labels=dict(campaignName='Campaign Name',targetAmount='Budget', org_id='Organization', isActive='Active',startDate='Start Date', endDate='End Date',walletId ='WalletId',description='Description', featured='Featured', created_at='Created On', updated_at='Updated On')
+    column_list=('id','campaignName','category','targetAmount','org_id', 'isActive','startDate', 'endDate','description','walletId','featured','created_at', 'updated_at')
+    column_labels=dict(campaignName='Campaign Name',category='Category',targetAmount='Budget', org_id='Organization', isActive='Active',startDate='Start Date', endDate='End Date',walletId ='WalletId',description='Description', featured='Featured', created_at='Created On', updated_at='Updated On')
     column_filters=('campaignName', 'startDate', 'endDate', 'targetAmount', 'org_id', 'isActive', 'featured')
 
 class AccountAdminView(ModelView):
