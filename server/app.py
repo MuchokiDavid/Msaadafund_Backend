@@ -275,7 +275,7 @@ class campaignData(Resource):
     # @jwt_required()
     def get(self):
         page = request.args.get('page', default=1, type=int)
-        per_page = request.args.get('per_page', default=10, type=int)
+        per_page = request.args.get('per_page', default=12, type=int)
         campaigns = Campaign.query.filter_by(isActive=True).paginate(page=page, per_page=per_page)
         data = [campaign.serialize() for campaign in campaigns.items]
         response = make_response(jsonify(data), 200)
