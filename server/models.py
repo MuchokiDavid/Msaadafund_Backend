@@ -129,6 +129,7 @@ class Organisation(db.Model, SerializerMixin):
             "isVerified":self.isVerified,
             "orgDescription": self.orgDescription,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "campaigns": [camp.serialize() for camp in self.campaigns],
             "accounts": [acc.serialize() for acc in self.accounts]
         }
 
