@@ -330,6 +330,34 @@ def readOne(campaignId):
     # Return the serialized campaign
     return jsonify(campaign.serialize())
 
+
+# patch campaign by specific id
+@app.route("/campaign/<int:campaignId>", methods=["PATCH"])
+@jwt_required()
+def updateOne(campaignId):
+    description = request.form.get('description')
+    banner = request.files.get('banner') 
+
+    current_user = get_jwt_identity()
+    
+    existing_campaign = Campaign.query.filter_by(id=campaignId, org_id=current_user).first()
+    if not existing_campaign:
+        return {"error":"Campaign not found"}, 404
+    if description:
+        existing_campaign.description = description
+    if banner:
+        result = upload(banner)
+        if "secure_url" in result:
+            existing_campaign.banner = result["secure_url"]
+    db.session.commit()
+
+    response = make_response(jsonify(existing_campaign.serialize()), 200)
+    return response
+
+
+
+
+
 #Get  specific campaign details by id
 class campaignById(Resource):
     @jwt_required()
@@ -342,28 +370,28 @@ class campaignById(Resource):
         response = make_response(jsonify(data), 200)
         return response
     
-    @jwt_required()
-    def patch (self):
-        data=request.get_json()
-        description = data.get('description')
-        endDate = data.get('endDate')
-        targetAmount = data.get('targetAmount')
+    # @jwt_required()
+    # def patch (self):
+    #     data=request.get_json()
+    #     description = data.get('description')
+    #     endDate = data.get('endDate')
+    #     targetAmount = data.get('targetAmount')
 
-        current_user = get_jwt_identity()
-        existing_campaign = Campaign.query.filter_by(org_id=current_user).first()
-        if not existing_campaign:
-            return {"error":"Campaign not found"}, 404
-        if description:
-            existing_campaign.description = description
-        if endDate:
-            existing_campaign.endDate =endDate
-        if targetAmount:
-            existing_campaign.targetAmount = float(targetAmount)
+    #     current_user = get_jwt_identity()
+    #     existing_campaign = Campaign.query.filter_by(org_id=current_user).first()
+    #     if not existing_campaign:
+    #         return {"error":"Campaign not found"}, 404
+    #     if description:
+    #         existing_campaign.description = description
+    #     if endDate:
+    #         existing_campaign.endDate =endDate
+    #     if targetAmount:
+    #         existing_campaign.targetAmount = float(targetAmount)
 
-        db.session.commit()
+    #     db.session.commit()
 
-        response = make_response(jsonify(existing_campaign.serialize()), 200)
-        return response
+    #     response = make_response(jsonify(existing_campaign.serialize()), 200)
+    #     return response
 
     @jwt_required()
     def delete(self):
