@@ -354,6 +354,26 @@ def updateOne(campaignId):
     response = make_response(jsonify(existing_campaign.serialize()), 200)
     return response
 
+# delete campaign
+@app.route("/api/v1.0/deletecampaign/<int:campaignId>", methods=["DELETE"])
+@jwt_required()
+def delete(campaignId):
+    current_user = get_jwt_identity()
+    organisation = Organisation.query.filter_by(id=current_user).first()
+    
+    if not organisation:
+        return jsonify({'error':"Organisation not found"}), 404
+    
+    existing_campaign = Campaign.query.filter_by(id=campaignId, org_id=current_user).first()
+    if not existing_campaign:
+        return jsonify({'error':"Campaign not found"}), 404
+    else:
+        existing_campaign.isActive = False       
+        # db.session.delete(campaign)
+        db.session.commit()
+
+        return {"message": "Campaign deactivated successfully"},200   
+
 
 
 
@@ -393,24 +413,24 @@ class campaignById(Resource):
     #     response = make_response(jsonify(existing_campaign.serialize()), 200)
     #     return response
 
-    @jwt_required()
-    def delete(self):
-        data=request.get_json()
-        current_user = get_jwt_identity()
-        organisation = Organisation.query.filter_by(id=current_user).first()
+    # @jwt_required()
+    # def delete(self):
+    #     data=request.get_json()
+    #     current_user = get_jwt_identity()
+    #     organisation = Organisation.query.filter_by(id=current_user).first()
         
-        if not organisation:
-            return jsonify({'error':"Organisation not found"}), 404
+    #     if not organisation:
+    #         return jsonify({'error':"Organisation not found"}), 404
         
-        existing_campaign = Campaign.query.filter_by(campaignName=data['name']).first()
-        if not existing_campaign:
-            return jsonify({'error':"Campaign not found"}), 404
-        else:
-            existing_campaign.isActive = False       
-            # db.session.delete(campaign)
-            db.session.commit()
+    #     existing_campaign = Campaign.query.filter_by(campaignName=data['name']).first()
+    #     if not existing_campaign:
+    #         return jsonify({'error':"Campaign not found"}), 404
+    #     else:
+    #         existing_campaign.isActive = False       
+    #         # db.session.delete(campaign)
+    #         db.session.commit()
 
-            return {"message": "Campaign deactivated successfully"},200   
+    #         return {"message": "Campaign deactivated successfully"},200   
 
 #===================================Intasend balance API=====================================================
 #Get wallet balance for a campaign
