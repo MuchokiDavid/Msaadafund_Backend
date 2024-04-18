@@ -30,6 +30,8 @@ flask-login = "*"
 flask-admin = "*"
 flask-security = "*"
 cloudinary = "*"
+pdfkit = "*"
+reportlab = "*"
 
 [dev-packages]
 
