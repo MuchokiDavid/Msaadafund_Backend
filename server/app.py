@@ -29,6 +29,7 @@ from reportlab.lib.pagesizes import A4,legal
 from reportlab.lib.units import inch
 import io
 import textwrap
+import tempfile
 
 
 #fetch environment variables  for the api key and server url
@@ -938,10 +939,34 @@ def get_org_donations_pdf():
         
         # Add a title
         pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(1 * inch, 11 * inch, f"Donations for {existing_org.orgName}")
+        # pdf.drawString(1.8 * inch, 11 * inch, f"Donations for {existing_org.orgName}")
+
+         # Load and add the logo
+        logo_url = "https://res.cloudinary.com/dml7sp2zm/image/upload/v1713481272/kv30dpcfn2kjo4vvdhth.png"
         
+        # Download the logo image from the URL
+        response = requests.get(logo_url)
+        
+        if response.status_code == 200:
+            # Create a temporary file to store the logo image
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+                tmp_file.write(response.content)
+                tmp_file.flush()  # Ensure data is written to the file
+                
+        else:
+            return jsonify({"error": "Failed to download logo image"}), 500
+        
+        # draw logo
+        def draw_logo(pdf):
+            logo_width = 1 * inch
+            logo_height = 1 * inch
+            pdf.drawImage(tmp_file.name, x=0.5 * inch, y=10.5 * inch, width=logo_width, height=logo_height)
+            pdf.drawString(1.8 * inch, 11 * inch, f"Donations for {existing_org.orgName}")
+
+    
         # Add table headers
-        y = 10.5 * inch
+        draw_logo(pdf)
+        y = 10 * inch
         pdf.drawString(0.5 * inch, y, "No.")
         pdf.drawString(1 * inch, y, "Campaign")
         pdf.drawString(3 * inch, y, "Amount")
@@ -960,8 +985,10 @@ def get_org_donations_pdf():
             if donation_count >= donations_per_page or y < 1 * inch:
                 # Add a new page and reset the y-coordinate and counter
                 pdf.showPage()
-                y = 10.5 * inch
+                
+                y = 10 * inch
                 donation_count = 0
+                draw_logo(pdf)
                 pdf.setFont("Helvetica-Bold", 12)
                 # Redraw table headers on the new page
                 pdf.drawString(0.5 * inch, y, "No.")
