@@ -12,7 +12,7 @@ import uuid
 from flask import request,jsonify,make_response
 from flask_bcrypt import Bcrypt
 import requests
-from datetime import datetime
+from datetime import datetime, date
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
 from flask_mail import Mail, Message
 from auth import auth_bp
@@ -321,11 +321,14 @@ def  getInactiveCampaign():
     response = make_response(jsonify(all_campaigns), 200)
     return response
 
-#Get featured campaigns
+#---------------------------------------Get featured campaigns---------------------------------------------
 @app.route('/api/v1.0/featured', methods= ['GET'])
 def featured_campaigns():
     try:
-        featured_campaigns = [campaign.serialize() for campaign in Campaign.query.filter_by(isActive=True ,featured=True).all()]
+        today = date.today().isoformat()
+        all_campaigns = Campaign.query.filter_by(isActive=True, featured=True).filter(Campaign.endDate > today).all()
+        # all_campaigns= Campaign.query.filter_by(isActive=True, featured=True).filter(Campaign.endDate>today).all()
+        featured_campaigns = [campaign.serialize() for campaign in all_campaigns]
         if len(featured_campaigns)>=4:
             random_campaigns = random.sample(featured_campaigns, 4)
             response = make_response(jsonify(random_campaigns), 200)
@@ -336,6 +339,30 @@ def featured_campaigns():
     except  Exception as e:
         print("Error occured : ",e)
         return jsonify({"error": "An error occurred while retrieving the featured campaigns."})
+
+@app.route('/campaigns/<int:campaign_id>/feature', methods=['POST'])
+def feature_campaign(campaign_id):
+    try:
+        campaign = Campaign.query.get_or_404(campaign_id)
+        campaign.featured = True
+        db.session.commit()
+        return jsonify({"message": "Campaign featured successfully."}), 200
+    except Exception as e:
+        print("Error occured : ", e)
+        return jsonify({"error": "An error occurred while retrieving the featured campaigns."})
+
+@app.route('/campaigns/<int:campaign_id>/unfeature', methods=['POST'])
+def unfeature_campaign(campaign_id):
+    try:
+        campaign = Campaign.query.get_or_404(campaign_id)
+        campaign.featured = False
+        db.session.commit()
+        return jsonify({"message": "Campaign unfeatured successfully."}), 200
+    except Exception as e:
+        print("Error occured : ", e)
+        return jsonify({"error": "An error occurred while retrieving the featured campaigns."})
+    
+#-----------------------------------------------------------------------------------------------------------------
 
 #Get one campaign by id in unprotected route
 @app.route("/campaign/<int:campaignId>", methods=["GET"])
