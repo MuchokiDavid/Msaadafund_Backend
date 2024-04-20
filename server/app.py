@@ -289,6 +289,19 @@ class campaignData(Resource):
         data = [campaign.serialize() for campaign in campaigns.items]
         response = make_response(jsonify(data), 200)
         return response
+
+#Get all campaigns without pagination
+@app.route('/api/v1.0/get_all_campaigns', methods=['GET'])
+def get_all_campaigns():
+    try:
+        campaigns = Campaign.query.order_by(Campaign.created_at.desc()).all()
+        output = []
+        for campaign in campaigns:
+            campaign_dict = campaign.serialize()
+            output.append(campaign_dict)
+        return jsonify(output)
+    except Exception as e:
+        return {'error': 'Error getting all campaigns: {}'.format(str(e))}, 500
     
 #Get all campaigns  by organization id
 class OrgCampaigns(Resource):
@@ -380,10 +393,6 @@ def delete(campaignId):
         db.session.commit()
 
         return {"message": "Campaign deactivated successfully"},200   
-
-
-
-
 
 #Get  specific campaign details by id
 class campaignById(Resource):
@@ -844,6 +853,15 @@ class Donate(Resource):
         except Exception as e:
             print (e)
             return jsonify({"error": "An error occurred while processing your request. Please try again later"}), 500
+
+##Route to get all donations without authentication
+@app.route('/api/v1.0/all_donations', methods=['GET'])
+def get_all_donations():
+    """Get a list of all Donations"""
+    all_donations= Donation.query.all()
+    donation_dict= [don.serialize() for don in all_donations]
+    return {'message':donation_dict}
+
 
 #=======================================Intasend routes==============================================================
 # Get campaign transactions filters
