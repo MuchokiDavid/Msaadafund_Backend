@@ -657,12 +657,15 @@ def campaign_money_withdrawal():
     amount=float(data.get('amount'))
     # orgId= int(data.get('orgId'))# use jwt_identity
     campaign=int(data.get("campaign"))
-    # all_banks= bank_data()
-    # print(all_banks)
+    pin= data.get("pin")
+
     
     account= Account.query.filter_by(providers=providers,accountNumber=accountNumber,orgId=organisation.id).first()
     if account is None:
         return jsonify({"error": "No such account"}),404
+    
+    if not bcrypt.check_password_hash(account.hashed_pin, pin):
+        return jsonify({'error': 'Invalid pin'}), 401 
 
     campaigns= Campaign.query.filter_by(id=campaign, org_id=organisation.id, isActive=True).first()
     if not campaigns:
@@ -691,6 +694,70 @@ def campaign_money_withdrawal():
     except Exception as e :
         print(e)
         return jsonify({"error":str(e)}),500
+
+#Route to buy airtime from a campaign
+@app.route("/api/v1.0/buy_airtime",methods=["POST"])
+@jwt_required()
+def campaign_buy_airtime():
+    current_user_id = get_jwt_identity()
+    existing_org= Organisation.query.get(current_user_id)
+    if not existing_org:
+        return jsonify({"error": "organisation not found"}), 404
+
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        amount = data.get('amount')
+        phone_number = data.get("phone_number")
+        campaign_id = data.get("campaign_id")
+
+        current_campaign= Campaign.query.filter_by(id=campaign_id, org_id=existing_org.id, isActive=True).first()
+        wallet_id= current_campaign.walletId
+
+        wallet_details= check_wallet_balance(wallet_id)
+
+        if wallet_id:
+            # Check the available balance of the origin wallet
+            # available= wallet_details[0].get("wallet_details").get("available_balance")
+            if float(wallet_details) < float(amount):
+                return jsonify({"error":"Insufficient funds in the wallet!"}),400
+
+            url = "https://sandbox.intasend.com/api/v1/send-money/initiate/"
+
+            payload = {
+
+                "currency": "KES",
+                "provider": "AIRTIME",
+                "transactions": [
+                    { 
+                        "wallet_id": wallet_id,
+                        "name": name,
+                        "account": phone_number,
+                        "amount": amount
+                    }
+                ]
+            }
+            headers = {
+                "accept": "application/json",
+                "content-type": "application/json",
+                "Authorization": "Bearer " + token
+            }
+
+            response = requests.post(url, json=payload, headers=headers)
+            data=response.json()
+            if data.get("errors"):
+                error_message = data["errors"]
+                return  make_response(jsonify({'error':error_message}),400)
+            
+            return jsonify(data)
+
+        else:
+            # Campaign not found
+            return make_response(make_response(jsonify({'error':'campaign not found'}), 400))
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 #Intasend web hook for getting changes in transaction  status on mpesa stk push
 @app.route('/api/v1.0/intasend-webhook', methods = ['POST'])
