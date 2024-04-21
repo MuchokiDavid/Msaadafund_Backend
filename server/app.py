@@ -942,7 +942,7 @@ def get_org_donations_pdf():
         # pdf.drawString(1.8 * inch, 11 * inch, f"Donations for {existing_org.orgName}")
 
          # Load and add the logo
-        logo_url = "https://res.cloudinary.com/dml7sp2zm/image/upload/v1713481272/kv30dpcfn2kjo4vvdhth.png"
+        logo_url = "https://res.cloudinary.com/dml7sp2zm/image/upload/v1713528345/gbrbn0e9ciepzhm5ggjp.jpg"
         
         # Download the logo image from the URL
         response = requests.get(logo_url)
@@ -985,7 +985,7 @@ def get_org_donations_pdf():
             if donation_count >= donations_per_page or y < 1 * inch:
                 # Add a new page and reset the y-coordinate and counter
                 pdf.showPage()
-                
+
                 y = 10 * inch
                 donation_count = 0
                 draw_logo(pdf)
