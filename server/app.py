@@ -1023,6 +1023,49 @@ def wallet_transactions_filters(wallet_id):
         except Exception as e:
             return jsonify({"error": "An error occurred while processing your request"}),500
         
+#===============================Transaction pdf route==============================================================
+@app.route('/api/v1.0/filter_transactions/<string:wallet_id>/pdf', methods=['GET'])
+@jwt_required()
+def wallet_transactions_pdf(wallet_id):
+    current_user_id = get_jwt_identity()
+    existing_org= Organisation.query.get(current_user_id)
+    if not existing_org:
+        return  jsonify({"error":"Organisation does not exist"}),401
+
+    # Get all transactions for the wallet
+    url = f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX{wallet_id}"
+    try:
+        headers = {
+            "accept": "application/json",
+            "Authorization": "Bearer " +token
+        }
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        if data.get("errors"):
+            error_message = data.get("errors")
+            return make_response(jsonify({"error":error_message}), 400)
+        transactions = data.get("results")
+
+        # Create a PDF in memory
+        buffer = io.BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=A4)
+
+        # Set PDF title and other metadata
+        pdf.setTitle("Msaada_Mashinani/Transactions")
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(1.8 * inch, 11 * inch, f"Transactions for {existing_org.orgName}")
+        pdf.setFont("Helvetica", 10)
+
+
+
+    except Exception as e:
+        return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
+
+
+
+
+
+        
 #===============================Donation pdf route==============================================================
 
 @app.route("/api/v1.0/org_donations_pdf", methods=["GET"])
@@ -1112,7 +1155,16 @@ def get_org_donations_pdf():
             
             # Fetch campaign details for each donation
             campaign = Campaign.query.filter_by(id=donation.campaign_id).first()
-            campaign_name = textwrap.wrap(campaign.campaignName, width=25)
+
+            # Determine the width based on the length of the campaign name
+            name_length = len(campaign.campaignName)
+            width = 25  # Default width
+            if name_length > 25:
+                width == 25
+
+            campaign_name = textwrap.wrap(campaign.campaignName, width=width)
+            print("Wrapped campaign name:",campaign_name)
+
 
             pdf.setFont("Helvetica", 12)
             # Add donation details to the PDF
