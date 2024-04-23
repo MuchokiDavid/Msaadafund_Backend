@@ -720,7 +720,7 @@ def campaign_buy_airtime():
             # Check the available balance of the origin wallet
             # available= wallet_details[0].get("wallet_details").get("available_balance")
             if float(wallet_details) < float(amount):
-                return jsonify({"error":"Insufficient funds in the wallet!"}),400
+                return jsonify({"error":"Insufficient funds!"}),400
 
             url = "https://sandbox.intasend.com/api/v1/send-money/initiate/"
 
@@ -749,7 +749,7 @@ def campaign_buy_airtime():
                 error_message = data["errors"]
                 return  make_response(jsonify({'error':error_message}),400)
             
-            return jsonify(data)
+            return jsonify({"message":data})
 
         else:
             # Campaign not found
@@ -882,7 +882,7 @@ def get():
         all_donations=Donation.query.filter(Donation.campaign_id.in_(all_campaign_id)).all()
         if not all_donations:
             return {"error": "No donations found"}, 404
-        response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE']
+        response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE' or donation.status=='PENDING']
         response = make_response(jsonify(response_dict),200)
         return response
     except  Exception as e:
