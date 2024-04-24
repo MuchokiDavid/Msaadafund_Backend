@@ -245,22 +245,6 @@ class  Campaign(db.Model, SerializerMixin):
 
     def __repr__ (self):
         return f"ID: {self.id}, Campaign Name: {self.campaignName},  Description: {self.description}, Category:{self.category}, Start Date : {self.startDate}, End Date:{self.endDate}, Target Amount :{self.targetAmount}, Wallet ID :{self.walletId}, Organisation ID:{self.org_id}"
-
-
-# class Withdraw (db.Model, SerializerMixin):
-#     __tablename__="withdrawals"
-#     serialize_rules =('-campaign.withdrawals')
-#     id = db.Column(db.Integer, primary_key= True)
-#     amount = db.Column(db.Float, nullable= False)
-#     status = db.Column(db.String())
-#     withdraw_method = db.Column(db.String())
-#     intasend_id =  db.Column(db.String())
-#     transaction_date = db.Column(db.DateTime, server_default=db.func.now())
-#     campaign_id = db.Column(db.Integer, db.ForeignKey("campaigns.id"))
-
-    
-#     def __repr__(self):
-#         return f"Id:'{self.id} Amount: {self.amount} Status: {self.status} Withdraw_method:{self.withdraw_method} Intasend_id:{self.intasend_id} Transaction_date:{self.transaction_date} Campaign_id: {self.campaign_id}"
     
 class TokenBlocklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
