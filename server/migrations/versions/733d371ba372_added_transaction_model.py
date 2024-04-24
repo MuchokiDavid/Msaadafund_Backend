@@ -1,8 +1,8 @@
-"""Update table models
+"""Added transaction model
 
-Revision ID: 86e046f57ae5
+Revision ID: 733d371ba372
 Revises: 
-Create Date: 2024-04-11 23:15:49.399104
+Create Date: 2024-04-24 14:08:32.954668
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '86e046f57ae5'
+revision = '733d371ba372'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -36,6 +36,7 @@ def upgrade():
     sa.Column('orgPhoneNumber', sa.String(), nullable=True),
     sa.Column('orgDescription', sa.String(), nullable=True),
     sa.Column('isVerified', sa.Boolean(), nullable=False),
+    sa.Column('org_pin', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
@@ -47,6 +48,20 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('jti', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('transactions',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('tracking_id', sa.String(), nullable=True),
+    sa.Column('status', sa.String(), nullable=True),
+    sa.Column('amount', sa.Float(), nullable=True),
+    sa.Column('transaction_account', sa.String(), nullable=True),
+    sa.Column('request_ref_id', sa.String(), nullable=True),
+    sa.Column('org_name', sa.String(), nullable=True),
+    sa.Column('transaction_date', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('wallet_id', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('users',
@@ -71,6 +86,7 @@ def upgrade():
     op.create_table('accounts',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('providers', sa.String(), nullable=False),
+    sa.Column('accountName', sa.String(), nullable=False),
     sa.Column('accountNumber', sa.String(), nullable=False),
     sa.Column('hashed_pin', sa.String(length=8), nullable=False),
     sa.Column('orgId', sa.Integer(), nullable=False),
@@ -89,11 +105,13 @@ def upgrade():
     sa.Column('targetAmount', sa.Float(), nullable=False),
     sa.Column('isActive', sa.Boolean(), nullable=True),
     sa.Column('walletId', sa.String(), nullable=False),
+    sa.Column('featured', sa.Boolean(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('org_id', sa.String(), nullable=True),
     sa.ForeignKeyConstraint(['org_id'], ['organisations.id'], ),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('campaignName'),
     sa.UniqueConstraint('walletId')
     )
     op.create_table('donations',
@@ -119,6 +137,7 @@ def downgrade():
     op.drop_table('campaigns')
     op.drop_table('accounts')
     op.drop_table('users')
+    op.drop_table('transactions')
     op.drop_table('token_blocklist')
     op.drop_table('organisations')
     op.drop_table('enquiries')
