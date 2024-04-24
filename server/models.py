@@ -281,5 +281,20 @@ class Transactions(db.Model):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
 
+    def serialize(self):
+        return {
+            'id': self.id,
+            'tracking_id': self.tracking_id,
+            'status': self.status,
+            'amount': self.amount,
+            'transaction_account': self.transaction_account,
+            'request_ref_id': self.request_ref_id,
+            'org_name': self.org_name,
+            'transaction_date': self.transaction_date,
+            'wallet_id': self.wallet_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
     def __repr__(self):
         return f"tracking_id: {self.tracking_id} status: {self.status} amount: {self.amount} transaction_account: {self.transaction_account} request_ref_id: {self.request_ref_id} org_name: {self.org_name} transaction_date: {self.transaction_date} wallet_id: {self.wallet_id}"
