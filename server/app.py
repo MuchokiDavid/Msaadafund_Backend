@@ -127,7 +127,7 @@ class userDataByid(Resource):
     @jwt_required()
     def get(self):
         current_user = get_jwt_identity()
-        user = User.query.filter_by(username=current_user).first()
+        user = User.query.filter_by(id=current_user, isActive=True).first()
         if not user:
             return {"error":"User not found"}, 404
         response = make_response(jsonify(user.serialize()),200)
@@ -141,8 +141,9 @@ class userDataByid(Resource):
         lastName = data.get('lastName')
         phoneNumber = data.get('phoneNumber')
         address = data.get('address')
+        nationalId = data.get('national_id')
 
-        existing_user = User.query.filter_by(username = current_user).first()
+        existing_user = User.query.filter_by(id = current_user).first()
         if not existing_user:
             return{ "error":"User not found"}, 404
 
@@ -154,6 +155,8 @@ class userDataByid(Resource):
             existing_user.phoneNumber = phoneNumber
         if address:
             existing_user.address = address
+        if nationalId:
+            existing_user.nationalId = nationalId
         if 'isActive' in data:
             existing_user.isActive = data['isActive']
 
@@ -165,7 +168,7 @@ class userDataByid(Resource):
     @jwt_required()
     def delete(self):
         current_user = get_jwt_identity()
-        user = User.query.filter_by(username = current_user).first()
+        user = User.query.filter_by(id=current_user).first()
         if not user:
             return jsonify({'error':"User not found"}), 404
         else:
@@ -1024,48 +1027,90 @@ def wallet_transactions_filters(wallet_id):
             return jsonify({"error": "An error occurred while processing your request"}),500
         
 #===============================Transaction pdf route==============================================================
-@app.route('/api/v1.0/filter_transactions/<string:wallet_id>/pdf', methods=['GET'])
+@app.route("/api/v1.0/transactions_pdf/<string:wallet_id>", methods=["GET"])
 @jwt_required()
-def wallet_transactions_pdf(wallet_id):
-    current_user_id = get_jwt_identity()
-    existing_org= Organisation.query.get(current_user_id)
+def get_transactions_pdf(wallet_id):
+    current_user = get_jwt_identity()
+    existing_org = Organisation.query.filter_by(id=current_user).first()
     if not existing_org:
-        return  jsonify({"error":"Organisation does not exist"}),401
+        return jsonify({"error": "Organisation not found"}), 404
+    
+    wallet_id = request.args.get('wallet_id')  # Assuming wallet_id is passed as a query parameter
 
-    # Get all transactions for the wallet
-    url = f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX{wallet_id}"
+    url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
     try:
         headers = {
             "accept": "application/json",
-            "Authorization": "Bearer " +token
+            "Authorization": "Bearer " + token
         }
         response = requests.get(url, headers=headers)
         data = response.json()
         if data.get("errors"):
             error_message = data.get("errors")
-            return make_response(jsonify({"error":error_message}), 400)
-        transactions = data.get("results")
-
+            return make_response(jsonify({"error": error_message}), 400)
+        
         # Create a PDF in memory
         buffer = io.BytesIO()
         pdf = canvas.Canvas(buffer, pagesize=A4)
-
+        
         # Set PDF title and other metadata
         pdf.setTitle("Msaada_Mashinani/Transactions")
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(1.8 * inch, 11 * inch, f"Transactions for {existing_org.orgName}")
-        pdf.setFont("Helvetica", 10)
-
-
-
-    except Exception as e:
-        return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
-
-
-
-
-
+   
+        # Load and add the logo
+        logo_url = "https://res.cloudinary.com/dml7sp2zm/image/upload/v1713528345/gbrbn0e9ciepzhm5ggjp.jpg"
+         # Download the logo image from the URL
+        response = requests.get(logo_url)
         
+        if response.status_code == 200:
+            # Create a temporary file to store the logo image
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+                tmp_file.write(response.content)
+                tmp_file.flush()  # Ensure data is written to the file
+                
+        else:
+            return jsonify({"error": "Failed to download logo image"}), 500
+        
+        # draw logo
+        def draw_logo(pdf):
+            logo_width = 1 * inch
+            logo_height = 1 * inch
+            pdf.drawImage(tmp_file.name, x=0.5 * inch, y=10.5 * inch, width=logo_width, height=logo_height)
+            pdf.drawString(1.8 * inch, 11 * inch, f"Transactions for {existing_org.orgName}")
+
+    
+        # Add table headers
+        draw_logo(pdf)
+        y = 10 * inch
+        pdf.drawString(0.5 * inch, y, "No.")
+        pdf.drawString(1 * inch, y, "TRANSACTION TYPE")
+        pdf.drawString(3 * inch, y, "INVOICE ACC")
+        pdf.drawString(5 * inch, y, "AMOUNT")
+        pdf.drawString(6.5 * inch, y, "STATUS")
+
+        # Iterate over transactions and add them to the PDF
+        transactions = data.get("results")
+        if transactions:
+            y -= 0.5 * inch  # Move down a bit for the first row of data
+            for index, transaction in enumerate(transactions, start=1):
+                pdf.drawString(0.5 * inch, y, str(index))
+                pdf.drawString(1 * inch, y, transaction.get("trans_type", ""))
+                pdf.drawString(3 * inch, y, transaction.get("invoice", {}).get("account", ""))
+                pdf.drawString(5 * inch, y, str(transaction.get("value", "")))
+                pdf.drawString(6.5 * inch, y, transaction.get("status", ""))
+                y -= 0.3 * inch  # Move down for the next row
+        else:
+            pdf.drawString(1 * inch, y - 0.3 * inch, "No transactions found")  # Display a message if no transactions found
+                
+        # You need to generate the PDF before returning it
+        pdf.save()
+        buffer.seek(0)
+        
+        return Response(buffer.getvalue(), mimetype="application/pdf", headers={"Content-Disposition": "attachment;filename=transactions.pdf"})
+
+    
+    except Exception as e:
+        return jsonify({"error": "An error occurred while processing your request"}),500
+
 #===============================Donation pdf route==============================================================
 
 @app.route("/api/v1.0/org_donations_pdf", methods=["GET"])

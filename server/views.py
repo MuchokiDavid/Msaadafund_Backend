@@ -89,8 +89,8 @@ class  UserAdminView(ModelView):
 #         return not current_user.is_authenticated and current_user.role == 'Admin'
     column_sortable_list=('created_at','firstName','lastName')
     column_searchable_list = ('firstName','lastName','username','email','phoneNumber','nationalId', 'role')
-    column_list=('id','firstName','lastName','username','email','phoneNumber','nationalId','address', 'role','created_at')
-    column_labels=dict(name= 'Name',username='Username',email="Email", role ='Role')
+    column_list=('id','firstName','lastName','username','email','phoneNumber','nationalId','address','isActive', 'role','created_at')
+    column_labels=dict(name= 'Name',username='Username',email="Email",isActive = 'isActive', role ='Role')
     column_filters=column_list
 
 class  OrganisationAdminView(ModelView):
