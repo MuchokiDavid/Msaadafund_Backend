@@ -642,7 +642,7 @@ def bank_data():
         print(e)
         return jsonify({"error": "An error occurred while processing your request"}),500
 
-# Route to withdraw money to M-pesa number
+# Route to withdraw money to M-pesa number-----------------------------------
 @app.route("/api/v1.0/withdraw",methods=["POST"])
 @jwt_required()
 def campaign_money_withdrawal():
@@ -652,7 +652,6 @@ def campaign_money_withdrawal():
          return {"error":"organisation cannot be found"},404
     
     data=request.get_json()
-    # accountType= data.get("accountType")# M-Pesa or Bank
     providers= data.get("providers")# KCB, M-Pesa, Equity,Family bank, etc
     accountNumber= data.get("accountNumber")#bank account number and mpesa phone number
     amount=float(data.get('amount'))
@@ -683,16 +682,47 @@ def campaign_money_withdrawal():
             if response.get('errors'):
                 error_message= response.get('errors')[0].get('detail')
                 return jsonify({'error':error_message})
-            return jsonify(response)
+            return jsonify({"message":response})
         
         elif providers=="Bank":
             bank= data.get("bank_code")
-            print(bank)
-            
+            #Initiate intasend bank transaction
+            try:
+                url = "https://sandbox.intasend.com/api/v1/send-money/initiate/"
+
+                payload = {
+                    "currency": "KES",
+                    "provider": "PESALINK",
+                    "transactions": [
+                        {
+                            "wallet_id": campaigns.walletId,
+                            "account": accountNumber,
+                            "amount": amount,
+                            "bank_code": bank,
+                            "narrative": "Campaign withdrawal"
+                        }
+                    ]
+                }
+                headers = {
+                    "accept": "application/json",
+                    "content-type": "application/json",
+                    "Authorization": "Bearer " + token
+                }
+
+                response = requests.post(url, json=payload, headers=headers)
+                data=response.json()
+                print(data)
+                if data.get("errors"):
+                    error_message = data["errors"]
+                    return  make_response(jsonify({'error':error_message}),400)
+                
+                if response.status_code ==200:
+                    return jsonify({"message":data}),200  
+            except Exception as e:
+                print(e)
+                return jsonify({"error":str(e)}),500       
         else:
             return jsonify({"error":"Select transaction"}),400
-
-        
     except Exception as e :
         print(e)
         return jsonify({"error":str(e)}),500
