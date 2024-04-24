@@ -84,6 +84,7 @@ class Organisation(db.Model, SerializerMixin):
     orgPhoneNumber = db.Column(db.String(),unique=True)
     orgDescription = db.Column (db.String())
     isVerified= db.Column(db.Boolean(), default=False, nullable=False)
+    org_pin= db.Column(db.String())
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable = True)
     campaigns = db.relationship('Campaign', backref='organisation')
@@ -137,6 +138,7 @@ class Account(db.Model, SerializerMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     providers = db.Column(db.String, nullable=False)
+    accountName = db.Column(db.String, nullable=False)
     accountNumber = db.Column(db.String, unique=True, nullable=False)
     hashed_pin = db.Column(db.String(8), nullable=False)
     orgId = db.Column(db.Integer, db.ForeignKey('organisations.id'), nullable=False)
@@ -279,3 +281,21 @@ class Enquiry(db.Model):
 
     def __repr__(self):
         return f"name: {self.name} email: {self.email} subject: {self.subject}"
+    
+class Transactions(db.Model):
+    __tablename__="transactions"
+    id= db.Column(db.Integer, primary_key= True)
+
+    tracking_id= db.Column(db.String())
+    status= db.Column(db.String)
+    amount= db.Column(db.Float)
+    transaction_account= db.Column(db.String)
+    request_ref_id= db.Column(db.String)
+    org_name= db.Column(db.String)
+    transaction_date = db.Column(db.DateTime, server_default=db.func.now())#Intasend created at
+    wallet_id = db.Column(db.String)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
+
+    def __repr__(self):
+        return f"tracking_id: {self.tracking_id} status: {self.status} amount: {self.amount} transaction_account: {self.transaction_account} request_ref_id: {self.request_ref_id} org_name: {self.org_name} transaction_date: {self.transaction_date} wallet_id: {self.wallet_id}"
