@@ -75,9 +75,10 @@ def login():
     username = data.get('username')
 
     if re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', username):
-        user = User.query.filter_by(email=username).first()
+        # user login
+        user = User.query.filter_by(email=username, isActive = True).first()
     else:
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter_by(username=username, isActive = True).first()
     
     if not user:
         return jsonify({'error': 'User not registered'}), 401 
