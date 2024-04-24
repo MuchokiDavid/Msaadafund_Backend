@@ -533,6 +533,7 @@ class addAccount(Resource):
             return {"error": "Invalid JSON data"}, 400
 
         providers = data.get('providers')
+        accountName = data.get('accountName')
         accountNumber = data.get('accountNumber')
         hashed_pin = data.get('pin')
         email = existing_organisation.orgEmail 
@@ -544,7 +545,7 @@ class addAccount(Resource):
             return {"error": "Account number already exists"}, 400
 
         try:
-            new_account = Account(providers=providers, accountNumber=accountNumber, pin=hashed_pin, orgId=existing_organisation.id)
+            new_account = Account(providers=providers, accountName=accountName, accountNumber=accountNumber, pin=hashed_pin, orgId=existing_organisation.id)
             db.session.add(new_account)
             db.session.commit()
             Send_acc.send_user_signup_account(email, new_account.providers, new_account.accountNumber, orgName)
@@ -661,7 +662,6 @@ def campaign_money_withdrawal():
     # orgId= int(data.get('orgId'))# use jwt_identity
     campaign=int(data.get("campaign"))
     pin= data.get("pin")
-
     
     account= Account.query.filter_by(providers=providers,accountNumber=accountNumber,orgId=organisation.id).first()
     if account is None:
@@ -689,7 +689,9 @@ def campaign_money_withdrawal():
             return jsonify(response)
         
         elif providers=="Bank":
-            return jsonify({"message":"Bank transaction will be here"})
+            bank= data.get("bank_code")
+            print(bank)
+            
         else:
             return jsonify({"error":"Select transaction"}),400
 

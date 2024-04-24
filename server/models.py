@@ -161,6 +161,7 @@ class Account(db.Model, SerializerMixin):
     def serialize(self):
         return {
             'id': self.id,
+            'accountName':self.accountName,
             'accountNumber': self.accountNumber,
             'providers': self.providers,
             'orgId': self.orgId
