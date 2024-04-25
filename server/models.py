@@ -272,13 +272,15 @@ class Transactions(db.Model):
     id= db.Column(db.Integer, primary_key= True)
 
     tracking_id= db.Column(db.String())
-    status= db.Column(db.String)
+    batch_status= db.Column(db.String)
+    trans_type= db.Column(db.String)
+    trans_status= db.Column(db.String)
     amount= db.Column(db.Float)
-    transaction_account= db.Column(db.String)
+    transaction_account_no= db.Column(db.String)
     request_ref_id= db.Column(db.String)
     org_name= db.Column(db.String)
     transaction_date = db.Column(db.DateTime, server_default=db.func.now())#Intasend created at
-    wallet_id = db.Column(db.String)
+    campaign_name = db.Column(db.String)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
 
@@ -286,13 +288,15 @@ class Transactions(db.Model):
         return {
             'id': self.id,
             'tracking_id': self.tracking_id,
-            'status': self.status,
+            'batch_status': self.batch_status,
+            'trans_type': self.trans_type,
+            'trans_status': self.trans_status,
             'amount': self.amount,
-            'transaction_account': self.transaction_account,
+            'transaction_account': self.transaction_account_no,
             'request_ref_id': self.request_ref_id,
             'org_name': self.org_name,
             'transaction_date': self.transaction_date,
-            'wallet_id': self.wallet_id,
+            'wallet_id': self.campaign_name,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
