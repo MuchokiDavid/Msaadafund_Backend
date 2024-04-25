@@ -2,7 +2,7 @@
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions
 from utility import check_wallet_balance, sendMail, OTPGenerator, Send_acc
 import os
 from dotenv import load_dotenv
@@ -683,7 +683,24 @@ def campaign_money_withdrawal():
             if response.get('errors'):
                 error_message = response.get("errors")[0].get("detail")
                 return jsonify({'error':error_message})
-            return jsonify({"message":response})
+            
+            approved_response = service.transfer.approve(response)
+
+            new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
+                                            batch_status= approved_response.get('status'),
+                                            trans_type= 'Withdraw to M-Pesa',
+                                            trans_status= approved_response.get('transactions')[0].get('status'),
+                                            amount= approved_response.get('transactions')[0].get('amount'),
+                                            transaction_account_no=approved_response.get('transactions')[0].get('account'),
+                                            request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
+                                            org_name= approved_response.get('transactions')[0].get('name'),
+                                            campaign_name= campaigns.campaignName
+                                        )
+            
+            db.session.add(new_transaction)
+            db.session.commit()
+            
+            return jsonify({"message":approved_response})
         
         elif providers=="Bank":
             bank= data.get("bank_code")
@@ -717,13 +734,27 @@ def campaign_money_withdrawal():
                     error_message = intersend_data.get("errors")[0].get("detail")
                     return  make_response(jsonify({'error':error_message}),400)
                 
-                if response.status_code ==200:
-                    return jsonify({"message":intersend_data}),200  
+                # if response.status_code ==200:
+                new_transaction=Transactions(tracking_id=intersend_data.get('tracking_id'), 
+                                                batch_status= intersend_data.get('status'),
+                                                trans_type= 'Withdraw to bank',
+                                                trans_status= intersend_data.get('transactions')[0].get('status'),
+                                                amount= intersend_data.get('transactions')[0].get('amount'),
+                                                transaction_account_no=intersend_data.get('transactions')[0].get('account'),
+                                                request_ref_id= intersend_data.get('transactions')[0].get('request_reference_id'),
+                                                org_name= intersend_data.get('transactions')[0].get('name'),
+                                                campaign_name= campaigns.campaignName
+                                            )
+                
+                db.session.add(new_transaction)
+                db.session.commit()
+                return jsonify({"message":intersend_data})
+                  
             except Exception as e:
                 print(e)
                 return jsonify({"error":str(e)}),500       
         else:
-            return jsonify({"error":"Select transaction"}),400
+            return jsonify({"error":"select transaction"}),400
     except Exception as e :
         print(e)
         return jsonify({"error":str(e)}),500
@@ -783,6 +814,20 @@ def campaign_buy_airtime():
                 error_message = intersend_data.get("errors")[0].get("detail")
                 return  make_response(jsonify({'error':error_message}),400)
             
+            # if response.status_code ==200:
+            new_transaction=Transactions(tracking_id=intersend_data.get('tracking_id'), 
+                                            batch_status= intersend_data.get('status'),
+                                            trans_type= 'Buy Airtime',
+                                            trans_status= intersend_data.get('transactions')[0].get('status'),
+                                            amount= intersend_data.get('transactions')[0].get('amount'),
+                                            transaction_account_no=intersend_data.get('transactions')[0].get('account'),
+                                            request_ref_id= intersend_data.get('transactions')[0].get('request_reference_id'),
+                                            org_name= intersend_data.get('transactions')[0].get('name'),
+                                            campaign_name= current_campaign.campaignName
+                                        )
+            
+            db.session.add(new_transaction)
+            db.session.commit()
             return jsonify({"message":intersend_data})
 
         else:
@@ -846,6 +891,33 @@ def webhook():
         return jsonify({'message': 'Webhook received successfully'})
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid third party response'}), 400
+    
+#Intersend web hook to listen to changes in send money ie. Withdraw and buy airtime
+@app.route('/api/v1.0/send-money-webhook', methods = ['POST'])
+def send_money_webhook():
+    try:
+        payload = request.json
+
+        tracking_id = payload.get('tracking_id')
+        batch_status = payload.get('status')
+        trans_status= payload.get('transactions')[0].get('status')
+
+        existing_transaction= Transactions.query.filter_by(tracking_id=tracking_id).first()
+        if not existing_transaction:
+            return  jsonify({"status":"Transaction record not found"}),404
+        #Update the transaction status in the database
+        existing_transaction.batch_status= batch_status
+        existing_transaction.trans_status= trans_status
+        db.session.commit()
+        #Check if the transaction is a withdraw
+        
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid third party response'}), 400
+    except Exception as e:
+        print(e)
+        return jsonify({'error': str(e)}), 500
+        
+
     
 #===============================Donation routes==============================================================
     
