@@ -215,7 +215,7 @@ def post():
     if startDate == current_date:
         isActive = True
     elif startDate > current_date:
-        isActive = False
+        isActive = True
     elif endDate > current_date:
         isActive = False
 
@@ -255,8 +255,9 @@ def post():
             try:
                 response = service.wallets.create(currency="KES",  label=str(uuid.uuid4()), can_disburse=True)
 
-                if response.get('type') == 'client_error':
-                    return jsonify({"error":response.get('errors')[0].get('detail')}),400
+                if response.get('errors'):
+                    error_message = response.get("errors")[0].get("detail")
+                    return jsonify({'error':error_message})
 
                 new_campaign.walletId=response.get("wallet_id")
             except Exception as e:
@@ -680,7 +681,7 @@ def campaign_money_withdrawal():
 
             response = service.transfer.mpesa(wallet_id=campaigns.walletId, currency='KES', transactions=transactions)
             if response.get('errors'):
-                error_message= response.get('errors')[0].get('detail')
+                error_message = response.get("errors")[0].get("detail")
                 return jsonify({'error':error_message})
             return jsonify({"message":response})
         
@@ -710,14 +711,14 @@ def campaign_money_withdrawal():
                 }
 
                 response = requests.post(url, json=payload, headers=headers)
-                data=response.json()
-                print(data)
-                if data.get("errors"):
-                    error_message = data["errors"]
+                intersend_data=response.json()
+                # print(intersend_data)
+                if intersend_data.get("errors"):
+                    error_message = intersend_data.get("errors")[0].get("detail")
                     return  make_response(jsonify({'error':error_message}),400)
                 
                 if response.status_code ==200:
-                    return jsonify({"message":data}),200  
+                    return jsonify({"message":intersend_data}),200  
             except Exception as e:
                 print(e)
                 return jsonify({"error":str(e)}),500       
@@ -776,12 +777,13 @@ def campaign_buy_airtime():
             }
 
             response = requests.post(url, json=payload, headers=headers)
-            data=response.json()
-            if data.get("errors"):
-                error_message = data["errors"]
+            intersend_data=response.json()
+                # print(intersend_data)
+            if intersend_data.get("errors"):
+                error_message = intersend_data.get("errors")[0].get("detail")
                 return  make_response(jsonify({'error':error_message}),400)
             
-            return jsonify({"message":data})
+            return jsonify({"message":intersend_data})
 
         else:
             # Campaign not found
