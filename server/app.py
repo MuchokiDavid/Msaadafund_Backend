@@ -576,6 +576,45 @@ class accountById(Resource):
 
             return {"message": "Account deleted successfully"},200   
 
+#===============================Account pin routes==============================================================
+
+# User forgot password reset
+@app.route('/api/v1.0/account_pin', methods=['POST'])
+@jwt_required()
+def account_pin():
+    current_user = get_jwt_identity()
+    orgEmail = request.json.get('email')
+    organisation = Organisation.query.filter_by(orgEmail=orgEmail, id=current_user).first()
+    if organisation is None:
+        return jsonify({"error": "No account associated with this email found!"}), 404
+    else:
+        otp = OTPGenerator.generate_otp()
+        app.config['OTP_STORAGE'][orgEmail] = otp
+        OTPGenerator.send_account_otp(orgEmail, otp)
+        return jsonify({'message': 'OTP sent to your email'}), 200
+    
+@app.route('/api/v1.0/confirm_account_pin', methods=['PATCH'])
+@jwt_required()
+def confirm_accountotp():
+    current_user = get_jwt_identity()
+    orgEmail = request.json.get('email')
+    otp_entered = request.json.get('otp')
+    org  = Organisation.query.filter_by(orgEmail=orgEmail, id=current_user).first()
+
+    if not orgEmail or not otp_entered:
+        return jsonify({'error': 'Email and OTP are required'}), 400
+
+    stored_otp = app.config['OTP_STORAGE'].get(orgEmail)
+    if stored_otp and stored_otp == otp_entered:
+        # Clear the OTP after successful verification
+        del app.config['OTP_STORAGE'][orgEmail]
+        return jsonify({'message': f'Welcome to your account {org.orgName}!'}), 200
+    # if otp is already cleared provide message
+    elif not stored_otp:
+        return jsonify({'message': 'OTP expired. Please generate a New OTP'}), 200
+    else:
+        return jsonify({'error': 'Invalid OTP or email'}), 400
+
 #====================================Organisation model routes==============================================================
 class Organization(Resource):
     def get(self):
