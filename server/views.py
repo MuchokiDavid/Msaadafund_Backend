@@ -120,3 +120,10 @@ class AccountAdminView(ModelView):
     column_list=('id','providers','accountNumber','orgId')
     column_labels=dict(providers='Provider', accountNumber='Account Number', orgId='Organization')
     column_filters=column_sortable_list
+
+class TransactionAdminView(ModelView):
+    column_sortable_list=('transaction_date', 'amount', 'trans_type', 'org_id', 'trans_status')
+    column_searchable_list=('transaction_date', 'amount', 'trans_type', 'org_id', 'trans_status')
+    column_list=('id','tracking_id','batch_status', 'transaction_date', 'amount', 'trans_type','trans_status', 'org_id', 'campaign_name', 'created_at')
+    column_labels=dict(tracking_id='Tracking Id', batch_status='Batch Status', transaction_date='Transaction Date', amount='Amount', trans_type='Transaction Type', trans_status='Transaction Status', org_id='Organization', campaign_name='Campaign Name', created_at='Created On')
+    column_filters=column_list
