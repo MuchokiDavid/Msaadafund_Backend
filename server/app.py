@@ -602,20 +602,18 @@ def confirm_accountotp():
     orgEmail = request.json.get('email')
     otp_entered = request.json.get('otp')
     org  = Organisation.query.filter_by(orgEmail=orgEmail, id=current_user).first()
+    if not org:
+        return jsonify({'error': 'Organisation not found'}), 404
 
     if not orgEmail or not otp_entered:
         return jsonify({'error': 'Email and OTP are required'}), 400
 
-    stored_otp = app.config['OTP_STORAGE'].get(orgEmail)
-    if stored_otp and stored_otp == otp_entered:
+    if org and orgEmail in app.config['OTP_STORAGE'] and app.config['OTP_STORAGE'][orgEmail] == otp_entered:
         # Clear the OTP after successful verification
         del app.config['OTP_STORAGE'][orgEmail]
         return jsonify({'message': f'Welcome to your account {org.orgName}!'}), 200
-    # if otp is already cleared provide message
-    elif not stored_otp:
-        return jsonify({'message': 'OTP expired. Please generate a New OTP'}), 200
     else:
-        return jsonify({'error': 'Invalid OTP or email'}), 400
+        return jsonify({'error': 'Invalid OTP, Generate a new one'}), 400
 
 #====================================Organisation model routes==============================================================
 class Organization(Resource):
