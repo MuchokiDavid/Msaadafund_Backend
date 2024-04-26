@@ -19,7 +19,7 @@ from auth import auth_bp
 # from views import view_bp
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
-from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView
+from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView, TransactionAdminView
 from cloudinary.uploader import upload
 import cloudinary.api
 import random
@@ -85,6 +85,7 @@ admin.add_view(DonationAdminView(Donation, db.session))
 admin.add_view(OrganisationAdminView(Organisation, db.session))
 admin.add_view(AccountAdminView(Account, db.session))
 admin.add_view(ModelView(TokenBlocklist, db.session))
+admin.add_view(TransactionAdminView(Transactions, db.session))
 
 # jwt error handler
 @jwt.expired_token_loader
@@ -736,6 +737,7 @@ def campaign_money_withdrawal():
                                             transaction_account_no=approved_response.get('transactions')[0].get('account'),
                                             request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
                                             org_name= approved_response.get('transactions')[0].get('name'),
+                                            org_id=organisation.id,
                                             campaign_name= campaigns.campaignName
                                         )
             
@@ -785,6 +787,7 @@ def campaign_money_withdrawal():
                                                 transaction_account_no=intersend_data.get('transactions')[0].get('account'),
                                                 request_ref_id= intersend_data.get('transactions')[0].get('request_reference_id'),
                                                 org_name= intersend_data.get('transactions')[0].get('name'),
+                                                org_id=organisation.id,
                                                 campaign_name= campaigns.campaignName
                                             )
                 
@@ -865,6 +868,7 @@ def campaign_buy_airtime():
                                             transaction_account_no=intersend_data.get('transactions')[0].get('account'),
                                             request_ref_id= intersend_data.get('transactions')[0].get('request_reference_id'),
                                             org_name= intersend_data.get('transactions')[0].get('name'),
+                                            org_id=existing_org.id,
                                             campaign_name= current_campaign.campaignName
                                         )
             
@@ -959,6 +963,48 @@ def send_money_webhook():
         print(e)
         return jsonify({'error': str(e)}), 500
         
+#Route to check intasend transaction status
+@app.route("/api/v1.0/check_transaction_status", methods=["POST"])
+@jwt_required()
+def check_transaction_status():
+    current_user_id = get_jwt_identity()
+    existing_org= Organisation.query.get(current_user_id)
+    if not existing_org:
+        return jsonify({"error": "organisation not found"}), 404
+
+    try:
+        data = request.get_json()
+        tracking_id = data.get('tracking_id')
+
+        status = service.transfer.status(tracking_id)
+
+        return jsonify({"status": status})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+#============================== Transactions route===========================================================
+#Get all transactions
+class GetTransactions(Resource):
+    @jwt_required()
+    def get(self):
+        current_user_id = get_jwt_identity()
+        existing_org = Organisation.query.get(current_user_id)
+        if not existing_org:
+            return jsonify({"error": "organisation not found"}), 404
+        try:
+            # Get all campaigns for the current organisation
+            all_transactions = Transactions.query.filter_by(org_id=existing_org.id).all()
+            if not all_transactions:
+                return jsonify({"error": "No transactions found"}), 404
+            
+            response_dict= [transaction.serialize() for transaction in all_transactions]
+            return jsonify(response_dict)
+
+        except Exception as e:
+            error_message = str(e)
+            print("Error in GetTransactions:", error_message)
+            return jsonify({"error": error_message}), 500
 
     
 #===============================Donation routes==============================================================
@@ -1524,6 +1570,7 @@ api.add_resource(Organization, '/api/v1.0/organisations')
 api.add_resource(OrganisationDetail, '/api/v1.0/organisation')
 api.add_resource(Donate, '/api/v1.0/user/donations')
 api.add_resource(ExpressDonations, '/api/v1.0/express/donations')
+api.add_resource(GetTransactions, '/api/v1.0/withdraw_transactions')
 
 
 if __name__  =="__main__":
