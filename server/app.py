@@ -974,9 +974,15 @@ def check_transaction_status():
 
     try:
         data = request.get_json()
-        tracking_id = data.get('tracking_id')
+        tracking = data.get('tracking_id')
+        if not tracking:
+            return jsonify({"error": "Tracking ID is required"}), 400
+        # Check if the transaction exists in the database
+        existing_transaction = Transactions.query.filter_by(tracking_id=tracking).first()
+        if not existing_transaction:
+            return jsonify({"error": "Transaction not found"}), 404
 
-        status = service.transfer.status(tracking_id)
+        status = service.transfer.status(existing_transaction.tracking_id)
 
         return jsonify({"status": status})
 
