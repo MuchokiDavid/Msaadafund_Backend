@@ -610,7 +610,7 @@ def confirm_accountotp():
 
     if org and orgEmail in app.config['OTP_STORAGE'] and app.config['OTP_STORAGE'][orgEmail] == otp_entered:
         # Clear the OTP after successful verification
-        del app.config['OTP_STORAGE'][orgEmail]
+        # del app.config['OTP_STORAGE'][orgEmail]
         return jsonify({'message': f'Welcome to your account {org.orgName}!'}), 200
     else:
         return jsonify({'error': 'Invalid OTP, Generate a new one'}), 400
