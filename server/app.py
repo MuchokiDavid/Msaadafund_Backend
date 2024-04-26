@@ -1005,7 +1005,7 @@ class GetTransactions(Resource):
                 return jsonify({"error": "No transactions found"}), 404
             
             response_dict= [transaction.serialize() for transaction in all_transactions]
-            return jsonify(response_dict)
+            return jsonify({"message":response_dict})
 
         except Exception as e:
             error_message = str(e)
