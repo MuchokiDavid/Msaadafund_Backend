@@ -131,6 +131,13 @@ class  OTPGenerator():
         msg.body = f'Your OTP is: {otp}'
         mail.send(msg)
 
+    def send_account_otp(email, otp):
+        from app import mail
+        msg = Message('Account Creation request OTP', recipients=[email])
+        msg.body = f'Your OTP is: {otp}.\n\n<b>Disclaimer</b>: <i>Please do not share this OTP with anyone. It is confidential and should be used solely for account verification purposes.\nIf you believe you did not authorize this OTP creation, Please contact management to discuss the way forward.</i> '
+        msg.html = msg.body
+        mail.send(msg)
+
     def generate_otp():
         otp = ''.join(random.choices(string.digits, k=6))
         return otp
