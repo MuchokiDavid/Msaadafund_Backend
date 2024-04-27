@@ -1011,11 +1011,11 @@ def send_money_webhook():
         existing_transaction= Transactions.query.filter_by(tracking_id=tracking_id).first()
         if not existing_transaction:
             return  jsonify({"status":"Transaction record not found"}),404
+        
         #Update the transaction status in the database
         existing_transaction.batch_status= batch_status
         existing_transaction.trans_status= trans_status
         db.session.commit()
-        #Check if the transaction is a withdraw
         
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid third party response'}), 400
@@ -1041,8 +1041,15 @@ def check_transaction_status():
         existing_transaction = Transactions.query.filter_by(tracking_id=tracking).first()
         if not existing_transaction:
             return jsonify({"error": "Transaction not found"}), 404
-
+        # Check the transaction status using the Intersend API and update the database with the status
         status = service.transfer.status(existing_transaction.tracking_id)
+        if status.get("errors"):
+            error_message = status.get("errors")[0].get("detail")
+            return jsonify({"error": error_message}), 400
+        
+        existing_transaction.trans_status = status.get('transactions')[0].get('status')
+        existing_transaction.batch_status = status.get("status")
+        db.session.commit()
 
         return jsonify({"status": status})
 
