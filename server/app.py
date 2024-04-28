@@ -320,11 +320,46 @@ class OrgCampaigns(Resource):
 
 #Get inactive campaigns
 @app.route('/api/v1.0/get_inactive', methods=['GET'])
+@jwt_required()
 def  getInactiveCampaign():
-    """Return a list of all inactive campaigns"""
-    all_campaigns = [campaign.to_dict() for campaign in Campaign.query.filter_by(isActive=False).all()]
-    response = make_response(jsonify(all_campaigns), 200)
-    return response
+    try:
+        current_user = get_jwt_identity()
+        org = Organisation.query.filter_by(id=current_user).first().id
+        if not org:
+            return {"error":"Organisation not found"}, 404
+        campaign = Campaign.query.filter_by(org_id=org, isActive=False).all()
+        if not campaign:
+            return {"error":"Inactive Campaign not found"}, 404
+        data = [c.serialize() for c in campaign]
+      
+        response = make_response(jsonify(data), 200)
+        return response
+    except Exception as e:
+        return {"error":str(e)}
+   
+
+# path inactive campaigns
+@app.route("/api/v1.0/activate/campaign/<int:campaignId>", methods=["PATCH"])
+@jwt_required()
+def activateCampaign(campaignId):
+    try:
+        current_user = get_jwt_identity()
+        org = Organisation.query.filter_by(id=current_user).first()
+        if not org:
+            return {"error":"Organisation not found"}, 404
+        campaign = Campaign.query.filter_by(id=campaignId,org_id=current_user).first()
+        if not campaign:
+            return {"error":"Inactive Campaign not found"}, 404
+        campaign.isActive = True
+        db.session.commit()
+        # return that campaign
+        response = make_response(jsonify(campaign.serialize()))
+        return response
+
+    except Exception as e:
+        return {"error":str(e)}
+
+
 
 #---------------------------------------Get featured campaigns---------------------------------------------
 @app.route('/api/v1.0/featured', methods= ['GET'])
@@ -610,7 +645,7 @@ def confirm_accountotp():
 
     if org and orgEmail in app.config['OTP_STORAGE'] and app.config['OTP_STORAGE'][orgEmail] == otp_entered:
         # Clear the OTP after successful verification
-        # del app.config['OTP_STORAGE'][orgEmail]
+        del app.config['OTP_STORAGE'][orgEmail]
         return jsonify({'message': f'Welcome to your account {org.orgName}!'}), 200
     else:
         return jsonify({'error': 'Invalid OTP, Generate a new one'}), 400
