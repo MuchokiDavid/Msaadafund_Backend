@@ -327,7 +327,7 @@ def  getInactiveCampaign():
         org = Organisation.query.filter_by(id=current_user).first().id
         if not org:
             return {"error":"Organisation not found"}, 404
-        campaign = Campaign.query.filter_by(org_id=org, isActive=False).all()
+        campaign = Campaign.query.filter_by(org_id=current_user, isActive=False).all()
         if not campaign:
             return {"error":"Inactive Campaign not found"}, 404
         data = [c.serialize() for c in campaign]
@@ -1044,6 +1044,121 @@ class GetTransactions(Resource):
             error_message = str(e)
             print("Error in GetTransactions:", error_message)
             return jsonify({"error": error_message}), 500
+
+# get pdf 
+@app.route ("/api/v1.0/withdraw_pdf", methods=["GET"])
+@jwt_required()
+def withdraw_pdf():
+    current_user = get_jwt_identity()
+    existing_org = Organisation.query.filter_by(id=current_user).first()
+    if not existing_org:
+        return jsonify({"error": "organisation not found"}), 404
+    try:
+        # Get all transactions for the current organisation
+        transactions = Transactions.query.filter_by(org_id=current_user).all()
+        if not transactions:
+            return jsonify({"error": "No transactions found"}), 404
+
+        # Create a PDF in memory
+        buffer = io.BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=A4)
+
+        pdf.setTitle("Msaada_Mashinani/transactions")
+        pdf.setFont("Helvetica", 12)
+
+        logo_url = "https://res.cloudinary.com/dml7sp2zm/image/upload/v1713528345/gbrbn0e9ciepzhm5ggjp.jpg"
+        response = requests.get(logo_url)
+        if response.status_code == 200:
+            # Create a temporary file to store the logo image
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+                tmp_file.write(response.content)
+                tmp_file.flush()
+        else:
+            return jsonify({"error": "Failed to download logo image"}), 500
+
+        # Draw logo
+        def draw_logo(pdf):
+            logo_width = 1 * inch
+            logo_height = 1 * inch
+            pdf.drawImage(tmp_file.name, x=0.5 * inch, y=10.5 * inch, width=logo_width, height=logo_height)
+            pdf.drawString(1.8 * inch, 11 * inch, f"Transactions for {existing_org.orgName}")
+
+        # Add table headers
+        draw_logo(pdf)
+        y = 10 * inch
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(0.5 * inch, y, "No.")
+        pdf.drawString(6.6 * inch, y, "Date")
+        pdf.drawString(1 * inch, y, "Transaction")
+        pdf.drawString(5.6 * inch, y, "Status")
+        pdf.drawString(4.8 * inch, y, "Amount")
+        pdf.drawString(3   * inch, y, "Campaign Name")
+        pdf.drawString(2 * inch, y, "AccountNo")
+
+        transactions_per_page = 20
+        transaction_count = 0
+
+        # Add the transactions
+        y -= 0.5 * inch
+        for index, transaction in enumerate(transactions, start=1):
+            if transaction_count >= transactions_per_page or y < 1 * inch:
+                pdf.showPage()
+
+                y = 10 * inch
+                transaction_count=0
+                draw_logo(pdf)
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(0.5 * inch, y, "No.")
+                pdf.drawString(6.6 * inch, y, "Date")
+                pdf.drawString(1 * inch, y, "Transaction")
+                pdf.drawString(5.6 * inch, y, "Status")
+                pdf.drawString(4.8 * inch, y, "Amount")
+                pdf.drawString(3 * inch, y, "Campaign Name")
+                pdf.drawString(2 * inch, y, "AccountNo")
+
+                y -= 0.5 * inch
+
+                # fetch transactions details
+                # transactions = Transactions.query.filter_by(org_id=current_user).all()
+            name_length = len(transaction.campaign_name)
+            width = 25  # Default width
+            if name_length > 25:
+                width == 25
+            
+            campaign_name = textwrap.wrap(transaction.campaign_name, width=width)
+
+            y -= 0.5 * inch
+            transaction_count += 1
+            pdf.setFont("Helvetica", 10)
+            pdf.drawString(0.5 * inch, y, str(index))
+            pdf.drawString(6.6 * inch, y, str(transaction.transaction_date))
+            pdf.drawString(1 * inch, y, transaction.trans_type)
+            pdf.drawString(5.6 * inch, y, transaction.trans_status)
+            pdf.drawString(4.8 * inch, y, str(transaction.amount))
+            pdf.drawString(3   * inch, y, campaign_name[0])
+            pdf.drawString(2 * inch, y, transaction.transaction_account_no)
+
+            y -= 0.5 * inch
+            transaction_count += 1
+
+        total_pages = pdf.getPageNumber()
+
+        # add a footer
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(1 * inch, 0.5 * inch, f"Page {pdf.getPageNumber()} of {total_pages}")
+        pdf.setFont("Helvetica-Bold", 10)
+        pdf.drawString(1 * inch, 0.25 * inch, "Generated by @Msaada_Mashinani")
+                        
+        # You need to generate the PDF before returning it
+        pdf.save()
+        buffer.seek(0)
+        
+        return Response(buffer.getvalue(), mimetype="application/pdf", headers={"Content-Disposition": "attachment;filename=transactions.pdf"})
+
+    
+    except Exception as e:
+        return jsonify({"error": "An error occurred while processing your request"}),500
+
 
     
 #===============================Donation routes==============================================================

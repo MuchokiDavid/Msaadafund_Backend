@@ -299,8 +299,8 @@ class Transactions(db.Model):
             'transaction_date': self.transaction_date,
             'org_id': self.org_id,
             'campaign_name': self.campaign_name,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
         }
     
     def __repr__(self):
