@@ -405,7 +405,7 @@ def unfeature_campaign(campaign_id):
 #-----------------------------------------------------------------------------------------------------------------
 
 #Get one campaign by id in unprotected route
-@app.route("/campaign/<int:campaignId>", methods=["GET"])
+@app.route("/api/v1.0/campaign/<int:campaignId>", methods=["GET"])
 def readOne(campaignId):
     """Get the details of one specific campaign."""
     try:
@@ -419,27 +419,54 @@ def readOne(campaignId):
 
 
 # patch campaign by specific id
-@app.route("/campaign/<int:campaignId>", methods=["PATCH"])
+@app.route("/api/v1.0/campaign/<int:campaignId>", methods=["PATCH"])
 @jwt_required()
 def updateOne(campaignId):
-    description = request.form.get('description')
-    banner = request.files.get('banner') 
+    try:
+        description = request.form.get('description')
+        banner = request.files.get('banner') 
+        startDateStr = request.form.get('startDate')
+        endDateStr = request.form.get('endDate')
 
-    current_user = get_jwt_identity()
+      
+
+        current_user = get_jwt_identity()
+        
+        existing_campaign = Campaign.query.filter_by(id=campaignId, org_id=current_user).first()
+        if not existing_campaign:
+            return {"error":"Campaign not found"}, 404
+        if description:
+            existing_campaign.description = description
+        if banner:
+            result = upload(banner)
+            if "secure_url" in result:
+                existing_campaign.banner = result["secure_url"]
+        try:
+            if startDateStr:
+                startDate = datetime.strptime(startDateStr, '%Y-%m-%d').date()
+                existing_campaign.startDate = startDate
+            if endDateStr:
+                endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
+                existing_campaign.endDate = endDate
+            
+            current_date = datetime.now().date()
+            if startDate < current_date:
+                return {'error': 'cannot create a campaign in the past'}, 400
+            if endDate < current_date:
+                return {'error':'enddate  should be greater than current date'} ,400  
+            if endDate < startDate:
+                return {'error': 'end date cannot be before start date'}, 400
+        except Exception as e:
+            return {"error":str(e)}
     
-    existing_campaign = Campaign.query.filter_by(id=campaignId, org_id=current_user).first()
-    if not existing_campaign:
-        return {"error":"Campaign not found"}, 404
-    if description:
-        existing_campaign.description = description
-    if banner:
-        result = upload(banner)
-        if "secure_url" in result:
-            existing_campaign.banner = result["secure_url"]
-    db.session.commit()
+        
+        db.session.commit()
 
-    response = make_response(jsonify(existing_campaign.serialize()), 200)
-    return response
+        response = make_response(jsonify(existing_campaign.serialize()), 200)
+        return response
+    except Exception as e:
+        print(e)
+        return {"error":str(e)}
 
 # delete campaign
 @app.route("/api/v1.0/deletecampaign/<int:campaignId>", methods=["DELETE"])
