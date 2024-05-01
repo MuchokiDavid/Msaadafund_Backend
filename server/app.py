@@ -1011,11 +1011,11 @@ def send_money_webhook():
         existing_transaction= Transactions.query.filter_by(tracking_id=tracking_id).first()
         if not existing_transaction:
             return  jsonify({"status":"Transaction record not found"}),404
+        
         #Update the transaction status in the database
         existing_transaction.batch_status= batch_status
         existing_transaction.trans_status= trans_status
         db.session.commit()
-        #Check if the transaction is a withdraw
         
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid third party response'}), 400
@@ -1041,8 +1041,15 @@ def check_transaction_status():
         existing_transaction = Transactions.query.filter_by(tracking_id=tracking).first()
         if not existing_transaction:
             return jsonify({"error": "Transaction not found"}), 404
-
+        # Check the transaction status using the Intersend API and update the database with the status
         status = service.transfer.status(existing_transaction.tracking_id)
+        if status.get("errors"):
+            error_message = status.get("errors")[0].get("detail")
+            return jsonify({"error": error_message}), 400
+        
+        existing_transaction.trans_status = status.get('transactions')[0].get('status')
+        existing_transaction.batch_status = status.get("status")
+        db.session.commit()
 
         return jsonify({"status": status})
 
@@ -1258,7 +1265,7 @@ def get():
         if not all_donations:
             return {"error": "No donations found"}, 404
         response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE' or donation.status=='PENDING']
-        response = make_response(jsonify(response_dict),200)
+        response = make_response(jsonify({"message":response_dict}),200)
         return response
     except  Exception as e:
         return make_response(jsonify({"error":"Internal Server Error:"+ str(e)}),500)
