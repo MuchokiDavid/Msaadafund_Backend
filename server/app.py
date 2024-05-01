@@ -1265,7 +1265,7 @@ def get():
         if not all_donations:
             return {"error": "No donations found"}, 404
         response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE' or donation.status=='PENDING']
-        response = make_response(jsonify(response_dict),200)
+        response = make_response(jsonify({"message":response_dict}),200)
         return response
     except  Exception as e:
         return make_response(jsonify({"error":"Internal Server Error:"+ str(e)}),500)
