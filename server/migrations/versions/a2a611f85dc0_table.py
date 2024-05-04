@@ -1,8 +1,8 @@
-"""Added transaction model
+"""table
 
-Revision ID: 733d371ba372
+Revision ID: a2a611f85dc0
 Revises: 
-Create Date: 2024-04-24 14:08:32.954668
+Create Date: 2024-05-04 14:19:14.029404
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '733d371ba372'
+revision = 'a2a611f85dc0'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -53,13 +53,16 @@ def upgrade():
     op.create_table('transactions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('tracking_id', sa.String(), nullable=True),
-    sa.Column('status', sa.String(), nullable=True),
+    sa.Column('batch_status', sa.String(), nullable=True),
+    sa.Column('trans_type', sa.String(), nullable=True),
+    sa.Column('trans_status', sa.String(), nullable=True),
     sa.Column('amount', sa.Float(), nullable=True),
-    sa.Column('transaction_account', sa.String(), nullable=True),
+    sa.Column('transaction_account_no', sa.String(), nullable=True),
     sa.Column('request_ref_id', sa.String(), nullable=True),
     sa.Column('org_name', sa.String(), nullable=True),
     sa.Column('transaction_date', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
-    sa.Column('wallet_id', sa.String(), nullable=True),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('campaign_name', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
@@ -118,6 +121,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('amount', sa.Float(), nullable=False),
     sa.Column('donationDate', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('donor_name', sa.String(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('campaign_id', sa.Integer(), nullable=True),
     sa.Column('status', sa.String(), nullable=False),
