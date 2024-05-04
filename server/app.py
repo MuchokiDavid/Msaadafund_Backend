@@ -2,7 +2,7 @@
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription
 from utility import check_wallet_balance, sendMail, OTPGenerator, Send_acc
 import os
 from dotenv import load_dotenv
@@ -114,6 +114,8 @@ def index():
     """Home page."""""
     return "<h3>Msaada Mashinani</h3>"
 
+
+
 #===============================User model routes==============================================================
 
 # classes for users
@@ -178,6 +180,63 @@ class userDataByid(Resource):
             db.session.commit()
 
             return {"message": "User deactivated successfully"},200   
+        
+#===============================subscription  routes==============================================================
+class GetSubscription(Resource):
+    @jwt_required()
+    def get(self,org_id):
+        current_user = get_jwt_identity()
+        user = User.query.filter_by(id=current_user).first()
+        if not user:
+            return {"error":"User not found"}, 404
+        subscriptions = Subscription.query.filter_by(user_id=user.id).all()
+        if not subscriptions:
+            return {"error":"No subscription found"}, 404
+        response_dict = [sub.serialize() for sub in subscriptions]
+        response = make_response(jsonify(response_dict), 200)
+        return response
+    
+    @jwt_required()
+    def post(self,org_id):
+        current_user = get_jwt_identity()
+        user = User.query.filter_by(id=current_user).first()
+        if not user:
+            return {"error":"User not found"}, 404
+        
+        org = Organisation.query.filter_by(id=org_id).first()
+        if not org:
+            return {"error":"Organisation not found"}, 404
+        org_name = org.orgName
+        available_subscription = Subscription.query.filter_by(user_id=user.id, organisation_id=org_id).first()
+        if available_subscription:
+            return {"error":"Subscription already exists"}, 404
+        
+        
+        new_subs = Subscription(user_id=user.id, organisation_id=org_id)
+    
+        db.session.add(new_subs)
+        db.session.commit()
+        sendMail.send_subscription_email(user.email, user.firstName, org_name)
+
+        response = make_response(jsonify(new_subs.serialize()), 200)
+        return response
+    
+    @jwt_required()
+    def delete(self, org_id):
+        current_user = get_jwt_identity()
+        user = User.query.filter_by(id=current_user).first()
+        if not user:
+            return {"error":"User not found"}, 404
+        available_subscription = Subscription.query.filter_by(user_id=user.id, organisation_id=org_id).first()
+        if not available_subscription:
+            return {"error":"Subscription not found"}, 404
+        db.session.delete(available_subscription)
+        db.session.commit()
+
+        return {"message": "Subscription deleted successfully"},200
+        
+       
+        
         
 #===============================Campaign model routes==============================================================
         
@@ -271,6 +330,13 @@ def post():
                 db.session.add(new_campaign)
                 db.session.commit()
                 sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
+            
+            # check users subscribed to organisation
+                users_subscibed = Subscription.query.filter_by(organisation_id=available_org.id).all()
+                if users_subscibed:
+                    for user in users_subscibed:
+                        user_detail = User.query.get(user.user_id)
+                        sendMail.send_subscribers_createCampaign(user_detail.email,user_detail.firstName,new_campaign.campaignName,new_campaign.description,new_campaign.startDate,new_campaign.endDate,new_campaign.targetAmount,available_org.orgName)
 
 
             except Exception as e:
@@ -1206,7 +1272,7 @@ class  ExpressDonations(Resource):
         phoneNumber= data.get("phoneNumber")
         amount= data.get('amount')
         campaign_id= data.get('campaignId')
-        print(donor_name)
+        
 
         if not email:
             return make_response(jsonify({"error":"Email is required."}),400)
@@ -1236,7 +1302,7 @@ class  ExpressDonations(Resource):
                 return  make_response(jsonify({"message":error_message}))
             # return jsonify(data)
             new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, donor_name=donor_name, status= data.get('invoice').get('state'), invoice_id= data.get('invoice').get('invoice_id'))
-            
+            print(new_donation)
             db.session.add(new_donation)
             db.session.commit()
             return make_response(jsonify({"message": "Donation initialised successfully!", "data": new_donation.serialize()}), 200)
@@ -1760,6 +1826,7 @@ api.add_resource(OrganisationDetail, '/api/v1.0/organisation')
 api.add_resource(Donate, '/api/v1.0/user/donations')
 api.add_resource(ExpressDonations, '/api/v1.0/express/donations')
 api.add_resource(GetTransactions, '/api/v1.0/withdraw_transactions')
+api.add_resource(GetSubscription, '/api/v1.0/subscription/<int:org_id>')
 
 
 if __name__  =="__main__":
