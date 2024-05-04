@@ -173,6 +173,7 @@ class Donation (db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float,nullable=False)
     donationDate = db.Column(db.DateTime, server_default=db.func.now())
+    donor_name= db.Column(db.String)
     user_id =  db.Column(db.Integer, db.ForeignKey('users.id'))
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'))
     status= db.Column(db.String, nullable=False)
@@ -185,6 +186,7 @@ class Donation (db.Model, SerializerMixin):
             'id': self.id,
             'amount': self.amount,
             'donationDate': self.donationDate.strftime("%Y-%m-%d"),
+            'donor_name': self.donor_name,
             'userId': self.user_id,
             'campaignId': self.campaign_id,
             'status': self.status,
@@ -192,7 +194,7 @@ class Donation (db.Model, SerializerMixin):
         }
     
     def __repr__(self):
-        return f"ID:{self.id} Amount:{self.amount}, Date:{self.donationDate}, User ID:{self.user_id}, Campaign ID:{self.campaign_id}"
+        return f"ID:{self.id} Amount:{self.amount}, Date:{self.donationDate}, Donor Name:{self.donor_name}, User ID:{self.user_id}, Campaign ID:{self.campaign_id}"
 
 
 

@@ -1201,10 +1201,12 @@ def withdraw_pdf():
 class  ExpressDonations(Resource):
     def post(self):
         data= request.get_json()
+        donor_name= data.get("donorName")
         email= "msaadaanonymous@gmail.com"
         phoneNumber= data.get("phoneNumber")
         amount= data.get('amount')
         campaign_id= data.get('campaignId')
+        print(donor_name)
 
         if not email:
             return make_response(jsonify({"error":"Email is required."}),400)
@@ -1233,7 +1235,7 @@ class  ExpressDonations(Resource):
                 error_message = data.get("errors")[0].get("detail")
                 return  make_response(jsonify({"message":error_message}))
             # return jsonify(data)
-            new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, status= data.get('invoice').get('state'), invoice_id= data.get('invoice').get('invoice_id'))
+            new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, donor_name=donor_name, status= data.get('invoice').get('state'), invoice_id= data.get('invoice').get('invoice_id'))
             
             db.session.add(new_donation)
             db.session.commit()
@@ -1242,7 +1244,6 @@ class  ExpressDonations(Resource):
             #     return make_response(jsonify({'error':'Error making donation'}), 400)
         except TypeError as ex:
             print(ex)
-            return make_response(jsonify({"error":f"An error occured:{e}"}))
         except ValueError:
             return make_response(jsonify({"error": "Invalid value"}),400)  
         except Exception as e:
