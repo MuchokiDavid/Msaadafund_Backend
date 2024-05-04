@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 # from app import token, publishable_key,service
 from intasend import APIService
+from models import Campaign
 
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
@@ -31,7 +32,7 @@ class sendMail():
     #Send mail after donation has completed successifully
     def send_mail_on_donation_completion(amount,date,name,campaign,email,organisation):
         from app import mail
-        subject = "Donation successiful"
+        subject = f"Donation to {campaign} by {organisation} was successful"
         body = f"Dear {name},\n\n Thank you for donating to {campaign} campaign on {date}.\nYour contribution is highly appreciated as it is used to make an impact in our community\n Best regards,\n {organisation}"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
@@ -47,7 +48,7 @@ class sendMail():
     #Send mail after withdrawal has completed successifully
     def send_mail_on_successiful_withdrawal(amount, date, name, campaign, email, organisation):
         from app import mail
-        subject = "Withdrawal successiful"
+        subject = "Withdrawal successful"
         body = f"Dear {name},\n\n Thank you for withdrawing from {campaign} campaign on {date}.\nYour withdrawal is highly appreciated as it is used to make an impact in our community\n Best regards,\n {organisation}"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
@@ -67,14 +68,17 @@ class sendMail():
     #send mail after a campaign has been created
     def send_post_campaign(organisation, campaignName, description, category, targetAmount, startDate, endDate):
         from app import mail
-        subject = "Campaign Created Successfully"
+        existing_campaign = Campaign.query.filter_by(campaignName=campaignName).first()
+        url = f"http://localhost:3000/campaign/{existing_campaign.id}" #update once deployed 
+        subject = f"{campaignName} Created Successfully"
         body = f"Hello {organisation.orgName}! You have successfully created a campaign.\n\n" \
             f"Campaign Name: {campaignName}\n" \
             f"Description: {description}\n" \
             f"Category: {category}.\n" \
             f"Your target amount is Ksh: {targetAmount} \n" \
             f"Start Date: {startDate}\n" \
-            f"End Date: {endDate} \n\n" \
+            f"End Date: {endDate} \n" \
+            f"Campaign link: {url} \n\n" \
             f"Good luck  with your campaign!"
 
         mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
@@ -107,11 +111,28 @@ class sendMail():
         body = f"Dear {user.firstName} {user.lastName},\n\n Thank you for registering on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [user.email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
+
+    # send subscriptions
+    def send_subscription_email(email,user,org_name):
+        from app import mail
+        subject = "Subscription"
+        body = f"Dear {user},\n\n We're excited to inform you that you've successfully subscribed to receive updates on {org_name} latest campaigns and initiatives.\n  You're now part of our community dedicated to making a positive impact..\n\n Best regards,\n Msaada Mashinani Team"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+    
+    def send_subscribers_createCampaign(email,user,campaignName,description,startDate,endDate,budget,org_name):
+        from app import mail
+        existing_campaign = Campaign.query.filter_by(campaignName=campaignName).first()
+        url = f"http://localhost:3000/campaign/{existing_campaign.id}" #update once deployed 
+        subject = f"{campaignName} by {org_name}"
+        body = f"Dear {user},\n\n We're thrilled to announce the launch of our latest campaign,{campaignName}. This initiative represents our continued commitment to our cause.\n\n Here's a brief overview of the campaign: \n Title:{campaignName}\n Description:{description}\n Start Date: {startDate}\n End Date: {endDate}\n Budget:{budget}\n Campaign link:{url}\n\n You're now part of our community dedicated to making a positive impact.\n We invite you to join us in making a difference by supporting this campaign. Whether it's spreading the word, volunteering your time, or contributing in any way you can, your participation is invaluable.\n\n Stay tuned for updates as the campaign progresses. Together, we can achieve meaningful impact and create positive change in our community.\n\n Best regards,\n Msaada Mashinani Team"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
     
 class Send_acc():    
     def send_user_signup_account(email, providers, accountNumber, orgName):
         from app import mail
-        subject = "Account Creation"
+        subject = f"{providers} Account Created Successful"
         body = f"Dear {orgName},\n\n Thank you for registering your {providers} account with account number {accountNumber} on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
@@ -141,3 +162,4 @@ class  OTPGenerator():
     def generate_otp():
         otp = ''.join(random.choices(string.digits, k=6))
         return otp
+    

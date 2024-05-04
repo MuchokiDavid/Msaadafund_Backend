@@ -27,6 +27,7 @@ class User(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     donations =db.relationship('Donation', backref='user')
+    subscriptions = db.relationship('Subscription',backref='user')
     
 
     @validates('phoneNumber')
@@ -68,7 +69,9 @@ class User(db.Model, SerializerMixin):
             'address': self.address,
             'created_at': self.created_at,
             'updated_at': self.updated_at,
-            'donations': [donation.serialize() for donation in self.donations]
+            'donations': [donation.serialize() for donation in self.donations],
+            "subscriptions":[sub.serialize() for sub in self.subscriptions]
+
         }
     def __repr__ (self):
         return f"ID:{self.id} FirstName:{self.firstName}, LastName:{self.lastName},  Username:{self.username},  Email:{self.email}, Phone Number:{self.phoneNumber}"
@@ -89,6 +92,7 @@ class Organisation(db.Model, SerializerMixin):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable = True)
     campaigns = db.relationship('Campaign', backref='organisation')
     accounts= db.relationship('Account', backref= 'organisation')
+    subscriptions = db.relationship('Subscription',backref='organisation')
 
     @validates('orgPhoneNumber')
     def validate_phone_number(self, key, number):
@@ -129,7 +133,8 @@ class Organisation(db.Model, SerializerMixin):
             "orgDescription": self.orgDescription,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "campaigns": [camp.serialize() for camp in self.campaigns],
-            "accounts": [acc.serialize() for acc in self.accounts]
+            "accounts": [acc.serialize() for acc in self.accounts],
+            "subscriptions":[sub.serialize() for sub in self.subscriptions]
         }
 
 #Account model  for organisation accounts to withdraw money to
@@ -173,7 +178,7 @@ class Donation (db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float,nullable=False)
     donationDate = db.Column(db.DateTime, server_default=db.func.now())
-    donor_name= db.Column(db.String)
+    donor_name= db.Column(db.String, nullable = True)
     user_id =  db.Column(db.Integer, db.ForeignKey('users.id'))
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'))
     status= db.Column(db.String, nullable=False)
@@ -307,3 +312,41 @@ class Transactions(db.Model):
     
     def __repr__(self):
         return f"ID: {self.id}, Tracking ID: {self.tracking_id}, Batch Status: {self.batch_status}, Transaction Type: {self.trans_type}, Transaction Status: {self.trans_status}, Amount: {self.amount}, Transaction Account No: {self.transaction_account_no}, Request Ref ID: {self.request_ref_id}, Org Name: {self.org_name}, Transaction Date: {self.transaction_date}, Org ID: {self.org_id}, Campaign Name: {self.campaign_name}"
+    
+    # subscriptions
+class Subscription(db.Model,SerializerMixin):
+    __tablename__ = 'subscriptions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    organisation_id = db.Column(db.Integer, db.ForeignKey('organisations.id'))
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'organisation_id': self.organisation_id,
+            'organisation': {
+                'id': self.organisation.id,
+                'orgName': self.organisation.orgName,
+                'orgEmail': self.organisation.orgEmail,
+                'orgAddress': self.organisation.orgAddress,
+                'orgPhoneNumber': self.organisation.orgPhoneNumber,
+                'orgDescription': self.organisation.orgDescription,
+                'isVerified': self.organisation.isVerified,
+            },
+            'user':{
+                'id': self.user.id,
+                'username': self.user.username,
+                'firstName': self.user.firstName,
+                'lastName': self.user.lastName,
+                'email': self.user.email,
+                'phoneNumber': self.user.phoneNumber,
+            }
+        }
+
+
+    
+
+    def __repr__(self):
+        return f"Subscription: {self.id}, User ID: {self.user_id}, Organisation ID: {self.organisation_id}"
