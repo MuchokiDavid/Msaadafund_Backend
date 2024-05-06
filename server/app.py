@@ -551,8 +551,11 @@ def delete(campaignId):
         existing_campaign.isActive = False       
         # db.session.delete(campaign)
         db.session.commit()
-
-        return {"message": "Campaign deactivated successfully"},200   
+        # return that campaign
+        response = make_response(jsonify(existing_campaign.serialize()))
+        return {"message": "Campaign deactivated successfully",
+                "data":response                
+            },200   
 
 #Get  specific campaign details by id
 class campaignById(Resource):
@@ -881,13 +884,13 @@ def campaign_money_withdrawal():
                 payload = {
                     "currency": "KES",
                     "provider": "PESALINK",
+                    "wallet_id": campaigns.walletId,
                     "transactions": [
                         {
-                            "wallet_id": campaigns.walletId,
                             "account": accountNumber,
                             "amount": amount,
                             "bank_code": bank,
-                            "narrative": "Campaign withdrawal"
+                            "narrative": "Withdrawal Money"
                         }
                     ]
                 }
@@ -963,12 +966,14 @@ def campaign_buy_airtime():
 
                 "currency": "KES",
                 "provider": "AIRTIME",
+                "wallet_id": wallet_id,
                 "transactions": [
                     { 
-                        "wallet_id": wallet_id,
                         "name": name,
                         "account": phone_number,
-                        "amount": amount
+                        "amount": amount,
+                        "category_name": "Airtime",
+                        "narrative": "Airtime purchase"
                     }
                 ]
             }
