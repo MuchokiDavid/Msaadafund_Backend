@@ -2,7 +2,7 @@
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription,YoutubeLink
 from utility import check_wallet_balance, sendMail, OTPGenerator, Send_acc
 import os
 from dotenv import load_dotenv
@@ -329,9 +329,24 @@ def post():
             try:
                 db.session.add(new_campaign)
                 db.session.commit()
+
+                # Get YouTube link from the request
+                youtube_link = request.form['youtube_link']
+
+                # Create a new YouTubeLink object associated with the campaign
+                new_youtube_link = YoutubeLink(
+                    link=youtube_link,
+                    campaign_id=new_campaign.id  # Associate the YouTube link with the newly created campaign
+                )
+
+                # Save the YouTube link to the database
+                db.session.add(new_youtube_link)
+                db.session.commit()
+
+
                 sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
             
-            # check users subscribed to organisation
+                # check users subscribed to organisation
                 users_subscibed = Subscription.query.filter_by(organisation_id=available_org.id).all()
                 if users_subscibed:
                     for user in users_subscibed:
@@ -492,9 +507,7 @@ def updateOne(campaignId):
         description = request.form.get('description')
         banner = request.files.get('banner') 
         startDateStr = request.form.get('startDate')
-        endDateStr = request.form.get('endDate')
-
-      
+        endDateStr = request.form.get('endDate')    
 
         current_user = get_jwt_identity()
         
@@ -514,6 +527,19 @@ def updateOne(campaignId):
             if endDateStr:
                 endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
                 existing_campaign.endDate = endDate
+
+            youtube_link = request.form.get('youtube_link')  
+            #patch youtube link
+            if youtube_link:
+                # Create a new YouTubeLink object associated with the campaign
+                new_youtube_link = YoutubeLink(
+                    link=youtube_link,
+                    campaign_id= campaignId
+                )
+
+                # Save the YouTube link to the database
+                db.session.add(new_youtube_link)
+                db.session.commit()
             
             current_date = datetime.now().date()
             if startDate < current_date:
@@ -551,8 +577,11 @@ def delete(campaignId):
         existing_campaign.isActive = False       
         # db.session.delete(campaign)
         db.session.commit()
-
-        return {"message": "Campaign deactivated successfully"},200   
+        # return that campaign
+        response = make_response(jsonify(existing_campaign.serialize()))
+        return {"message": "Campaign deactivated successfully",
+                "data":response                
+            },200   
 
 #Get  specific campaign details by id
 class campaignById(Resource):
@@ -881,13 +910,13 @@ def campaign_money_withdrawal():
                 payload = {
                     "currency": "KES",
                     "provider": "PESALINK",
+                    "wallet_id": campaigns.walletId,
                     "transactions": [
                         {
-                            "wallet_id": campaigns.walletId,
                             "account": accountNumber,
                             "amount": amount,
                             "bank_code": bank,
-                            "narrative": "Campaign withdrawal"
+                            "narrative": "Withdrawal Money"
                         }
                     ]
                 }
@@ -963,12 +992,14 @@ def campaign_buy_airtime():
 
                 "currency": "KES",
                 "provider": "AIRTIME",
+                "wallet_id": wallet_id,
                 "transactions": [
                     { 
-                        "wallet_id": wallet_id,
                         "name": name,
                         "account": phone_number,
-                        "amount": amount
+                        "amount": amount,
+                        "category_name": "Airtime",
+                        "narrative": "Airtime purchase"
                     }
                 ]
             }
