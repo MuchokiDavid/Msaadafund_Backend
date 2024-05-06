@@ -507,9 +507,7 @@ def updateOne(campaignId):
         description = request.form.get('description')
         banner = request.files.get('banner') 
         startDateStr = request.form.get('startDate')
-        endDateStr = request.form.get('endDate')
-
-      
+        endDateStr = request.form.get('endDate')    
 
         current_user = get_jwt_identity()
         
@@ -529,6 +527,19 @@ def updateOne(campaignId):
             if endDateStr:
                 endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
                 existing_campaign.endDate = endDate
+
+            youtube_link = request.form.get('youtube_link')  
+            #patch youtube link
+            if youtube_link:
+                # Create a new YouTubeLink object associated with the campaign
+                new_youtube_link = YoutubeLink(
+                    link=youtube_link,
+                    campaign_id= campaignId
+                )
+
+                # Save the YouTube link to the database
+                db.session.add(new_youtube_link)
+                db.session.commit()
             
             current_date = datetime.now().date()
             if startDate < current_date:
