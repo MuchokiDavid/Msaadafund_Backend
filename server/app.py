@@ -331,7 +331,7 @@ def post():
                 db.session.commit()
 
                 # Get YouTube link from the request
-                youtube_link = request.form['youtube_link']
+                youtube_link = request.form['youtubeLink']
 
                 # Create a new YouTubeLink object associated with the campaign
                 new_youtube_link = YoutubeLink(
