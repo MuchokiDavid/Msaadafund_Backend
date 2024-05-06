@@ -137,7 +137,8 @@ class Organisation(db.Model, SerializerMixin):
             "subscriptions":[sub.serialize() for sub in self.subscriptions]
         }
 
-#Account model  for organisation accounts to withdraw money to
+
+# Account model  for organisation accounts to withdraw money to
 class Account(db.Model, SerializerMixin):
     __tablename__=  'accounts'
 
@@ -222,6 +223,7 @@ class  Campaign(db.Model, SerializerMixin):
     org_id = db.Column(db.String(), db.ForeignKey('organisations.id'))
     # withdrawals = db.relationship('Withdraw', backref='campaign'), Serial_rule: '-withdrawals.campaign',
     donations =db.relationship('Donation', backref='campaign')
+    youtube_links = db.relationship('YoutubeLink', backref='campaign')
 
     def serialize(self):
         return {
@@ -248,12 +250,59 @@ class  Campaign(db.Model, SerializerMixin):
             'orgDescription': self.organisation.orgDescription,
             'isVerified': self.organisation.isVerified,
             },
-            'donations': [donation.serialize() for donation in self.donations]
+            'donations': [donation.serialize() for donation in self.donations],
+            'youtube_links': [link.serialize() for link in self.youtube_links]
         }
 
     def __repr__ (self):
         return f"ID: {self.id}, Campaign Name: {self.campaignName},  Description: {self.description}, Category:{self.category}, Start Date : {self.startDate}, End Date:{self.endDate}, Target Amount :{self.targetAmount}, Wallet ID :{self.walletId}, Organisation ID:{self.org_id}"
+
+# Add youtube link for campaign banner
+class YoutubeLink(db.Model, SerializerMixin):
+    __tablename__ = 'youtube_links'
+
+    id = db.Column(db.Integer, primary_key=True)
+    link = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'), nullable=False)
     
+    def serialize(self):
+        return {
+            'id': self.id,
+            'link': self.link,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'campaign_id': self.campaign_id,
+            'campaign': {
+                'id': self.campaign.id,
+                'campaignName': self.campaign.campaignName,
+                'description': self.campaign.description,
+                'category': self.campaign.category,
+                'banner': self.campaign.banner,
+                'startDate': self.campaign.startDate,
+                'endDate': self.campaign.endDate,
+                'targetAmount': self.campaign.targetAmount,
+                'isActive': self.campaign.isActive,
+                'walletId': self.campaign.walletId,
+                'featured': self.campaign.featured,
+                'created_at': self.campaign.created_at.isoformat() if self.campaign.created_at else None,
+                'updated_at': self.campaign.updated_at.isoformat() if self.campaign.updated_at else None,
+                'org_id': self.campaign.org_id,
+                'organisation': {
+                    'id': self.campaign.organisation.id,
+                    'orgName': self.campaign.organisation.orgName,
+                    'orgEmail': self.campaign.organisation.orgEmail,
+                    'orgAddress': self.campaign.organisation.orgAddress,
+                    'orgPhoneNumber': self.campaign.organisation.orgPhoneNumber,
+                    'orgDescription': self.campaign.organisation.orgDescription,
+                    'isVerified': self.campaign.organisation.isVerified,
+                }
+            }
+        }   
+    def __repr__(self):
+        return f"ID: {self.id}, Link: {self.link}, Campaign ID: {self.campaign_id}" 
+
 class TokenBlocklist(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     jti = db.Column(db.String(), nullable=True)
