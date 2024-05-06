@@ -2,7 +2,7 @@
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription,YoutubeLink
 from utility import check_wallet_balance, sendMail, OTPGenerator, Send_acc
 import os
 from dotenv import load_dotenv
@@ -329,9 +329,24 @@ def post():
             try:
                 db.session.add(new_campaign)
                 db.session.commit()
+
+                # Get YouTube link from the request
+                youtube_link = request.form['youtube_link']
+
+                # Create a new YouTubeLink object associated with the campaign
+                new_youtube_link = YoutubeLink(
+                    link=youtube_link,
+                    campaign_id=new_campaign.id  # Associate the YouTube link with the newly created campaign
+                )
+
+                # Save the YouTube link to the database
+                db.session.add(new_youtube_link)
+                db.session.commit()
+
+
                 sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
             
-            # check users subscribed to organisation
+                # check users subscribed to organisation
                 users_subscibed = Subscription.query.filter_by(organisation_id=available_org.id).all()
                 if users_subscibed:
                     for user in users_subscibed:
