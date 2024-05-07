@@ -331,7 +331,7 @@ def post():
                 db.session.commit()
 
                 # Get YouTube link from the request
-                youtube_link = request.form['youtube_link']
+                youtube_link = request.form['youtubeLink']
 
                 # Create a new YouTubeLink object associated with the campaign
                 new_youtube_link = YoutubeLink(
@@ -1373,7 +1373,7 @@ class Donate(Resource):
     @jwt_required()
     def get(self):
         current_user = get_jwt_identity()
-        user = User.query.filter_by(username=current_user).first()
+        user = User.query.filter_by(id=current_user).first()
         if not user:
             return {"error": "User not found"}, 404
         all_donations = Donation.query.filter_by(user_id=user.id, status='COMPLETE').all()
@@ -1387,7 +1387,7 @@ class Donate(Resource):
     @jwt_required()
     def post(self):
         current_user= get_jwt_identity()
-        user = User.query.filter_by(username=current_user).first()
+        user = User.query.filter_by(id=current_user).first()
         if not user:
             return {"error": "User not found"}, 404
         data= request.get_json()
