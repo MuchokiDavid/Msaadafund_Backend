@@ -195,6 +195,31 @@ class Donation (db.Model, SerializerMixin):
             'donor_name': self.donor_name,
             'userId': self.user_id,
             'campaignId': self.campaign_id,
+            'campaign': {
+                'id': self.campaign.id,
+                'campaignName': self.campaign.campaignName,
+                'description': self.campaign.description,
+                'category': self.campaign.category,
+                'banner': self.campaign.banner,
+                'startDate': self.campaign.startDate,
+                'endDate': self.campaign.endDate,
+                'targetAmount': self.campaign.targetAmount,
+                'isActive': self.campaign.isActive,
+                'walletId': self.campaign.walletId,
+                'featured': self.campaign.featured,
+                'created_at': self.campaign.created_at.isoformat() if self.campaign.created_at else None,
+                'updated_at': self.campaign.updated_at.isoformat() if self.campaign.updated_at else None,
+                'org_id': self.campaign.org_id,
+                'organisation': {
+                    'id': self.campaign.organisation.id,
+                    'orgName': self.campaign.organisation.orgName,
+                    'orgEmail': self.campaign.organisation.orgEmail,
+                    'orgAddress': self.campaign.organisation.orgAddress,
+                    'orgPhoneNumber': self.campaign.organisation.orgPhoneNumber,
+                    'orgDescription': self.campaign.organisation.orgDescription,
+                    'isVerified': self.campaign.organisation.isVerified,
+                }
+            },
             'status': self.status,
             'invoice_id':self.invoice_id
         }
