@@ -70,8 +70,8 @@ class sendMail():
         from app import mail
         existing_campaign = Campaign.query.filter_by(campaignName=campaignName).first()
         url = f"http://localhost:3000/campaign/{existing_campaign.id}" #update once deployed 
-        subject = f"{campaignName} Created Successfully"
-        body = f"Hello {organisation.orgName}! You have successfully created a campaign.\n\n" \
+        subject = f"{campaignName.upper()} Created Successfully"
+        body = f"Hello {organisation.orgName}!\n\nYou have successfully created a campaign.\n\n" \
             f"Campaign Name: {campaignName}\n" \
             f"Description: {description}\n" \
             f"Category: {category}.\n" \
@@ -115,8 +115,8 @@ class sendMail():
     # send subscriptions
     def send_subscription_email(email,user,org_name):
         from app import mail
-        subject = "Subscription"
-        body = f"Dear {user},\n\n We're excited to inform you that you've successfully subscribed to receive updates on {org_name} latest campaigns and initiatives.\n  You're now part of our community dedicated to making a positive impact..\n\n Best regards,\n Msaada Mashinani Team"
+        subject = f"Subscription to {org_name.upper()}"
+        body = f"Dear {user},\n\nWe're excited to inform you that you've successfully subscribed to receive updates on {org_name.upper()} latest campaigns and initiatives.\n\nYou're now part of our community dedicated to making a positive impact..\n\nBest regards,\nMsaada Mashinani Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
@@ -124,8 +124,8 @@ class sendMail():
         from app import mail
         existing_campaign = Campaign.query.filter_by(campaignName=campaignName).first()
         url = f"http://localhost:3000/campaign/{existing_campaign.id}" #update once deployed 
-        subject = f"{campaignName} by {org_name}"
-        body = f"Dear {user},\n\n We're thrilled to announce the launch of our latest campaign,{campaignName}. This initiative represents our continued commitment to our cause.\n\n Here's a brief overview of the campaign: \n Title:{campaignName}\n Description:{description}\n Start Date: {startDate}\n End Date: {endDate}\n Budget:{budget}\n Campaign link:{url}\n\n You're now part of our community dedicated to making a positive impact.\n We invite you to join us in making a difference by supporting this campaign. Whether it's spreading the word, volunteering your time, or contributing in any way you can, your participation is invaluable.\n\n Stay tuned for updates as the campaign progresses. Together, we can achieve meaningful impact and create positive change in our community.\n\n Best regards,\n Msaada Mashinani Team"
+        subject = f"{campaignName.upper()} by {org_name.upper()}"
+        body = f"Dear {user},\n\nWe're thrilled to announce the launch of our latest campaign,{campaignName.upper()}. This initiative represents our continued commitment to our cause.\n\n Here's a brief overview of the campaign: \n Title:{campaignName}\n Description:{description}\n Start Date: {startDate}\n End Date: {endDate}\n Budget:{budget}\n Campaign link:{url}\n\nYou're now part of our community dedicated to making a positive impact.\n\nWe invite you to join us in making a difference by supporting this campaign. Whether it's spreading the word, volunteering your time, or contributing in any way you can, your participation is invaluable.\n\nStay tuned for updates as the campaign progresses. Together, we can achieve meaningful impact and create positive change in our community.\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
