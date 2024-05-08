@@ -182,6 +182,20 @@ class userDataByid(Resource):
             return {"message": "User deactivated successfully"},200   
         
 #===============================subscription  routes==============================================================
+@app.route('/api/v1.0/subscription_status',methods=['GET'])
+@jwt_required()
+def get_subscription():
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(id=current_user).first()
+    if not user:
+        return {"error":"User not found"}, 404
+    subscriptions = Subscription.query.filter_by(user_id=user.id).all()
+    if not subscriptions:
+        return {"error":"No subscription found"}, 404
+    response_dict = [sub.serialize() for sub in subscriptions]
+    response = make_response(jsonify(response_dict), 200)
+    return response
+
 class GetSubscription(Resource):
     @jwt_required()
     def get(self,org_id):
@@ -189,10 +203,11 @@ class GetSubscription(Resource):
         user = User.query.filter_by(id=current_user).first()
         if not user:
             return {"error":"User not found"}, 404
-        subscriptions = Subscription.query.filter_by(user_id=user.id).all()
+        subscriptions = Subscription.query.filter_by(user_id=user.id, organisation_id=org_id).first()
         if not subscriptions:
             return {"error":"No subscription found"}, 404
-        response_dict = [sub.serialize() for sub in subscriptions]
+        # response_dict = [sub.serialize() for sub in subscriptions]
+        response_dict = subscriptions.serialize()
         response = make_response(jsonify(response_dict), 200)
         return response
     
