@@ -1451,6 +1451,39 @@ def get_all_donations():
     donation_dict= [don.serialize() for don in all_donations]
     return {'message':donation_dict}
 
+#-------------------------------Donate via card-----------------------------------------------------------------------
+@app.route('/api/v1.0/donate_card', methods=['POST'])
+def donate_via_card():
+    data= request.get_json()
+    donor_name= data.get("donorName")
+    email= data.get('email')
+    phoneNumber= data.get("phoneNumber")
+    amount= data.get('amount')
+    campaign_id= data.get('campaignId')
+
+    if not amount:
+        return make_response(jsonify({"error":"Amount is required."}), 400)
+    if int(amount) <100:
+            return make_response(jsonify({"error":"Donation must be above Kshs 100."}), 400)
+
+    try:
+        existing_campaign= Campaign.query.get(campaign_id)
+        if not existing_campaign:
+            return {"error":"Campaign does not exist"},404
+
+        response = service.collect.checkout(wallet_id=existing_campaign.walletId, phone_number=phoneNumber,
+                                    email=email, amount=amount, currency="KES", 
+                                    comment=f"Donation to {existing_campaign.campaignName}", redirect_url='http://example.com/thank-you')
+        if response.get("errors"):
+            error_message = response.get("errors")[0].get("detail")
+            return  make_response(jsonify({'error':error_message}),400)
+        
+        # result= response.get("url")
+        result= response
+        return jsonify({'url':result})
+    
+    except Exception as e:
+        return jsonify({"error": "An error occurred while processing your request"}),400
 
 #=======================================Intasend routes==============================================================
 # Get campaign transactions filters
