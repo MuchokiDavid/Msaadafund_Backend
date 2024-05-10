@@ -2,7 +2,7 @@
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription,YoutubeLink
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription
 from utility import check_wallet_balance, sendMail, OTPGenerator, Send_acc
 import os
 from dotenv import load_dotenv
@@ -265,8 +265,8 @@ def post():
     startDateStr = request.form.get('startDate')
     endDateStr = request.form.get('endDate')
     targetAmount = request.form.get('targetAmount')
-    banner = request.files.get('banner') 
-    
+    banner = request.files.get('banner')
+    youtube_link = request.form.get('youtubeLink')    
     
     available_org= Organisation.query.filter_by(id=current_user).first()
     if not available_org:
@@ -321,6 +321,7 @@ def post():
                 campaignName=campaignName,
                 description=description,
                 category=category,
+                youtube_link=youtube_link,
                 banner=result["secure_url"],
                 startDate=startDate,
                 endDate=endDate,
@@ -344,20 +345,6 @@ def post():
             try:
                 db.session.add(new_campaign)
                 db.session.commit()
-
-                # Get YouTube link from the request
-                youtube_link = request.form['youtubeLink']
-
-                # Create a new YouTubeLink object associated with the campaign
-                new_youtube_link = YoutubeLink(
-                    link=youtube_link,
-                    campaign_id=new_campaign.id  # Associate the YouTube link with the newly created campaign
-                )
-
-                # Save the YouTube link to the database
-                db.session.add(new_youtube_link)
-                db.session.commit()
-
 
                 sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
             
@@ -523,6 +510,7 @@ def updateOne(campaignId):
         banner = request.files.get('banner') 
         startDateStr = request.form.get('startDate')
         endDateStr = request.form.get('endDate')    
+        youtube_link = request.form.get('youtubeLink')
 
         current_user = get_jwt_identity()
         
@@ -531,6 +519,8 @@ def updateOne(campaignId):
             return {"error":"Campaign not found"}, 404
         if description:
             existing_campaign.description = description
+        if youtube_link:
+            existing_campaign.youtube_link = youtube_link
         if banner:
             result = upload(banner)
             if "secure_url" in result:
@@ -542,19 +532,6 @@ def updateOne(campaignId):
             if endDateStr:
                 endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
                 existing_campaign.endDate = endDate
-
-            youtube_link = request.form.get('youtube_link')  
-            #patch youtube link
-            if youtube_link:
-                # Create a new YouTubeLink object associated with the campaign
-                new_youtube_link = YoutubeLink(
-                    link=youtube_link,
-                    campaign_id= campaignId
-                )
-
-                # Save the YouTube link to the database
-                db.session.add(new_youtube_link)
-                db.session.commit()
             
             current_date = datetime.now().date()
             if startDate < current_date:
@@ -822,6 +799,7 @@ class OrganisationDetail(Resource):
         orgPhoneNumber = data.get('orgPhoneNumber')
         orgAddress = data.get('orgAddress')
         orgDescription = data.get('orgDescription')
+        youtube_link = data.get('youtubeLink')
 
         existing_org = Organisation.query.filter_by(id=current_user).first()
         if not existing_org:
@@ -837,6 +815,8 @@ class OrganisationDetail(Resource):
             existing_org.orgAddress = orgAddress
         if orgDescription:
             existing_org.orgDescription = orgDescription
+        if youtube_link:
+            existing_org.youtube_link = youtube_link
 
         db.session.commit()
         return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
@@ -1455,7 +1435,7 @@ def get_all_donations():
 @app.route('/api/v1.0/donate_card', methods=['POST'])
 def donate_via_card():
     data= request.get_json()
-    donor_name= data.get("donorName")
+    # donor_name= data.get("donorName")
     email= data.get('email')
     phoneNumber= data.get("phoneNumber")
     amount= data.get('amount')
