@@ -1389,6 +1389,7 @@ class Donate(Resource):
         amount= data.get('amount')
         campaign_id= data.get('campaignId')
         phoneNumber = data.get('phoneNumber')
+        donor_name= data.get('donorName')
 
         if not amount:
             return make_response(jsonify({"error":"Amount is required."}),400)
@@ -1410,8 +1411,8 @@ class Donate(Resource):
                 return  make_response(jsonify({"message":error_message}))
             # return jsonify(data)
             try:
-                new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, user_id=user.id, status= data.get('invoice').get('state'), invoice_id= data.get('invoice').get('invoice_id'))
-                
+                new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, user_id=user.id,donor_name=donor_name, status= data.get('invoice').get('state'), invoice_id= data.get('invoice').get('invoice_id'))
+                print(new_donation)
                 db.session.add(new_donation)
                 db.session.commit()
                 return make_response(jsonify({"message": "Donation initialised successfully!", "data": new_donation.serialize()}), 200)
