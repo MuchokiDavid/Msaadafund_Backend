@@ -96,8 +96,8 @@ class  UserAdminView(ModelView):
 class  OrganisationAdminView(ModelView):
     column_sortable_list=('created_at','orgName')
     column_searchable_list= ('orgName','orgEmail','orgAddress','orgDescription')
-    column_list=('id','orgName','orgEmail','orgAddress','orgDescription','isVerified','created_at')
-    column_labels=dict(orgName='Organization Name', orgEmail='Email',orgAddress='Office Address',orgDescription='Description', created_at='Created On')
+    column_list=('id','orgName','orgEmail','orgAddress','orgDescription','youtube_link','isVerified','created_at')
+    column_labels=dict(orgName='Organization Name', orgEmail='Email',orgAddress='Office Address',orgDescription='Description',youtube_link='Youtube', created_at='Created On')
     column_filters=('orgName','orgEmail','orgAddress','orgDescription','isVerified')
 
 class DonationAdminView(ModelView):
@@ -110,8 +110,8 @@ class DonationAdminView(ModelView):
 class CampaignAdminView(ModelView):
     column_sortable_list=('created_at', 'campaignName', 'featured','category')
     column_searchable_list=('campaignName', 'startDate','org_id')
-    column_list=('id','campaignName','category','targetAmount','org_id', 'isActive','startDate', 'endDate','description','walletId','featured','created_at', 'updated_at')
-    column_labels=dict(campaignName='Campaign Name',category='Category',targetAmount='Budget', org_id='Organization', isActive='Active',startDate='Start Date', endDate='End Date',walletId ='WalletId',description='Description', featured='Featured', created_at='Created On', updated_at='Updated On')
+    column_list=('id','campaignName','category','targetAmount','org_id', 'isActive','startDate', 'endDate','description','youtube_link','walletId','featured','created_at', 'updated_at')
+    column_labels=dict(campaignName='Campaign Name',category='Category',targetAmount='Budget', org_id='Organization', isActive='Active',startDate='Start Date', endDate='End Date',walletId ='WalletId',description='Description', youtube_link='Youtube', featured='Featured', created_at='Created On', updated_at='Updated On')
     column_filters=('campaignName', 'startDate', 'endDate', 'targetAmount', 'org_id', 'isActive', 'featured')
 
 class AccountAdminView(ModelView):
