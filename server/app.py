@@ -1459,9 +1459,9 @@ def donate_via_card():
             error_message = response.get("errors")[0].get("detail")
             return  make_response(jsonify({'error':error_message}),400)
         
-        # result= response.get("url")
         result= response
-        return jsonify({'url':result})
+        result_url= response.get("url")
+        return jsonify({'url':result_url})
     
     except Exception as e:
         return jsonify({"error": "An error occurred while processing your request"}),400
