@@ -764,6 +764,17 @@ def confirm_accountotp():
     else:
         return jsonify({'error': 'Invalid OTP, Generate a new one'}), 400
 
+#====================================Organisation by id routes==============================================================
+@app.route('/api/v1.0/org_by_id/<string:orgName>/<int:id>', methods=['GET'])
+def org_by_id(id,orgName):
+    organisation= Organisation.query.filter_by(id=id,orgName=orgName).first()
+    if not organisation:
+        return {"error":"Organisation not found"}, 404
+    else:
+        response=make_response(jsonify(organisation.serialize()))
+        return response
+    
+
 #====================================Organisation model routes==============================================================
 class Organization(Resource):
     def get(self):
