@@ -1477,6 +1477,71 @@ def donate_via_card():
     except Exception as e:
         return jsonify({"error": "An error occurred while processing your request"}),400
 
+# @app.route('/api/v1.0/donate_card', methods=['POST'])
+# def donate_via_card():
+#     data= request.get_json()
+#     # donor_name= data.get("donorName")
+#     first_name= data.get('firstName')
+#     last_name= data.get('lastName')    
+#     email= data.get('email')
+#     phoneNumber= data.get("phoneNumber")
+#     state= data.get('state')
+#     currency= data.get('currency')
+#     amount= data.get('amount')
+#     campaign_id= data.get('campaignId')
+#     url = "https://sandbox.intasend.com/api/v1/checkout/"
+
+#     if not amount:
+#         return make_response(jsonify({"error":"Amount is required."}), 400)
+#     if int(amount) <100:
+#             return make_response(jsonify({"error":"Donation must be above Kshs 100."}), 400)
+#     if not currency:
+#         return make_response(jsonify({"error":"Currency is required."}), 400)
+    
+#     res = ''.join(random.choices(string.ascii_uppercase+
+#                              string.digits, k=6)) #random number
+
+#     try:
+#         existing_campaign= Campaign.query.get(campaign_id)
+#         if not existing_campaign:
+#             return {"error":"Campaign does not exist"},404
+        
+#         payload = {
+#             "first_name": first_name,
+#             "last_name": last_name,
+#             "phone_number": phoneNumber,
+#             "email": email,
+#             "state": state,
+#             "wallet_id": existing_campaign.walletId,
+#             "method": "CARD-PAYMENT",
+#             "amount": amount,
+#             "currency": currency,
+#             "card_tarrif": "BUSINESS-PAYS",
+#             "api_ref": res
+#         }
+#         headers = {
+#             "accept": "application/json",
+#             "content-type": "application/json",
+#             "Authorization": token
+#         }
+
+#         response = requests.post(url, json=payload, headers=headers)
+
+#         result = response.json()
+#         print(result)
+#         data = json.loads(result)
+
+#         if data['errors']:
+#             error_message = data['errors'][0]['detail']
+#             print(error_message)
+#             return  make_response(jsonify({'error':error_message}),400)
+        
+#         result_url= result.get("url")
+#         return jsonify({'url':result})
+    
+#     except Exception as e:
+#         return jsonify({"error": "An error occurred while processing your request"}),400
+
 #=======================================Intasend routes==============================================================
 # Get campaign transactions filters
 @app.route('/api/v1.0/filter_transactions/<string:wallet_id>', methods=['POST','GET'])
