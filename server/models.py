@@ -84,7 +84,9 @@ class Organisation(db.Model, SerializerMixin):
     orgEmail = db.Column(db.String(254), unique=True, nullable=False)
     orgPassword =db.Column(db.String(128), nullable=False)
     orgAddress = db.Column(db.String(), nullable = False)
+    orgType = db.Column(db.String())
     orgPhoneNumber = db.Column(db.String(),unique=True)
+    profileImage = db.Column(db.String())
     orgDescription = db.Column (db.String())
     youtube_link = db.Column(db.String())
     isVerified= db.Column(db.Boolean(), default=False, nullable=False)
@@ -120,7 +122,7 @@ class Organisation(db.Model, SerializerMixin):
         return bcrypt.check_password_hash(self.orgPassword, attempted_password.encode('utf-8'))
     
     def __repr__ (self):
-        return f"ID:{self.id} Organisation Name:{self.orgName},  Organisation Email:{self.orgEmail}, Organisation Phone Number:{self.orgPhoneNumber}, Organisation Address:{self.orgAddress}, Organisation Description:{self.orgDescription}, isVerified:{self.isVerified}, Organisation Created At:{self.created_at}"
+        return f"ID:{self.id} Organisation Name:{self.orgName},  Organisation Email:{self.orgEmail}, Organisation Phone Number:{self.orgPhoneNumber}, Organisation Address:{self.orgAddress}, Profile Image:{self.profileImage} ,Organisation Description:{self.orgDescription}, isVerified:{self.isVerified}, Organisation Created At:{self.created_at}"
      
     def serialize(self):
         return {
@@ -129,7 +131,9 @@ class Organisation(db.Model, SerializerMixin):
             "orgEmail": self.orgEmail,
             "orgPhoneNumber": self.orgPhoneNumber,
             "orgAddress": self.orgAddress,
+            "orgType": self.orgType,
             "isVerified":self.isVerified,
+            "profileImage": self.profileImage,
             "orgDescription": self.orgDescription,
             "youtube_link": self.youtube_link,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
@@ -216,7 +220,9 @@ class Donation (db.Model, SerializerMixin):
                     'orgName': self.campaign.organisation.orgName,
                     'orgEmail': self.campaign.organisation.orgEmail,
                     'orgAddress': self.campaign.organisation.orgAddress,
+                    'orgType': self.campaign.organisation.orgType,
                     'orgPhoneNumber': self.campaign.organisation.orgPhoneNumber,
+                    "profileImage": self.campaign.organisation.profileImage,
                     'orgDescription': self.campaign.organisation.orgDescription,
                     'isVerified': self.campaign.organisation.isVerified,
                 }
@@ -273,7 +279,9 @@ class  Campaign(db.Model, SerializerMixin):
             'orgName': self.organisation.orgName,
             'orgEmail': self.organisation.orgEmail,
             'orgAddress': self.organisation.orgAddress,
+            'orgType': self.organisation.orgType,
             'orgPhoneNumber': self.organisation.orgPhoneNumber,
+            "profileImage": self.organisation.profileImage,
             'orgDescription': self.organisation.orgDescription,
             'isVerified': self.organisation.isVerified,
             },
@@ -360,7 +368,9 @@ class Subscription(db.Model,SerializerMixin):
                 'orgName': self.organisation.orgName,
                 'orgEmail': self.organisation.orgEmail,
                 'orgAddress': self.organisation.orgAddress,
+                'orgType': self.organisation.orgType,
                 'orgPhoneNumber': self.organisation.orgPhoneNumber,
+                "profileImage": self.organisation.profileImage,
                 'orgDescription': self.organisation.orgDescription,
                 'isVerified': self.organisation.isVerified,
             },
