@@ -23,6 +23,8 @@ from views import UserAdminView,DonationAdminView,CampaignAdminView,Organisation
 from cloudinary.uploader import upload
 import cloudinary.api
 import random
+import json
+import string
 from flask_cors import CORS
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4,legal
@@ -1046,19 +1048,28 @@ def campaign_buy_airtime():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+#----------------------------------Webhooks----------------------------------------
 #Intasend web hook for getting changes in transaction  status on mpesa stk push
 @app.route('/api/v1.0/intasend-webhook', methods = ['POST'])
-def webhook():
+def collection_webhook():
     try:
         payload = request.json
         # print(payload)
         
         invoice_id = payload.get('invoice_id')
+        api_ref= payload.get('api_ref')
         state = payload.get('state')
         donating_user=''
 
-        donation = Donation.query.filter_by(invoice_id=invoice_id).first()
+        # donation = Donation.query.filter_by(invoice_id=invoice_id).first()
+        if invoice_id:
+            donation = Donation.query.filter_by(invoice_id=invoice_id).first()
+
+        elif api_ref and api_ref != "API Request":
+            donation = Donation.query.filter_by(api_ref=api_ref).first()
+            donation.invoice_id = invoice_id
+            db.session.commit()
+        
         if not donation:
             return  jsonify({"status":"Donation record not found"}),404
         if donation.user_id:
@@ -1085,6 +1096,7 @@ def webhook():
         elif state == "PROCESSING":
             donation.status = "PROCESSING"
             db.session.commit()
+
         elif state== "FAILED":
             donation.status="FAILED"
             db.session.delete(donation)
@@ -1119,6 +1131,9 @@ def send_money_webhook():
         existing_transaction.batch_status= batch_status
         existing_transaction.trans_status= trans_status
         db.session.commit()
+
+        
+        return jsonify({'message': 'Webhook received successfully'}), 200
         
     except (ValueError, TypeError):
         return jsonify({'error': 'Invalid third party response'}), 400
@@ -1338,11 +1353,12 @@ class  ExpressDonations(Resource):
                 error_message = data.get("errors")[0].get("detail")
                 return  make_response(jsonify({"message":error_message}))
             # return jsonify(data)
-            new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, donor_name=donor_name, status= data.get('invoice').get('state'), invoice_id= data.get('invoice').get('invoice_id'))
-            print(new_donation)
+            new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, donor_name=donor_name, status= data.get('invoice').get('state'), api_ref=data.get('invoice').get('api_ref') ,invoice_id= data.get('invoice').get('invoice_id'), method= "M-PESA")
+            # print(new_donation)
             db.session.add(new_donation)
             db.session.commit()
-            return make_response(jsonify({"message": "Donation initialised successfully!", "data": new_donation.serialize()}), 200)
+            # return make_response(jsonify({"message": "Donation initialised successfully!", "data": new_donation.serialize()}), 200)
+            return make_response(jsonify({"message": "Donation initialised successfully!", "data":data}), 200)
             # else:
             #     return make_response(jsonify({'error':'Error making donation'}), 400)
         except TypeError as ex:
@@ -1422,7 +1438,7 @@ class Donate(Resource):
                 return  make_response(jsonify({"message":error_message}))
             # return jsonify(data)
             try:
-                new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, user_id=user.id,donor_name=donor_name, status= data.get('invoice').get('state'), invoice_id= data.get('invoice').get('invoice_id'))
+                new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, user_id=user.id,donor_name=donor_name, status= data.get('invoice').get('state'), api_ref=data.get('invoice').get('api_ref'), invoice_id= data.get('invoice').get('invoice_id'), method= "M-PESA")
                 print(new_donation)
                 db.session.add(new_donation)
                 db.session.commit()
@@ -1444,103 +1460,178 @@ def get_all_donations():
     return {'message':donation_dict}
 
 #-------------------------------Donate via card-----------------------------------------------------------------------
-@app.route('/api/v1.0/donate_card', methods=['POST'])
-def donate_via_card():
-    data= request.get_json()
-    # donor_name= data.get("donorName")
-    email= data.get('email')
-    phoneNumber= data.get("phoneNumber")
-    amount= data.get('amount')
-    campaign_id= data.get('campaignId')
-
-    if not amount:
-        return make_response(jsonify({"error":"Amount is required."}), 400)
-    if int(amount) <100:
-            return make_response(jsonify({"error":"Donation must be above Kshs 100."}), 400)
-
-    try:
-        existing_campaign= Campaign.query.get(campaign_id)
-        if not existing_campaign:
-            return {"error":"Campaign does not exist"},404
-
-        response = service.collect.checkout(wallet_id=existing_campaign.walletId, phone_number=phoneNumber,
-                                    email=email, amount=amount, currency="KES", 
-                                    comment=f"Donation to {existing_campaign.campaignName}", redirect_url='http://example.com/thank-you')
-        if response.get("errors"):
-            error_message = response.get("errors")[0].get("detail")
-            return  make_response(jsonify({'error':error_message}),400)
-        
-        result= response
-        result_url= response.get("url")
-        return jsonify({'url':result_url})
-    
-    except Exception as e:
-        return jsonify({"error": "An error occurred while processing your request"}),400
-
 # @app.route('/api/v1.0/donate_card', methods=['POST'])
 # def donate_via_card():
 #     data= request.get_json()
 #     # donor_name= data.get("donorName")
-#     first_name= data.get('firstName')
-#     last_name= data.get('lastName')    
 #     email= data.get('email')
 #     phoneNumber= data.get("phoneNumber")
-#     state= data.get('state')
-#     currency= data.get('currency')
 #     amount= data.get('amount')
 #     campaign_id= data.get('campaignId')
-#     url = "https://sandbox.intasend.com/api/v1/checkout/"
 
 #     if not amount:
 #         return make_response(jsonify({"error":"Amount is required."}), 400)
 #     if int(amount) <100:
 #             return make_response(jsonify({"error":"Donation must be above Kshs 100."}), 400)
-#     if not currency:
-#         return make_response(jsonify({"error":"Currency is required."}), 400)
-    
-#     res = ''.join(random.choices(string.ascii_uppercase+
-#                              string.digits, k=6)) #random number
 
 #     try:
 #         existing_campaign= Campaign.query.get(campaign_id)
 #         if not existing_campaign:
 #             return {"error":"Campaign does not exist"},404
-        
-#         payload = {
-#             "first_name": first_name,
-#             "last_name": last_name,
-#             "phone_number": phoneNumber,
-#             "email": email,
-#             "state": state,
-#             "wallet_id": existing_campaign.walletId,
-#             "method": "CARD-PAYMENT",
-#             "amount": amount,
-#             "currency": currency,
-#             "card_tarrif": "BUSINESS-PAYS",
-#             "api_ref": res
-#         }
-#         headers = {
-#             "accept": "application/json",
-#             "content-type": "application/json",
-#             "Authorization": token
-#         }
 
-#         response = requests.post(url, json=payload, headers=headers)
-
-#         result = response.json()
-#         print(result)
-#         data = json.loads(result)
-
-#         if data['errors']:
-#             error_message = data['errors'][0]['detail']
-#             print(error_message)
+#         response = service.collect.checkout(wallet_id=existing_campaign.walletId, phone_number=phoneNumber,
+#                                     email=email, amount=amount, currency="KES", 
+#                                     comment=f"Donation to {existing_campaign.campaignName}", redirect_url='http://example.com/thank-you')
+#         if response.get("errors"):
+#             error_message = response.get("errors")[0].get("detail")
 #             return  make_response(jsonify({'error':error_message}),400)
         
-#         result_url= result.get("url")
-#         return jsonify({'url':result})
+#         result= response
+#         result_url= response.get("url")
+#         return jsonify({'url':result_url})
     
 #     except Exception as e:
 #         return jsonify({"error": "An error occurred while processing your request"}),400
+
+#---------------------Donate card when user is not logged in----------------------------------------------------------
+@app.route('/api/v1.0/donate_card', methods=['POST'])
+def donate_via_card():
+    data= request.get_json()
+    # donor_name= data.get("donorName")
+    first_name= data.get('firstName')
+    last_name= data.get('lastName')    
+    email= data.get('email')
+    phoneNumber= data.get("phoneNumber")
+    currency= data.get('currency')
+    amount= data.get('amount')
+    campaign_id= data.get('campaignId')
+    url = "https://sandbox.intasend.com/api/v1/checkout/"
+    donor_names= ''
+
+    if not amount:
+        return make_response(jsonify({"error":"Amount is required."}), 400)
+    if int(amount) <100:
+            return make_response(jsonify({"error":"Donation must be above Kshs 100."}), 400)
+    if not currency:
+        return make_response(jsonify({"error":"Currency is required."}), 400)
+    if first_name and last_name:
+        donor_names= first_name + " " + last_name
+    elif first_name:
+        donor_names= first_name
+    elif last_name:
+        donor_names= last_name    
+    else:
+        donor_names= "Anonymous"
+    
+    res = ''.join(random.choices(string.ascii_uppercase+
+                             string.digits, k=7)) #random value
+
+    try:
+        existing_campaign= Campaign.query.get(campaign_id)
+        if not existing_campaign:
+            return {"error":"Campaign does not exist"},404
+        
+        payload = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "phone_number": phoneNumber,
+            "email": email,
+            "wallet_id": existing_campaign.walletId,
+            "method": "CARD-PAYMENT",
+            "amount": amount,
+            "redirect_url": "https://www.msaadamshinani.co.ke/thank-you",
+            "currency": currency,
+            "card_tarrif": "BUSINESS-PAYS",
+            "api_ref": res
+        }
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "X-IntaSend-Public-API-Key": publishable_key
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+
+        if response.json().get('errors'):
+            error_message = data.get('errors')[0].get('detail')
+            # print(error_message)
+            return  make_response(jsonify({'error':error_message}),400)
+        
+        new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id,donor_name= donor_names, api_ref=res, method= "CARD", currency= currency)
+        db.session.add(new_donation)
+        db.session.commit()
+
+        return jsonify(response.json())
+    
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "An error occurred while processing your request"}),400
+
+#--------------------Donate card when user is logged in--------------------------------------------
+@app.route('/api/v1.0/logged_in_donate_card', methods=['POST'])
+@jwt_required()
+def donate_via_card_logged_in():
+    current_user_id = get_jwt_identity()
+    existing_user= User.query.get(current_user_id)
+    if not existing_user:
+        return  jsonify({"error":"User does not exist"}),401
+
+    data= request.get_json()
+    currency= data.get('currency')
+    amount= data.get('amount')
+    campaign_id= data.get('campaignId')
+    url = "https://sandbox.intasend.com/api/v1/checkout/"
+
+    if not amount:
+        return make_response(jsonify({"error":"Amount is required."}), 400)
+    if int(amount) <100:
+        return make_response(jsonify({"error":"Donation must be above Kshs 100."}), 400)
+    if not currency:
+        return make_response(jsonify({"error":"Currency is required."}), 400)
+    
+    res = ''.join(random.choices(string.ascii_uppercase+
+                             string.digits, k=7)) #random value
+    try:
+        existing_campaign= Campaign.query.get(campaign_id)
+        if not existing_campaign:
+            return {"error":"Campaign does not exist"},404
+        
+        payload = {
+            "first_name": existing_user.firstName,
+            "last_name": existing_user.lastName,
+            "phone_number": existing_user.phoneNumber,
+            "email": existing_user.email,
+            "wallet_id": existing_campaign.walletId,
+            "method": "CARD-PAYMENT",
+            "amount": amount,
+            "redirect_url": "https://www.msaadamshinani.co.ke/thank-you",
+            "currency": currency,
+            "card_tarrif": "BUSINESS-PAYS",
+            "api_ref": res
+        }
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "X-IntaSend-Public-API-Key": publishable_key
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+
+        if response.json().get('errors'):
+            error_message = data.get('errors')[0].get('detail')
+            # print(error_message)
+            return  make_response(jsonify({'error':error_message}),400)
+        
+        new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id, user_id=existing_user.id,donor_name= f"{existing_user.firstName} {existing_user.lastName}", api_ref=res, method= "CARD", currency= currency)
+        # print(new_donation)
+        db.session.add(new_donation)
+        db.session.commit()
+
+        return jsonify(response.json())
+    
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "An error occurred while processing your request"}),400
 
 #=======================================Intasend routes==============================================================
 # Get campaign transactions filters
