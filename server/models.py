@@ -88,7 +88,8 @@ class Organisation(db.Model, SerializerMixin):
     orgPhoneNumber = db.Column(db.String(),unique=True)
     profileImage = db.Column(db.String())
     orgDescription = db.Column (db.String())
-    youtube_link = db.Column(db.String())
+    website_link = db.Column(db.String(), nullable = True)
+    youtube_link = db.Column(db.String(), nullable = True)
     isVerified= db.Column(db.Boolean(), default=False, nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable = True)
@@ -122,7 +123,7 @@ class Organisation(db.Model, SerializerMixin):
         return bcrypt.check_password_hash(self.orgPassword, attempted_password.encode('utf-8'))
     
     def __repr__ (self):
-        return f"ID:{self.id} Organisation Name:{self.orgName},  Organisation Email:{self.orgEmail}, Organisation Phone Number:{self.orgPhoneNumber}, Organisation Address:{self.orgAddress}, Profile Image:{self.profileImage} ,Organisation Description:{self.orgDescription}, isVerified:{self.isVerified}, Organisation Created At:{self.created_at}"
+        return f"ID:{self.id} Organisation Name:{self.orgName},  Organisation Email:{self.orgEmail}, Organisation Phone Number:{self.orgPhoneNumber}, Organisation Address:{self.orgAddress}, Profile Image:{self.profileImage} ,Organisation Description:{self.orgDescription}, isVerified:{self.isVerified}, Organisation Created At:{self.created_at} Website: {self.website_link}"
      
     def serialize(self):
         return {
@@ -135,6 +136,7 @@ class Organisation(db.Model, SerializerMixin):
             "isVerified":self.isVerified,
             "profileImage": self.profileImage,
             "orgDescription": self.orgDescription,
+            "website_link": self.website_link,
             "youtube_link": self.youtube_link,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "campaigns": [camp.serialize() for camp in self.campaigns],
@@ -187,8 +189,10 @@ class Donation (db.Model, SerializerMixin):
     donor_name= db.Column(db.String, nullable = True)
     user_id =  db.Column(db.Integer, db.ForeignKey('users.id'))
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'))
-    status= db.Column(db.String, nullable=False)
-    invoice_id=db.Column(db.String, nullable=False)
+    status= db.Column(db.String , default= 'PENDING' )
+    invoice_id=db.Column(db.String , nullable=True)
+    method= db.Column(db.String, nullable= False)
+    api_ref= db.Column(db.String, nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
 
@@ -228,11 +232,15 @@ class Donation (db.Model, SerializerMixin):
                 }
             },
             'status': self.status,
-            'invoice_id':self.invoice_id
+            'invoice_id':self.invoice_id,
+            'method':self.method,
+            'api_ref':self.api_ref,
+            'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None
         }
     
     def __repr__(self):
-        return f"ID:{self.id} Amount:{self.amount}, Date:{self.donationDate}, Donor Name:{self.donor_name}, User ID:{self.user_id}, Campaign ID:{self.campaign_id}"
+        return f"ID:{self.id} Amount:{self.amount}, Date:{self.donationDate}, Donor Name:{self.donor_name}, User ID:{self.user_id}, Campaign ID:{self.campaign_id} Method: {self.method}"
 
 
 
