@@ -68,9 +68,9 @@ mail = Mail(app)
 
 
 cloudinary.config( 
-  cloud_name = "dml7sp2zm", 
-  api_key = "111134481418281", 
-  api_secret = "Mr7c7aIxfPPx4p0xDLcqGjuoEl8" 
+  cloud_name = os.getenv('CLOUDINARY_NAME'),
+  api_key = os.getenv('CLOUDINARY_API_KEY'), 
+  api_secret = os.getenv('CLOUDINARY_SECRET_KEY')
 )
 
 # register blueprint
