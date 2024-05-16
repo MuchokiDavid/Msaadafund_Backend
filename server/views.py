@@ -96,15 +96,15 @@ class  UserAdminView(ModelView):
 class  OrganisationAdminView(ModelView):
     column_sortable_list=('created_at','orgName')
     column_searchable_list= ('orgName','orgEmail','orgAddress','orgDescription')
-    column_list=('id','orgName','orgEmail','orgAddress','orgDescription','youtube_link','isVerified','created_at')
-    column_labels=dict(orgName='Organization Name', orgEmail='Email',orgAddress='Office Address',orgDescription='Description',youtube_link='Youtube', created_at='Created On')
+    column_list=('id','orgName','orgEmail','orgType','orgAddress','orgDescription','website_link','youtube_link','isVerified','created_at')
+    column_labels=dict(orgName='Organization Name', orgEmail='Email',orgType='Category',orgAddress='Office Address',orgDescription='Description',website_link= 'Website',youtube_link='Youtube', created_at='Created On')
     column_filters=('orgName','orgEmail','orgAddress','orgDescription','isVerified')
 
 class DonationAdminView(ModelView):
-    column_sortable_list=('amount','created_at','donationDate','status')
+    column_sortable_list=('amount','created_at','donationDate','status','currency')
     column_searchable_list=('campaign_id','user_id','donationDate')
-    column_list=('id','user_id','amount','donationDate','campaign_id','status','invoice_id','created_at')
-    column_labels=dict(user_id='User Id', amount='Amount', donationDate='Donation Date',status='Status',invoice_id='Invoice',created_at='Created At')
+    column_list=('id','user_id','amount','currency','donationDate','campaign_id','status','invoice_id','api_ref','created_at')
+    column_labels=dict(user_id='User Id', amount='Amount', currency='Currency', donationDate='Donation Date',status='Status',invoice_id='Invoice',api_ref='API Ref',created_at='Created At')
     column_filters=column_list
 
 class CampaignAdminView(ModelView):
