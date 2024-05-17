@@ -537,8 +537,8 @@ def updateOne(campaignId):
                 existing_campaign.endDate = endDate
             
             current_date = datetime.now().date()
-            if startDate < current_date:
-                return {'error': 'cannot create a campaign in the past'}, 400
+            # if startDate < current_date:
+            #     return {'error': 'cannot create a campaign in the past'}, 400
             if endDate < current_date:
                 return {'error':'enddate  should be greater than current date'} ,400  
             if endDate < startDate:
