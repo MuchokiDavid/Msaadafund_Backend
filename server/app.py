@@ -37,7 +37,7 @@ import tempfile
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
-main_pocket= os.getenv('MAIN_POCKET')
+main_pocket= os.getenv('MAIN_WALLET')
 service = APIService(token=token,publishable_key=publishable_key, test=True)
 
 app = Flask(__name__)
@@ -1098,33 +1098,36 @@ def collection_webhook():
                                                         donating_user.email, 
                                                         campaign_organisation.orgName)
             #send to pocket 
-            app_commission= net_amount * 0.1  
+            app_commission= net_amount * 0.15  
             if app_commission < 10:
                 return  jsonify({"error":"Amount is less than sh.10"}),404
             transactions = [{'name': 'In App', 'account': main_pocket, 'amount': app_commission}]
             response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, currency='KES', transactions=transactions) #wallet to mpesa
             # response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount=app_commission, narrative= "In App") #wallet to wallet
+            
+            approved_response = service.transfer.approve(response) #Approve response
             # print(response)
-            if response.get("errors"):
-                error_message = response.get("errors")[0].get("detail")
+            if approved_response.get("errors"):
+                error_message = approved_response.get("errors")[0].get("detail")
                 return  make_response(jsonify({'error':error_message}),400)
             
+            
             # if response.status_code ==200:
-            new_transaction=Transactions(tracking_id=response.get('tracking_id'), 
-                                            batch_status= response.get('status'),
+            new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
+                                            batch_status= approved_response.get('status'),
                                             trans_type= 'Service fee',
-                                            trans_status= response.get('transactions')[0].get('status'),
-                                            amount= response.get('transactions')[0].get('amount'),
-                                            transaction_account_no=response.get('transactions')[0].get('account'),
-                                            request_ref_id= response.get('transactions')[0].get('request_reference_id'),
-                                            org_name= response.get('transactions')[0].get('name'),
+                                            trans_status= approved_response.get('transactions')[0].get('status'),
+                                            amount= approved_response.get('transactions')[0].get('amount'),
+                                            transaction_account_no=approved_response.get('transactions')[0].get('account'),
+                                            request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
+                                            org_name= approved_response.get('transactions')[0].get('name'),
                                             org_id=campaign_organisation.id,
                                             campaign_name= donation_campaign.campaignName
                                         )
             
             db.session.add(new_transaction)
             db.session.commit()
-            return jsonify({"message":response})
+            return jsonify({"message":approved_response})
             
         elif state == "PROCESSING":
             donation.status = "PROCESSING"
