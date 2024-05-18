@@ -1548,6 +1548,8 @@ def donate_via_card():
         return make_response(jsonify({"error":"Amount is required."}), 400)
     if currency == "KES" and int(amount) <100:
             return make_response(jsonify({"error":"Donation must be above Kshs 100."}), 400)
+    if int(amount) <1:
+        return make_response(jsonify({"error":"Donation amount must be valid."}), 400)
     if not currency:
         return make_response(jsonify({"error":"Currency is required."}), 400)
     if first_name and last_name:
@@ -1622,6 +1624,8 @@ def donate_via_card_logged_in():
         return make_response(jsonify({"error":"Amount is required."}), 400)
     if currency == "KES" and int(amount) <100:
         return make_response(jsonify({"error":"Donation must be above Kshs 100."}), 400)
+    if int(amount) <1:
+        return make_response(jsonify({"error":"Donation amount must be valid."}), 400)
     if not currency:
         return make_response(jsonify({"error":"Currency is required."}), 400)
     
