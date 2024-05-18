@@ -103,8 +103,8 @@ class  OrganisationAdminView(ModelView):
 class DonationAdminView(ModelView):
     column_sortable_list=('amount','created_at','donationDate','status','currency')
     column_searchable_list=('campaign_id','user_id','donationDate')
-    column_list=('id','user_id','amount','currency','donationDate','campaign_id','status','invoice_id','api_ref','created_at')
-    column_labels=dict(user_id='User Id', amount='Amount', currency='Currency', donationDate='Donation Date',status='Status',invoice_id='Invoice',api_ref='API Ref',created_at='Created At')
+    column_list=('id','user_id','donor_name','amount','currency','donationDate','campaign_id','status','invoice_id','api_ref','created_at')
+    column_labels=dict(user_id='User Id', amount='Amount', donor_name='Donor Name',currency='Currency', donationDate='Donation Date',status='Status',invoice_id='Invoice',api_ref='API Ref',created_at='Created At')
     column_filters=column_list
 
 class CampaignAdminView(ModelView):
