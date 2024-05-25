@@ -72,8 +72,8 @@ class sendMail():
         url = f"http://localhost:3000/campaign/{existing_campaign.id}" #update once deployed 
         subject = f"{campaignName.upper()} Created Successfully"
         body = f"Hello {organisation.orgName}!\n\nYou have successfully created a campaign.\n\n" \
-            f"Campaign Name: {campaignName}\n" \
-            f"Description: {description}\n" \
+            f"Campaign Name: {campaignName}\n\n" \
+            f"Description: {description}\n\n" \
             f"Category: {category}.\n" \
             f"Your target amount is Ksh: {targetAmount} \n" \
             f"Start Date: {startDate}\n" \

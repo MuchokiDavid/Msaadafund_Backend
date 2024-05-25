@@ -941,23 +941,24 @@ def campaign_money_withdrawal():
                 if intersend_data.get("errors"):
                     error_message = intersend_data.get("errors")[0].get("detail")
                     return  make_response(jsonify({'error':error_message}),400)
+                approved_response = service.transfer.approve(intersend_data)
                 
                 # if response.status_code ==200:
-                new_transaction=Transactions(tracking_id=intersend_data.get('tracking_id'), 
-                                                batch_status= intersend_data.get('status'),
+                new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
+                                                batch_status= approved_response.get('status'),
                                                 trans_type= 'Withdraw to bank',
-                                                trans_status= intersend_data.get('transactions')[0].get('status'),
-                                                amount= intersend_data.get('transactions')[0].get('amount'),
-                                                transaction_account_no=intersend_data.get('transactions')[0].get('account'),
-                                                request_ref_id= intersend_data.get('transactions')[0].get('request_reference_id'),
-                                                org_name= intersend_data.get('transactions')[0].get('name'),
+                                                trans_status= approved_response.get('transactions')[0].get('status'),
+                                                amount= approved_response.get('transactions')[0].get('amount'),
+                                                transaction_account_no=approved_response.get('transactions')[0].get('account'),
+                                                request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
+                                                org_name= approved_response.get('transactions')[0].get('name'),
                                                 org_id=organisation.id,
                                                 campaign_name= campaigns.campaignName
                                             )
                 
                 db.session.add(new_transaction)
                 db.session.commit()
-                return jsonify({"message":intersend_data})
+                return jsonify({"message":approved_response})
                   
             except Exception as e:
                 print(e)
@@ -1024,23 +1025,24 @@ def campaign_buy_airtime():
             if intersend_data.get("errors"):
                 error_message = intersend_data.get("errors")[0].get("detail")
                 return  make_response(jsonify({'error':error_message}),400)
+            approved_response = service.transfer.approve(intersend_data)
             
             # if response.status_code ==200:
-            new_transaction=Transactions(tracking_id=intersend_data.get('tracking_id'), 
-                                            batch_status= intersend_data.get('status'),
+            new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
+                                            batch_status= approved_response.get('status'),
                                             trans_type= 'Buy Airtime',
-                                            trans_status= intersend_data.get('transactions')[0].get('status'),
-                                            amount= intersend_data.get('transactions')[0].get('amount'),
-                                            transaction_account_no=intersend_data.get('transactions')[0].get('account'),
-                                            request_ref_id= intersend_data.get('transactions')[0].get('request_reference_id'),
-                                            org_name= intersend_data.get('transactions')[0].get('name'),
+                                            trans_status= approved_response.get('transactions')[0].get('status'),
+                                            amount= approved_response.get('transactions')[0].get('amount'),
+                                            transaction_account_no=approved_response.get('transactions')[0].get('account'),
+                                            request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
+                                            org_name= approved_response.get('transactions')[0].get('name'),
                                             org_id=existing_org.id,
                                             campaign_name= current_campaign.campaignName
                                         )
             
             db.session.add(new_transaction)
             db.session.commit()
-            return jsonify({"message":intersend_data})
+            return jsonify({"message":approved_response})
 
         else:
             # Campaign not found
@@ -1048,6 +1050,152 @@ def campaign_buy_airtime():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+#Route to pay to a paybill from a campaign
+@app.route("/api/v1.0/pay_to_paybill", methods=["POST"])
+@jwt_required()
+def campaign_pay_to_paybill():
+    current_user_id = get_jwt_identity()
+    existing_org= Organisation.query.get(current_user_id)
+    if not existing_org:
+        return jsonify({"error": "organisation not found"}), 404
+
+    try:
+        data = request.get_json()
+        name = existing_org.orgName
+        account= data.get('paybillNumber')
+        account_reference= data.get('accountNumber')
+        account_type= 'PayBill'
+        amount = data.get('amount')
+        narrative= data.get('narrative')
+        campaign_id = data.get("campaignId")
+
+        if not all([account, account_reference, amount]):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        current_campaign= Campaign.query.filter_by(id=campaign_id, org_id=existing_org.id, isActive=True).first()
+        wallet_id= current_campaign.walletId
+
+        wallet_details= check_wallet_balance(wallet_id)
+
+        if wallet_id:
+            # Check the available balance of the origin wallet
+            if float(wallet_details) < float(amount):
+                return jsonify({"error":"Insufficient funds!"}),400
+        try:
+            transactions= [{
+                    'name':name , 
+                    'account':int(account), 
+                    'account_type':account_type, 
+                    'account_reference':account_reference, 
+                    'amount':float(amount), 
+                    'narrative':narrative
+                    }]
+            response = service.transfer.mpesa_b2b(wallet_id=wallet_id, currency='KES', transactions=transactions)
+            if response.get("errors"):
+                error_message = response.get("errors")[0].get("detail")
+                return  make_response(jsonify({'error':error_message}),400)
+            
+            #approve transaction
+            approved_response = service.transfer.approve(response)
+
+            # if response.status_code ==200:
+            new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
+                                            batch_status= approved_response.get('status'),
+                                            trans_type= 'Pay to Paybill',
+                                            trans_status= approved_response.get('transactions')[0].get('status'),
+                                            amount= approved_response.get('transactions')[0].get('amount'),
+                                            transaction_account_no=approved_response.get('transactions')[0].get('account'),
+                                            request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
+                                            org_name= approved_response.get('transactions')[0].get('name'),
+                                            org_id=existing_org.id,
+                                            campaign_name= current_campaign.campaignName
+                                        )
+            
+            db.session.add(new_transaction)
+            db.session.commit()
+
+            return jsonify(approved_response) , 200
+        
+        except Exception as e:
+            print(e)
+            return jsonify({"error":str(e)}),500
+    
+    except Exception as e:
+        print(e)
+        return jsonify({"error":str(e)}),500
+
+#Route to pay to a till number
+@app.route("/api/v1.0/pay_to_till", methods=["POST"])
+@jwt_required()
+def campaign_pay_to_till():
+    current_user_id = get_jwt_identity()
+    existing_org= Organisation.query.get(current_user_id)
+    if not existing_org:
+        return jsonify({"error": "organisation not found"}), 404
+
+    try:
+        data = request.get_json()
+        name = existing_org.orgName
+        account= data.get('tillNumber')
+        account_type= 'TillNumber'
+        amount = data.get('amount')
+        narrative= data.get('narrative')
+        campaign_id = data.get("campaignId")
+
+        if not all([account, amount]):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        current_campaign= Campaign.query.filter_by(id=campaign_id, org_id=existing_org.id, isActive=True).first()
+        wallet_id= current_campaign.walletId
+        wallet_details= check_wallet_balance(wallet_id)
+        if wallet_id:
+            # Check the available balance of the origin wallet
+            if float(wallet_details) < float(amount):
+                return jsonify({"error":"Insufficient funds!"}),400
+        
+        try:
+            transactions= [{
+                    'name':name ,
+                    'account':int(account),
+                    'account_type':account_type,
+                    'amount':float(amount),
+                    'narrative':narrative
+                    }]
+            response = service.transfer.mpesa_b2b(wallet_id=wallet_id, currency='KES', transactions=transactions)
+            if response.get("errors"):
+                error_message = response.get("errors")[0].get("detail")
+                return  make_response(jsonify({'error':error_message}),400)
+            
+            #approve transaction
+            approved_response = service.transfer.approve(response)
+
+            # if response.status_code ==200:
+            new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
+                                            batch_status= approved_response.get('status'),
+                                            trans_type= 'Pay to Till',
+                                            trans_status= approved_response.get('transactions')[0].get('status'),
+                                            amount= approved_response.get('transactions')[0].get('amount'),
+                                            transaction_account_no=approved_response.get('transactions')[0].get('account'),
+                                            request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
+                                            org_name= approved_response.get('transactions')[0].get('name'),
+                                            org_id=existing_org.id,
+                                            campaign_name= current_campaign.campaignName
+                                        )
+            
+            db.session.add(new_transaction)
+            db.session.commit()
+
+            return jsonify(approved_response) , 200
+        
+        except Exception as e:
+            print(e)
+            return jsonify({"error":str(e)}),500
+    
+    except Exception as e:
+        print(e)
+        return jsonify({"error":str(e)}),500            
+
 
 #----------------------------------Webhooks----------------------------------------
 #Intasend web hook for getting changes in transaction  status on mpesa stk push
