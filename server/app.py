@@ -807,33 +807,45 @@ class OrganisationDetail(Resource):
     @jwt_required()
     def patch(self):
         current_user = get_jwt_identity()
-        data = request.get_json()
-        orgName = data.get('orgName')
-        # orgEmail = data.get('orgEmail')
-        orgPhoneNumber = data.get('orgPhoneNumber')
-        orgAddress = data.get('orgAddress')
-        orgDescription = data.get('orgDescription')
-        youtube_link = data.get('youtubeLink')
+        orgName = request.form.get('orgName')
+        # orgEmail = request.form.get('orgEmail')
+        orgPhoneNumber = request.form.get('orgPhoneNumber')
+        orgAddress = request.form.get('orgAddress')
+        orgDescription = request.form.get('orgDescription')
+        youtube_link = request.form.get('youtubeLink')
+        orgType = request.form.get('orgType')
+        website_link = request.form.get('weblink')
+        profileImage = request.files.get('profileImage')
 
         existing_org = Organisation.query.filter_by(id=current_user).first()
         if not existing_org:
             return {"error": "Organisation does not exist"}, 404
-        
-        if orgName:
-            existing_org.orgName = orgName
-        # if orgEmail:
-        #     existing_org.orgEmail = orgEmail  #issue 2
-        if orgPhoneNumber:
-            existing_org.orgPhoneNumber = orgPhoneNumber
-        if orgAddress:
-            existing_org.orgAddress = orgAddress
-        if orgDescription:
-            existing_org.orgDescription = orgDescription
-        if youtube_link:
-            existing_org.youtube_link = youtube_link
+        try:
+            if orgName:
+                existing_org.orgName = orgName
+            # if orgEmail:
+            #     existing_org.orgEmail = orgEmail  #issue 2
+            if orgPhoneNumber:
+                existing_org.orgPhoneNumber = orgPhoneNumber
+            if orgAddress:
+                existing_org.orgAddress = orgAddress
+            if orgDescription:
+                existing_org.orgDescription = orgDescription
+            if youtube_link:
+                existing_org.youtube_link = youtube_link
+            if orgType:
+                existing_org.orgType = orgType
+            if website_link:
+                existing_org.website_link = website_link
+            if profileImage:
+                result = upload(profileImage)
+                if "secure_url" in result:
+                    existing_org.profileImage = result["secure_url"]
 
-        db.session.commit()
-        return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
+            db.session.commit()
+            return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
+        except Exception as e:
+            return e, 500
     
 #=====================================Intasend sdk routes==============================================================
 
