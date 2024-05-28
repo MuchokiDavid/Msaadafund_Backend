@@ -2,7 +2,7 @@
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription, TransactionApproval, Signatory
 from utility import check_wallet_balance, sendMail, OTPGenerator, Send_acc
 import os
 from dotenv import load_dotenv
@@ -834,6 +834,109 @@ class OrganisationDetail(Resource):
 
         db.session.commit()
         return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
+
+# ===================================Signatories routes================================================================
+class Signatories(Resource):
+    @jwt_required()
+    def get(self):
+        current_user = get_jwt_identity()
+        existing_organisation = Organisation.query.filter_by(id=current_user).first()
+        if not existing_organisation:
+            return {"error": "Organisation not found"}, 404
+
+        signatories = Signatory.query.filter_by(org_id=existing_organisation.id).all()
+        if not signatories:
+            return {"error": "Signatories not found"}, 404
+
+        serialized_signatories = [signatory.serialize() for signatory in signatories]
+        return (serialized_signatories), 200
+
+    @jwt_required()
+    def post(self):
+        current_user = get_jwt_identity()
+        existing_organisation = Organisation.query.filter_by(id=current_user).first()
+        if not existing_organisation:
+            return {"error": "Organisation not found"}, 404
+        data= request.get_json()
+        signatoryName = data.get('signatoryName')
+        signatoryEmail = data.get('signatoryEmail')
+        signatoryPhoneNumber = data.get('signatoryPhoneNumber')
+        signatoryPosition = data.get('signatoryPosition')
+
+        try:
+            new_signatory = Signatory(name=signatoryName, email=signatoryEmail, phone=signatoryPhoneNumber, role=signatoryPosition, org_id=existing_organisation.id)
+            db.session.add(new_signatory)
+            db.session.commit()
+            return ({
+                "message": "Signatory added successfully",
+                "signatory": new_signatory.serialize()
+            }), 200
+        except Exception as e:
+            return ({"error": "Failed to create signatory"}), 500
+
+class SignatoryDetail(Resource):
+    @jwt_required()
+    def get(self, id):
+        current_user = get_jwt_identity()
+        existing_organisation = Organisation.query.filter_by(id=current_user).first()
+        if not existing_organisation:
+            return {"error": "Organisation not found"}, 404
+
+        signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
+        if not signatory:
+            return {"error": "Signatory not found"}, 404
+
+        return make_response(jsonify(signatory.serialize()))
+    
+    @jwt_required()
+    def delete(self, id):
+        current_user = get_jwt_identity()
+        existing_organisation = Organisation.query.filter_by(id=current_user).first()
+        if not existing_organisation:
+            return {"error": "Organisation not found"}, 404
+
+        signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
+        if not signatory:
+            return {"error": "Signatory not found"}, 404
+
+        db.session.delete(signatory)
+        db.session.commit()
+        return {"message": "Signatory deleted successfully"}, 200
+    
+    @jwt_required()
+    def patch(self, id):
+        current_user = get_jwt_identity()
+        existing_organisation = Organisation.query.filter_by(id=current_user).first()
+        if not existing_organisation:
+            return {"error": "Organisation not found"}, 404
+        
+        try:
+            signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
+            if not signatory:
+                return {"error": "Signatory not found"}, 404
+
+            data = request.get_json()
+            signatoryName = data.get('signatoryName')
+            signatoryEmail = data.get('signatoryEmail')
+            signatoryPhoneNumber = data.get('signatoryPhoneNumber')
+            signatoryPosition = data.get('signatoryPosition')
+
+            if signatoryName:
+                signatory.name = signatoryName
+            if signatoryEmail:
+                signatory.email = signatoryEmail
+            if signatoryPhoneNumber:
+                signatory.phone = signatoryPhoneNumber
+            if signatoryPosition:
+                signatory.role = signatoryPosition
+            db.session.commit()
+            return ({
+                "message": "Signatory updated successfully",
+                "signatory": signatory.serialize()
+            }), 200
+        except Exception as e:
+            return {"error": "Failed to update signatory"}, 500
+
     
 #=====================================Intasend sdk routes==============================================================
 
@@ -2242,6 +2345,8 @@ api.add_resource(Donate, '/api/v1.0/user/donations')
 api.add_resource(ExpressDonations, '/api/v1.0/express/donations')
 api.add_resource(GetTransactions, '/api/v1.0/withdraw_transactions')
 api.add_resource(GetSubscription, '/api/v1.0/subscription/<int:org_id>')
+api.add_resource(Signatories, '/api/v1.0/signatories')
+api.add_resource(SignatoryDetail, '/api/v1.0/signatories/<int:id>')
 
 
 if __name__  =="__main__":
