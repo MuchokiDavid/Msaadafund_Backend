@@ -96,6 +96,8 @@ class Organisation(db.Model, SerializerMixin):
     campaigns = db.relationship('Campaign', backref='organisation')
     accounts= db.relationship('Account', backref= 'organisation')
     subscriptions = db.relationship('Subscription',backref='organisation')
+    signatories = db.relationship('Signatory', backref='organisation')
+
 
     @validates('orgPhoneNumber')
     def validate_phone_number(self, key, number):
@@ -141,7 +143,8 @@ class Organisation(db.Model, SerializerMixin):
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "campaigns": [camp.serialize() for camp in self.campaigns],
             "accounts": [acc.serialize() for acc in self.accounts],
-            "subscriptions":[sub.serialize() for sub in self.subscriptions]
+            "subscriptions":[sub.serialize() for sub in self.subscriptions],
+            "signatories":[sign.serialize() for sign in self.signatories]
         }
 
 
@@ -322,11 +325,38 @@ class Enquiry(db.Model):
 
     def __repr__(self):
         return f"name: {self.name} email: {self.email} subject: {self.subject}"
+
+# Class model to hold signatories
+class Signatory(db.Model):
+    __tablename__="signatories"
+
+    id = db.Column(db.Integer, primary_key=True)
+    org_id = db.Column(db.Integer, db.ForeignKey('organisations.id'), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    name = db.Column(db.String(50), nullable=False)
+    phone= db.Column(db.String(20), nullable=False)
+    role= db.Column(db.String(20), nullable=False)
+    approvals= db.relationship('TransactionApproval', backref='signatory')
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'org_id': self.org_id,
+            'organisation':  self.organisation.serialize(),
+            'email': self.email,
+            'name': self.name,
+            'phone': self.phone,
+            'role': self.role,
+            'approvals': [approval.serialize() for approval in self.approvals]
+        }
     
+    def __repr__(self):
+        return f"ID: {self.id}, Org ID: {self.org_id}, Email: {self.email}, Name: {self.name}, Phone: {self.phone}, Role: {self.role}"
+
 class Transactions(db.Model):
     __tablename__="transactions"
-    id= db.Column(db.Integer, primary_key= True)
 
+    id= db.Column(db.Integer, primary_key= True)
     tracking_id= db.Column(db.String())
     batch_status= db.Column(db.String)
     trans_type= db.Column(db.String)
@@ -340,6 +370,7 @@ class Transactions(db.Model):
     campaign_name = db.Column(db.String)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
+    approvals = db.relationship('TransactionApproval', backref='transaction')
 
     def serialize(self):
         return {
@@ -356,13 +387,40 @@ class Transactions(db.Model):
             'org_id': self.org_id,
             'campaign_name': self.campaign_name,
             'created_at': self.created_at,
-            'updated_at': self.updated_at
+            'updated_at': self.updated_at,
+            'approvals': [approval.serialize() for approval in self.approvals]
         }
     
     def __repr__(self):
         return f"ID: {self.id}, Tracking ID: {self.tracking_id}, Batch Status: {self.batch_status}, Transaction Type: {self.trans_type}, Transaction Status: {self.trans_status}, Amount: {self.amount}, Transaction Account No: {self.transaction_account_no}, Request Ref ID: {self.request_ref_id}, Org Name: {self.org_name}, Transaction Date: {self.transaction_date}, Org ID: {self.org_id}, Campaign Name: {self.campaign_name}"
-    
-    # subscriptions
+
+# Transaction approval
+class TransactionApproval(db.Model):
+    __tablename__="transaction_approvals"
+
+    id = db.Column(db.Integer, primary_key=True)
+    transaction_id = db.Column(db.Integer, db.ForeignKey('transactions.id'), nullable=False)
+    signatory_id = db.Column(db.Integer, db.ForeignKey('signatories.id'), nullable=False)
+    approval_status = db.Column(db.Boolean, default=False)
+    approval_time = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'transaction_id': self.transaction_id,
+            'signatory_id': self.signatory_id,
+            'approval_status': self.approval_status,
+            'approval_time': self.approval_time,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }
+
+    def __repr__(self):
+        return f"ID: {self.id}, Transaction ID: {self.transaction_id}, Signatory ID: {self.signatory_id}, Approval Status: {self.approval_status}, Approval Time: {self.approval_time}, Created At: {self.created_at}, Updated At: {self.updated_at}"
+
+# subscriptions
 class Subscription(db.Model,SerializerMixin):
     __tablename__ = 'subscriptions'
 
@@ -396,8 +454,6 @@ class Subscription(db.Model,SerializerMixin):
                 'phoneNumber': self.user.phoneNumber,
             }
         }
-
-
     
 
     def __repr__(self):
