@@ -770,7 +770,7 @@ def confirm_accountotp():
 #====================================Organisation by id routes==============================================================
 @app.route('/api/v1.0/org_by_id/<string:orgName>', methods=['GET'])
 def org_by_id(orgName):
-    organisation= Organisation.query.filter_by(orgName=orgName).first()
+    organisation= Organisation.query.filter_by(orgName=orgName, isVerified=True).first()
     if not organisation:
         return {"error":"Organisation not found"}, 404
     
@@ -781,7 +781,7 @@ def org_by_id(orgName):
 #====================================Organisation model routes==============================================================
 class Organization(Resource):
     def get(self):
-        organizations = Organisation.query.all()
+        organizations = Organisation.query.filter_by(isVerified=True).all()
         serialized_organizations = [org.serialize() for org in organizations]
         return (serialized_organizations), 200
 
