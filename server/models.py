@@ -157,6 +157,7 @@ class Account(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     providers = db.Column(db.String, nullable=False)
     bank= db.Column(db.String, nullable=True)
+    bank_code= db.Column(db.String, nullable=True)
     accountName = db.Column(db.String, nullable=False)
     accountNumber = db.Column(db.String, unique=True, nullable=False)
     hashed_pin = db.Column(db.String(8), nullable=False)
@@ -181,10 +182,11 @@ class Account(db.Model, SerializerMixin):
             'accountNumber': self.accountNumber,
             'providers': self.providers,
             'bank': self.bank,
+            'bankCode': self.bank_code,
             'orgId': self.orgId
         }
     def __repr__ (self):
-        return f"ID:{self.id} Account Name:{self.accountName}, Account Number:{self.accountNumber}, Provider:{self.providers}, Bank:{self.bank}, Org ID:{self.orgId}"
+        return f"ID:{self.id} Account Name:{self.accountName}, Account Number:{self.accountNumber}, Provider:{self.providers}, Bank:{self.bank}, Bank Code: {self.bank_code} Org ID:{self.orgId}"
     
 class Donation (db.Model, SerializerMixin):
     __tablename__ = 'donations'
@@ -396,6 +398,7 @@ class Transactions(db.Model):
     transaction_date = db.Column(db.DateTime, server_default=db.func.now())#Intasend created at
     org_id= db.Column(db.String())
     campaign_name = db.Column(db.String)
+    bank_code= db.Column(db.String, nullable= True)
     signatory_status = db.Column(db.String,default='pending')
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
@@ -417,6 +420,7 @@ class Transactions(db.Model):
             'transaction_date': self.transaction_date,
             'org_id': self.org_id,
             'campaign_name': self.campaign_name,
+            'bank_code': self.bank_code,
             'created_at': self.created_at,
             'updated_at': self.updated_at,
             'signatory_status': self.signatory_status,
@@ -424,12 +428,12 @@ class Transactions(db.Model):
         }
     
     def __repr__(self):
-        return f"ID: {self.id}, Tracking ID: {self.tracking_id}, Batch Status: {self.batch_status}, Transaction Type: {self.trans_type}, Transaction Status: {self.trans_status}, Amount: {self.amount}, Transaction Account No: {self.transaction_account_no}, Request Ref ID: {self.request_ref_id}, Org Name: {self.name},Account reference:{self.acc_refence},Narrative:{self.narrative}, Transaction Date: {self.transaction_date}, Org ID: {self.org_id}, Campaign Name: {self.campaign_name}"
+        return f"ID: {self.id}, Tracking ID: {self.tracking_id}, Batch Status: {self.batch_status},Bank code: {self.bank_code} ,Transaction Type: {self.trans_type}, Transaction Status: {self.trans_status}, Amount: {self.amount}, Transaction Account No: {self.transaction_account_no}, Request Ref ID: {self.request_ref_id}, Org Name: {self.name},Account reference:{self.acc_refence},Narrative:{self.narrative}, Transaction Date: {self.transaction_date}, Org ID: {self.org_id}, Campaign Name: {self.campaign_name}"
     
     # update status 
     def update_status(self):
         approvals = self.approvals
-        if len(approvals) >= 1 and all(approval.approval_status for approval in approvals):
+        if len(approvals) >= 3 and all(approval.approval_status for approval in approvals):
             self.signatory_status = 'Approved'
         elif any(approval.approval_status is False for approval in approvals):
             self.signatory_status = 'Rejected'
