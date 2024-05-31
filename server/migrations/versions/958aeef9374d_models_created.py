@@ -1,8 +1,8 @@
-"""Added donation nullable
+"""Models created
 
-Revision ID: e31b527faee5
+Revision ID: 958aeef9374d
 Revises: 
-Create Date: 2024-05-16 19:22:44.444900
+Create Date: 2024-05-31 21:13:21.265364
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e31b527faee5'
+revision = '958aeef9374d'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -37,6 +37,7 @@ def upgrade():
     sa.Column('orgPhoneNumber', sa.String(), nullable=True),
     sa.Column('profileImage', sa.String(), nullable=True),
     sa.Column('orgDescription', sa.String(), nullable=True),
+    sa.Column('website_link', sa.String(), nullable=True),
     sa.Column('youtube_link', sa.String(), nullable=True),
     sa.Column('isVerified', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
@@ -61,10 +62,13 @@ def upgrade():
     sa.Column('amount', sa.Float(), nullable=True),
     sa.Column('transaction_account_no', sa.String(), nullable=True),
     sa.Column('request_ref_id', sa.String(), nullable=True),
-    sa.Column('org_name', sa.String(), nullable=True),
+    sa.Column('name', sa.String(), nullable=True),
+    sa.Column('acc_refence', sa.String(), nullable=True),
+    sa.Column('narrative', sa.String(), nullable=True),
     sa.Column('transaction_date', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('org_id', sa.String(), nullable=True),
     sa.Column('campaign_name', sa.String(), nullable=True),
+    sa.Column('signatory_status', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
@@ -91,6 +95,7 @@ def upgrade():
     op.create_table('accounts',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('providers', sa.String(), nullable=False),
+    sa.Column('bank', sa.String(), nullable=True),
     sa.Column('accountName', sa.String(), nullable=False),
     sa.Column('accountNumber', sa.String(), nullable=False),
     sa.Column('hashed_pin', sa.String(length=8), nullable=False),
@@ -120,6 +125,18 @@ def upgrade():
     sa.UniqueConstraint('campaignName'),
     sa.UniqueConstraint('walletId')
     )
+    op.create_table('signatories',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('role', sa.String(length=20), nullable=False),
+    sa.Column('order', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['org_id'], ['organisations.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('subscriptions',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
@@ -131,12 +148,14 @@ def upgrade():
     op.create_table('donations',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('amount', sa.Float(), nullable=False),
+    sa.Column('currency', sa.String(), nullable=False),
     sa.Column('donationDate', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('donor_name', sa.String(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('campaign_id', sa.Integer(), nullable=True),
     sa.Column('status', sa.String(), nullable=True),
     sa.Column('invoice_id', sa.String(), nullable=True),
+    sa.Column('method', sa.String(), nullable=False),
     sa.Column('api_ref', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -144,13 +163,27 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('transaction_approvals',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('transaction_id', sa.Integer(), nullable=False),
+    sa.Column('signatory_id', sa.Integer(), nullable=False),
+    sa.Column('approval_status', sa.Boolean(), nullable=True),
+    sa.Column('approval_time', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['signatory_id'], ['signatories.id'], ),
+    sa.ForeignKeyConstraint(['transaction_id'], ['transactions.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('transaction_approvals')
     op.drop_table('donations')
     op.drop_table('subscriptions')
+    op.drop_table('signatories')
     op.drop_table('campaigns')
     op.drop_table('accounts')
     op.drop_table('users')

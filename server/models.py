@@ -156,6 +156,7 @@ class Account(db.Model, SerializerMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     providers = db.Column(db.String, nullable=False)
+    bank= db.Column(db.String, nullable=True)
     accountName = db.Column(db.String, nullable=False)
     accountNumber = db.Column(db.String, unique=True, nullable=False)
     hashed_pin = db.Column(db.String(8), nullable=False)
@@ -173,17 +174,17 @@ class Account(db.Model, SerializerMixin):
     def check_pin(self, attempted_pin):
         return bcrypt.check_password_hash(self.hashed_pin, attempted_pin.encode('utf-8'))
 
-    def __repr__(self):
-        return f'Account: {self.accountNumber}, Provider: {self.providers}, Org ID: {self.orgId}'
-
     def serialize(self):
         return {
             'id': self.id,
             'accountName':self.accountName,
             'accountNumber': self.accountNumber,
             'providers': self.providers,
+            'bank': self.bank,
             'orgId': self.orgId
         }
+    def __repr__ (self):
+        return f"ID:{self.id} Account Name:{self.accountName}, Account Number:{self.accountNumber}, Provider:{self.providers}, Bank:{self.bank}, Org ID:{self.orgId}"
     
 class Donation (db.Model, SerializerMixin):
     __tablename__ = 'donations'
