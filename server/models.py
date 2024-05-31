@@ -28,6 +28,7 @@ class User(db.Model, SerializerMixin):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     donations =db.relationship('Donation', backref='user')
     subscriptions = db.relationship('Subscription',backref='user')
+    signatories = db.relationship('Signatory', backref='user')
     
 
     @validates('phoneNumber')
@@ -70,7 +71,8 @@ class User(db.Model, SerializerMixin):
             'created_at': self.created_at,
             'updated_at': self.updated_at,
             'donations': [donation.serialize() for donation in self.donations],
-            "subscriptions":[sub.serialize() for sub in self.subscriptions]
+            "subscriptions":[sub.serialize() for sub in self.subscriptions],
+            "signatories":[sign.serialize() for sign in self.signatories]
 
         }
     def __repr__ (self):
@@ -332,26 +334,49 @@ class Signatory(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     org_id = db.Column(db.Integer, db.ForeignKey('organisations.id'), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    name = db.Column(db.String(50), nullable=False)
-    phone= db.Column(db.String(20), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     role= db.Column(db.String(20), nullable=False)
+    order = db.Column(db.Integer, nullable=False)
     approvals= db.relationship('TransactionApproval', backref='signatory')
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
 
     def serialize(self):
         return {
             'id': self.id,
             'org_id': self.org_id,
-            'organisation':  self.organisation.serialize(),
-            'email': self.email,
-            'name': self.name,
-            'phone': self.phone,
             'role': self.role,
-            'approvals': [approval.serialize() for approval in self.approvals]
+            'order': self.order,
+            'approvals': [approval.serialize() for approval in self.approvals],
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
+            'user':{
+                'id':self.user.id,
+                'firstName':self.user.firstName,
+                'lastName':self.user.lastName,
+                'email':self.user.email,
+                'phoneNumber':self.user.phoneNumber,
+                'created_at':self.user.created_at,
+                'updated_at':self.user.updated_at,
+
+            },
+            'organisation':{
+                'id': self.organisation.id,
+                'orgName': self.organisation.orgName,
+                'orgEmail': self.organisation.orgEmail,
+                'orgAddress': self.organisation.orgAddress,
+                'orgType': self.organisation.orgType,
+                'orgPhoneNumber': self.organisation.orgPhoneNumber,
+                "profileImage": self.organisation.profileImage,
+                'orgDescription': self.organisation.orgDescription,
+                'isVerified': self.organisation.isVerified,
+            },
+         
+            
         }
     
     def __repr__(self):
-        return f"ID: {self.id}, Org ID: {self.org_id}, Email: {self.email}, Name: {self.name}, Phone: {self.phone}, Role: {self.role}"
+        return f"ID: {self.id}, Org ID: {self.org_id}, Role: {self.role}, Order:{self.order}"
 
 class Transactions(db.Model):
     __tablename__="transactions"
@@ -364,10 +389,13 @@ class Transactions(db.Model):
     amount= db.Column(db.Float)
     transaction_account_no= db.Column(db.String)
     request_ref_id= db.Column(db.String)
-    org_name= db.Column(db.String)
+    name= db.Column(db.String)
+    acc_refence = db.Column(db.String,nullable=True)
+    narrative = db.Column(db.String,nullable=True)
     transaction_date = db.Column(db.DateTime, server_default=db.func.now())#Intasend created at
     org_id= db.Column(db.String())
     campaign_name = db.Column(db.String)
+    signatory_status = db.Column(db.String,default='pending')
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     approvals = db.relationship('TransactionApproval', backref='transaction')
@@ -380,19 +408,34 @@ class Transactions(db.Model):
             'trans_type': self.trans_type,
             'trans_status': self.trans_status,
             'amount': self.amount,
+            'acc_refence': self.acc_refence,
+            'narrative': self.narrative,
             'transaction_account_no': self.transaction_account_no,
             'request_ref_id': self.request_ref_id,
-            'org_name': self.org_name,
+            'name': self.name,
             'transaction_date': self.transaction_date,
             'org_id': self.org_id,
             'campaign_name': self.campaign_name,
             'created_at': self.created_at,
             'updated_at': self.updated_at,
+            'signatory_status': self.signatory_status,
             'approvals': [approval.serialize() for approval in self.approvals]
         }
     
     def __repr__(self):
-        return f"ID: {self.id}, Tracking ID: {self.tracking_id}, Batch Status: {self.batch_status}, Transaction Type: {self.trans_type}, Transaction Status: {self.trans_status}, Amount: {self.amount}, Transaction Account No: {self.transaction_account_no}, Request Ref ID: {self.request_ref_id}, Org Name: {self.org_name}, Transaction Date: {self.transaction_date}, Org ID: {self.org_id}, Campaign Name: {self.campaign_name}"
+        return f"ID: {self.id}, Tracking ID: {self.tracking_id}, Batch Status: {self.batch_status}, Transaction Type: {self.trans_type}, Transaction Status: {self.trans_status}, Amount: {self.amount}, Transaction Account No: {self.transaction_account_no}, Request Ref ID: {self.request_ref_id}, Org Name: {self.name},Account reference:{self.acc_refence},Narrative:{self.narrative}, Transaction Date: {self.transaction_date}, Org ID: {self.org_id}, Campaign Name: {self.campaign_name}"
+    
+    # update status 
+    def update_status(self):
+        approvals = self.approvals
+        if len(approvals) >= 1 and all(approval.approval_status for approval in approvals):
+            self.signatory_status = 'Approved'
+        elif any(approval.approval_status is False for approval in approvals):
+            self.signatory_status = 'Rejected'
+        else:
+            self.signatory_status = 'Pending'
+        db.session.commit()
+        return self.signatory_status
 
 # Transaction approval
 class TransactionApproval(db.Model):
