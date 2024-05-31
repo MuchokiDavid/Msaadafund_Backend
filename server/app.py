@@ -32,6 +32,9 @@ from reportlab.lib.units import inch
 import io
 import textwrap
 import tempfile
+from sqlalchemy.exc import IntegrityError
+from intasendrequests import buy_airtime,pay_to_paybill,pay_to_till,withdraw_to_bank,withdraw_to_mpesa
+
 
 
 #fetch environment variables  for the api key and server url
@@ -770,7 +773,7 @@ def confirm_accountotp():
 #====================================Organisation by id routes==============================================================
 @app.route('/api/v1.0/org_by_id/<string:orgName>', methods=['GET'])
 def org_by_id(orgName):
-    organisation= Organisation.query.filter_by(orgName=orgName).first()
+    organisation= Organisation.query.filter_by(orgName=orgName, isVerified=True).first()
     if not organisation:
         return {"error":"Organisation not found"}, 404
     
@@ -781,7 +784,7 @@ def org_by_id(orgName):
 #====================================Organisation model routes==============================================================
 class Organization(Resource):
     def get(self):
-        organizations = Organisation.query.all()
+        organizations = Organisation.query.filter_by(isVerified=True).all()
         serialized_organizations = [org.serialize() for org in organizations]
         return (serialized_organizations), 200
 
@@ -841,8 +844,10 @@ class OrganisationDetail(Resource):
                 result = upload(profileImage)
                 if "secure_url" in result:
                     existing_org.profileImage = result["secure_url"]
-        db.session.commit()
-        return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
+            db.session.commit()
+            return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
+        except Exception as e:
+            return {"error": "Failed to update organisation"}, 500
 
 # ===================================Signatories routes================================================================
 class Signatories(Resource):
@@ -858,31 +863,51 @@ class Signatories(Resource):
             return {"error": "Signatories not found"}, 404
 
         serialized_signatories = [signatory.serialize() for signatory in signatories]
-        return (serialized_signatories), 200
-
+        response  = make_response(jsonify(serialized_signatories),200)
+        return response
+       
     @jwt_required()
     def post(self):
         current_user = get_jwt_identity()
         existing_organisation = Organisation.query.filter_by(id=current_user).first()
         if not existing_organisation:
             return {"error": "Organisation not found"}, 404
+
         data= request.get_json()
-        signatoryName = data.get('signatoryName')
-        signatoryEmail = data.get('signatoryEmail')
-        signatoryPhoneNumber = data.get('signatoryPhoneNumber')
-        signatoryPosition = data.get('signatoryPosition')
+        email = data.get('email')
+        role = data.get('role')
 
-        try:
-            new_signatory = Signatory(name=signatoryName, email=signatoryEmail, phone=signatoryPhoneNumber, role=signatoryPosition, org_id=existing_organisation.id)
-            db.session.add(new_signatory)
-            db.session.commit()
-            return ({
-                "message": "Signatory added successfully",
-                "signatory": new_signatory.serialize()
-            }), 200
-        except Exception as e:
-            return ({"error": "Failed to create signatory"}), 500
+        existing_user = User.query.filter_by(email=email).first()
+        if not existing_user:
+            return {"error": "User not found"}, 404
 
+    
+        all_signataries = Signatory.query.filter_by(org_id=existing_organisation.id).all()
+        if len(all_signataries) >= 3:
+            return {"error": "Maximum number of signatories reached"}, 400
+        
+        existing_signatory = Signatory.query.filter_by(user_id=existing_user.id, org_id=existing_organisation.id).first()
+        if existing_signatory:
+            return {"error": "Signatory already exists"}, 400
+
+        existing_orders = [signatory.order for signatory in all_signataries]
+        order = 1
+        while order in existing_orders:
+            order += 1
+
+
+        new_signatory = Signatory(user_id=existing_user.id,role=role, org_id=existing_organisation.id,order=order)
+
+        db.session.add(new_signatory)
+        db.session.commit()
+        response = make_response(jsonify(new_signatory.serialize()))
+
+        sendMail.send_signatory_email(existing_user.email,existing_user.firstName,existing_organisation.orgName)
+        sendMail.send_signatory_add( existing_user.firstName,existing_organisation.orgName, existing_organisation.orgEmail)
+
+        return response
+            
+            
 class SignatoryDetail(Resource):
     @jwt_required()
     def get(self, id):
@@ -907,9 +932,14 @@ class SignatoryDetail(Resource):
         signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
         if not signatory:
             return {"error": "Signatory not found"}, 404
+        user = User.query.filter_by(id=signatory.user_id).first()
+        if not user:
+            return {"error": "User not found"}, 404
+        
 
         db.session.delete(signatory)
         db.session.commit()
+        sendMail.send_signatory_email_removal(user.email, user.firstName, existing_organisation.orgName)
         return {"message": "Signatory deleted successfully"}, 200
     
     @jwt_required()
@@ -925,26 +955,17 @@ class SignatoryDetail(Resource):
                 return {"error": "Signatory not found"}, 404
 
             data = request.get_json()
-            signatoryName = data.get('signatoryName')
-            signatoryEmail = data.get('signatoryEmail')
-            signatoryPhoneNumber = data.get('signatoryPhoneNumber')
-            signatoryPosition = data.get('signatoryPosition')
+            role = data.get('role')
 
-            if signatoryName:
-                signatory.name = signatoryName
-            if signatoryEmail:
-                signatory.email = signatoryEmail
-            if signatoryPhoneNumber:
-                signatory.phone = signatoryPhoneNumber
-            if signatoryPosition:
-                signatory.role = signatoryPosition
+            if role:
+                signatory.role = role
             db.session.commit()
-            return ({
-                "message": "Signatory updated successfully",
-                "signatory": signatory.serialize()
-            }), 200
+            # get response
+            response  = make_response(jsonify(signatory.serialize()),201)
+            return response
+
         except Exception as e:
-            return {"error": "Failed to update signatory"}, 500
+            return {"error":str(e)}, 500
     
 #=====================================Intasend sdk routes==============================================================
 
@@ -1084,157 +1105,275 @@ def campaign_money_withdrawal():
 @app.route("/api/v1.0/buy_airtime",methods=["POST"])
 @jwt_required()
 def campaign_buy_airtime():
-    current_user_id = get_jwt_identity()
-    existing_org= Organisation.query.get(current_user_id)
-    if not existing_org:
-        return jsonify({"error": "organisation not found"}), 404
+    current_user = get_jwt_identity()
+    organisation = Organisation.query.filter_by(id=current_user).first()
+    if not organisation:
+        return {"error":"organisation cannot be found"},404
 
-    try:
-        data = request.get_json()
-        name = data.get('name')
-        amount = data.get('amount')
-        phone_number = data.get("phone_number")
-        campaign_id = data.get("campaign_id")
+    data=request.get_json()
+    name= data.get("name")
+    amount= float(data.get("amount"))
+    phone_number= data.get("phone_number")
+    campaign= int(data.get("campaign"))
 
-        current_campaign= Campaign.query.filter_by(id=campaign_id, org_id=existing_org.id, isActive=True).first()
-        wallet_id= current_campaign.walletId
+    current_campaign= Campaign.query.filter_by(id=campaign, org_id=organisation.id, isActive=True).first()
+    if not current_campaign:
+        return jsonify({"error":"Campaign does not exist or inactive."}),404
 
-        wallet_details= check_wallet_balance(wallet_id)
-
-        if wallet_id:
-            # Check the available balance of the origin wallet
-            # available= wallet_details[0].get("wallet_details").get("available_balance")
-            if float(wallet_details) < float(amount):
-                return jsonify({"error":"Insufficient funds!"}),400
-
-            url = "https://sandbox.intasend.com/api/v1/send-money/initiate/"
-
-            payload = {
-
-                "currency": "KES",
-                "provider": "AIRTIME",
-                "wallet_id": wallet_id,
-                "transactions": [
-                    { 
-                        "name": name,
-                        "account": phone_number,
-                        "amount": amount,
-                        "category_name": "Airtime",
-                        "narrative": "Airtime purchase"
-                    }
-                ]
-            }
-            headers = {
-                "accept": "application/json",
-                "content-type": "application/json",
-                "Authorization": "Bearer " + token
-            }
-
-            response = requests.post(url, json=payload, headers=headers)
-            intersend_data=response.json()
-                # print(intersend_data)
-            if intersend_data.get("errors"):
-                error_message = intersend_data.get("errors")[0].get("detail")
-                return  make_response(jsonify({'error':error_message}),400)
-            approved_response = service.transfer.approve(intersend_data)
-            
-            # if response.status_code ==200:
-            new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
-                                            batch_status= approved_response.get('status'),
-                                            trans_type= 'Buy Airtime',
-                                            trans_status= approved_response.get('transactions')[0].get('status'),
-                                            amount= approved_response.get('transactions')[0].get('amount'),
-                                            transaction_account_no=approved_response.get('transactions')[0].get('account'),
-                                            request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
-                                            org_name= approved_response.get('transactions')[0].get('name'),
-                                            org_id=existing_org.id,
-                                            campaign_name= current_campaign.campaignName
-                                        )
-            
-            db.session.add(new_transaction)
-            db.session.commit()
-            return jsonify({"message":approved_response})
-
-        else:
-            # Campaign not found
-            return make_response(make_response(jsonify({'error':'campaign not found'}), 400))
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    #check wallet balance
+    wallet_id = current_campaign.walletId
+    wallet_details = check_wallet_balance(wallet_id)
+    if float(wallet_details) < float(amount):
+            return jsonify({"error": "Insufficient funds!"}), 400
     
-#Route to pay to a paybill from a campaign
+    signatories = Signatory.query.filter_by(org_id=organisation.id).all()
+    if len(signatories) < 1:
+        return jsonify({"error": "No signatories found!"}), 404
+    elif len(signatories) < 1:
+        return jsonify({"error": "3 signatories are required to initialize a transaction!"}), 400
+    
+    new_transaction=Transactions(tracking_id='pending',
+                                    batch_status= 'pending',
+                                    trans_type= 'Buy Airtime',
+                                    trans_status= 'pending',
+                                    signatory_status='pending',
+                                    amount= amount,
+                                    transaction_account_no=phone_number,
+                                    request_ref_id= 'pending',
+                                    name= name,
+                                    org_id=organisation.id,
+                                    campaign_name= current_campaign.campaignName
+                                )  
+    db.session.add(new_transaction)
+    db.session.commit()
+    
+
+    # send mail to signatory
+    for signatory in signatories:
+        user = User.query.filter_by(id=signatory.user_id).first() 
+        new_approval = TransactionApproval(transaction_id=new_transaction.id, signatory_id=signatory.id)
+        db.session.add(new_approval)
+        db.session.commit()
+
+        sendMail.send_approval_message(user.firstName,user.email,organisation.orgName,amount,new_transaction.trans_type,phone_number)
+
+    return jsonify({"message": "Transaction created and awaiting approval."}), 201
+
+# get pending transactions
+@app.route("/api/v1.0/pending_transactions", methods=["GET"])
+@jwt_required()
+def pending_transactions():
+    current_user = get_jwt_identity()
+    signatory = Signatory.query.filter_by(user_id=current_user).first()
+    if not signatory:
+        return {"error": "Unauthorized Signatory"}, 401
+
+    transactions = Transactions.query.filter_by(signatory_status='pending').all()
+    trans_dict = [tra.serialize() for tra in transactions]
+    response = make_response(jsonify(trans_dict), 200)
+    return response
+
+# approve transaction
+@app.route("/api/v1.0/approve_transaction", methods=["POST"])
+@jwt_required()
+def approve_transaction():
+    current_user = get_jwt_identity()
+    signatory = Signatory.query.filter_by(user_id=current_user).first()
+    if not signatory:
+        return {"error": "Unauthorized Signatory"}, 401
+    
+    # update transaction
+    data = request.get_json()
+    transaction_id = data.get("transaction_id")
+    approval_status = data['approval_status']
+    campaign_name = data['campaign_name']
+
+    # transaction = Transactions.query.filter_by(id=transaction_id).first()
+    # if not transaction:
+    #     return {"error": "Transaction not found"}, 404
+
+    approval = TransactionApproval.query.filter_by(transaction_id=transaction_id, signatory_id=signatory.id).first()
+    if not approval:
+        return {"error": "Approval not found"}, 404
+
+    approval.approval_status = approval_status
+    db.session.commit()
+
+    transaction = Transactions.query.filter_by(id=transaction_id).first()
+    transaction.update_status()
+
+    existing_campaign = Campaign.query.filter_by(campaignName=campaign_name).first()
+    if not existing_campaign:
+        return {"error": "Campaign not found"}, 404
+    
+    wallet_id = existing_campaign.walletId
+
+    existing_organisation = Organisation.query.filter_by(id=existing_campaign.org_id).first()
+    if not existing_organisation:
+        return {"error": "Organisation not found"}, 404
+    
+
+    if transaction.signatory_status == 'Approved':
+        if transaction.trans_type == 'Buy Airtime':
+            return buy_airtime(wallet_id, transaction, existing_organisation.orgName)
+        elif transaction.trans_type == 'Pay to Paybill':
+            return pay_to_paybill(wallet_id, transaction)
+        elif transaction.trans_type == 'Withdraw to M-Pesa':
+            return withdraw_to_mpesa(wallet_id, transaction, existing_organisation.orgName)
+        elif transaction.trans_type == 'Withdraw to Bank':
+            return withdraw_to_bank(wallet_id, transaction, existing_organisation.orgName)
+        elif transaction.trans_type == 'Pay to Till':
+            return pay_to_till(wallet_id, transaction, existing_organisation.orgName)       
+        else:
+            return {"error": "Invalid transaction type"},400
+    elif transaction.signatory_status == 'Rejected':
+        return {"error": "Transaction rejected"},400
+    else:
+        return {"error": "Transaction not approved"},400
+    
+
+# #Route to pay to a paybill from a campaign
 @app.route("/api/v1.0/pay_to_paybill", methods=["POST"])
 @jwt_required()
 def campaign_pay_to_paybill():
     current_user_id = get_jwt_identity()
-    existing_org= Organisation.query.get(current_user_id)
+    existing_org= Organisation.query.filter_by(id=current_user_id).first()
     if not existing_org:
         return jsonify({"error": "organisation not found"}), 404
 
-    try:
-        data = request.get_json()
-        name = existing_org.orgName
-        account= data.get('paybillNumber')
-        account_reference= data.get('accountNumber')
-        account_type= 'PayBill'
-        amount = data.get('amount')
-        narrative= data.get('narrative')
-        campaign_id = data.get("campaignId")
+    data = request.get_json()
+    name = existing_org.orgName
+    account= data.get('paybillNumber')
+    account_reference= data.get('accountNumber')
+    # account_type= 'PayBill'
+    amount = data.get('amount')
+    narrative= data.get('narrative')
+    campaign_id = data.get("campaignId")
 
-        if not all([account, account_reference, amount]):
-            return jsonify({"error": "Missing required fields"}), 400
+    if not all([account, account_reference, amount]):
+        return jsonify({"error": "Missing required fields"}), 400
 
-        current_campaign= Campaign.query.filter_by(id=campaign_id, org_id=existing_org.id, isActive=True).first()
-        wallet_id= current_campaign.walletId
+    current_campaign= Campaign.query.filter_by(id=campaign_id, org_id=existing_org.id, isActive=True).first()
+    wallet_id= current_campaign.walletId
 
-        wallet_details= check_wallet_balance(wallet_id)
+    wallet_details= check_wallet_balance(wallet_id)
 
-        if wallet_id:
-            # Check the available balance of the origin wallet
-            if float(wallet_details) < float(amount):
-                return jsonify({"error":"Insufficient funds!"}),400
-        try:
-            transactions= [{
-                    'name':name , 
-                    'account':int(account), 
-                    'account_type':account_type, 
-                    'account_reference':account_reference, 
-                    'amount':float(amount), 
-                    'narrative':narrative
-                    }]
-            response = service.transfer.mpesa_b2b(wallet_id=wallet_id, currency='KES', transactions=transactions)
-            if response.get("errors"):
-                error_message = response.get("errors")[0].get("detail")
-                return  make_response(jsonify({'error':error_message}),400)
-            
-            #approve transaction
-            approved_response = service.transfer.approve(response)
-
-            # if response.status_code ==200:
-            new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
-                                            batch_status= approved_response.get('status'),
-                                            trans_type= 'Pay to Paybill',
-                                            trans_status= approved_response.get('transactions')[0].get('status'),
-                                            amount= approved_response.get('transactions')[0].get('amount'),
-                                            transaction_account_no=approved_response.get('transactions')[0].get('account'),
-                                            request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
-                                            org_name= approved_response.get('transactions')[0].get('name'),
-                                            org_id=existing_org.id,
-                                            campaign_name= current_campaign.campaignName
-                                        )
-            
-            db.session.add(new_transaction)
-            db.session.commit()
-
-            return jsonify(approved_response) , 200
-        
-        except Exception as e:
-            print(e)
-            return jsonify({"error":str(e)}),500
+    if wallet_id:
+        # Check the available balance of the origin wallet
+        if float(wallet_details) < float(amount):
+            return jsonify({"error":"Insufficient funds!"}),400
     
-    except Exception as e:
-        print(e)
-        return jsonify({"error":str(e)}),500
+    signatories = Signatory.query.filter_by(org_id=existing_org.id).all()
+    if len(signatories) < 1:
+        return jsonify({"error": "No signatories found!"}), 404
+    elif len(signatories) < 1:
+        return jsonify({"error": "3 signatories are required to initialize a transaction!"}), 400
+    
+    new_transaction=Transactions(tracking_id='pending',
+                                    batch_status= 'pending',
+                                    trans_type= 'Pay to Paybill',
+                                    trans_status= 'pending',
+                                    signatory_status='pending',
+                                    amount= amount,
+                                    transaction_account_no=account,
+                                    request_ref_id= 'pending',
+                                    name= name,
+                                    acc_refence=account_reference,
+                                    narrative=narrative,
+                                    org_id=existing_org.id,
+                                    campaign_name= current_campaign.campaignName
+                                )  
+    db.session.add(new_transaction)
+    db.session.commit()
+    
+
+    # send mail to signatory
+    for signatory in signatories:
+        user = User.query.filter_by(id=signatory.user_id).first() 
+        new_approval = TransactionApproval(transaction_id=new_transaction.id, signatory_id=signatory.id)
+        db.session.add(new_approval)
+        db.session.commit()
+
+        sendMail.send_approval_message(user.firstName,user.email,existing_org.orgName,amount,new_transaction.trans_type,account)
+
+    return jsonify({"message": "Transaction created and awaiting approval."}), 201
+
+        
+
+    
+# #Route to pay to a paybill from a campaign
+# @app.route("/api/v1.0/pay_to_paybill", methods=["POST"])
+# @jwt_required()
+# def campaign_pay_to_paybill():
+#     current_user_id = get_jwt_identity()
+#     existing_org= Organisation.query.get(current_user_id)
+#     if not existing_org:
+#         return jsonify({"error": "organisation not found"}), 404
+
+#     try:
+#         data = request.get_json()
+#         name = existing_org.orgName
+#         account= data.get('paybillNumber')
+#         account_reference= data.get('accountNumber')
+#         account_type= 'PayBill'
+#         amount = data.get('amount')
+#         narrative= data.get('narrative')
+#         campaign_id = data.get("campaignId")
+
+#         if not all([account, account_reference, amount]):
+#             return jsonify({"error": "Missing required fields"}), 400
+
+#         current_campaign= Campaign.query.filter_by(id=campaign_id, org_id=existing_org.id, isActive=True).first()
+#         wallet_id= current_campaign.walletId
+
+#         wallet_details= check_wallet_balance(wallet_id)
+
+#         if wallet_id:
+#             # Check the available balance of the origin wallet
+#             if float(wallet_details) < float(amount):
+#                 return jsonify({"error":"Insufficient funds!"}),400
+#         try:
+#             transactions= [{
+#                     'name':name , 
+#                     'account':int(account), 
+#                     'account_type':account_type, 
+#                     'account_reference':account_reference, 
+#                     'amount':float(amount), 
+#                     'narrative':narrative
+#                     }]
+#             response = service.transfer.mpesa_b2b(wallet_id=wallet_id, currency='KES', transactions=transactions)
+#             if response.get("errors"):
+#                 error_message = response.get("errors")[0].get("detail")
+#                 return  make_response(jsonify({'error':error_message}),400)
+            
+#             #approve transaction
+#             approved_response = service.transfer.approve(response)
+
+#             # if response.status_code ==200:
+#             new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
+#                                             batch_status= approved_response.get('status'),
+#                                             trans_type= 'Pay to Paybill',
+#                                             trans_status= approved_response.get('transactions')[0].get('status'),
+#                                             amount= approved_response.get('transactions')[0].get('amount'),
+#                                             transaction_account_no=approved_response.get('transactions')[0].get('account'),
+#                                             request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
+#                                             org_name= approved_response.get('transactions')[0].get('name'),
+#                                             org_id=existing_org.id,
+#                                             campaign_name= current_campaign.campaignName
+#                                         )
+            
+#             db.session.add(new_transaction)
+#             db.session.commit()
+
+#             return jsonify(approved_response) , 200
+        
+#         except Exception as e:
+#             print(e)
+#             return jsonify({"error":str(e)}),500
+    
+#     except Exception as e:
+#         print(e)
+#         return jsonify({"error":str(e)}),500
 
 #Route to pay to a till number
 @app.route("/api/v1.0/pay_to_till", methods=["POST"])

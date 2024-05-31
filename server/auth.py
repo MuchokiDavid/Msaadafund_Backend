@@ -86,6 +86,10 @@ def login():
     if user.role in ('User', 'Admin'):
         if not bcrypt.check_password_hash(user.hashed_password, data.get('password')):
             return jsonify({'error': 'Invalid credentials'}), 401 
+        
+        # check if user is a signatory
+        is_signatory = bool(user.signatories)
+
 
         access_token = create_access_token(identity=user.id)
         refresh_token = create_refresh_token(identity=user.id)  
@@ -96,7 +100,8 @@ def login():
                 "access": access_token,
                 "refresh": refresh_token
             },
-            "user": user.serialize()
+            "user": user.serialize(),
+            "is_signatory": is_signatory
         }), 200
     else: 
         return jsonify({'error':'Unauthorized user'}), 401

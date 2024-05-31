@@ -4,13 +4,15 @@
 import random
 import string
 from flask_mail import Message
-from flask import jsonify
+from flask import jsonify, url_for, render_template
 import os
 from dotenv import load_dotenv
 load_dotenv()
 # from app import token, publishable_key,service
 from intasend import APIService
 from models import Campaign
+
+
 
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
@@ -128,6 +130,41 @@ class sendMail():
         body = f"Dear {user},\n\nWe're thrilled to announce the launch of our latest campaign,{campaignName.upper()}. This initiative represents our continued commitment to our cause.\n\n Here's a brief overview of the campaign: \n Title:{campaignName}\n Description:{description}\n Start Date: {startDate}\n End Date: {endDate}\n Budget:{budget}\n Campaign link:{url}\n\nYou're now part of our community dedicated to making a positive impact.\n\nWe invite you to join us in making a difference by supporting this campaign. Whether it's spreading the word, volunteering your time, or contributing in any way you can, your participation is invaluable.\n\nStay tuned for updates as the campaign progresses. Together, we can achieve meaningful impact and create positive change in our community.\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
+
+
+    def send_signatory_email(email, name,organisation):
+        from app import mail
+        # been selected to be a signatory
+        subject = f"Signatory Selection by {organisation}"
+        body = f"Dear {name},\n\nYou have been selected to be a signatory on Msaada Mashinani Platform By {organisation}.\n\nBest regards,\nMsaada Mashinani Team"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+
+    def send_signatory_email_removal(email, name, organisation):
+        from app import mail
+        subject = f"Signatory Removal from {organisation}"
+        body = f"Dear {name},\n\nYou have been removed as a signatory from Msaada Mashinani Platform By {organisation}.\n\nBest regards,\nMsaada Mashinani Team"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+    
+    def send_signatory_add(name,organisation,email):
+        from app import mail
+        subject = f"Signatory Added by {organisation}"
+        body = f"Dear {organisation},\n\nYou have  added {name} as your signatory on Msaada Mashinani Platform.\n\nBest regards,\nMsaada Mashinani Team"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+    
+    def send_approval_message(name,email,organisation,amount,trans_type,trans_account):
+        from app import mail
+        url = "http://localhost:3000/user/login"  #change after hosting
+        subject = f"Approval Request for {trans_type} by {organisation}"
+        body = f"Dear {name},\n\nYou have been requested to approve a {trans_type} request of Ksh {amount} to {trans_account} by {organisation}.\n Please login to approve the request {url}.\n\nBest regards,\nMsaada Mashinani Team"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+
+
+
+
     
 class Send_acc():    
     def send_user_signup_account(email, providers, accountNumber, orgName):
@@ -136,6 +173,7 @@ class Send_acc():
         body = f"Dear {orgName},\n\n Thank you for registering your {providers} account with account number {accountNumber} on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
+
 
 
 # Generate otp
