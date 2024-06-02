@@ -116,9 +116,9 @@ class CampaignAdminView(ModelView):
 
 class AccountAdminView(ModelView):
     column_sortable_list=('providers','accountNumber')
-    column_searchable_list=('providers','accountNumber')
+    column_searchable_list=('providers','accountNumber','bank_code', 'orgId','bank')
     column_list=('id','providers','accountNumber','orgId')
-    column_labels=dict(providers='Provider', accountNumber='Account Number', orgId='Organization')
+    column_labels=dict(providers='Provider', accountNumber='Account Number', orgId='Organization',bank='Bank',bank_code='bank_code')
     column_filters=column_sortable_list
 
 class TransactionAdminView(ModelView):
@@ -126,4 +126,12 @@ class TransactionAdminView(ModelView):
     column_searchable_list=('transaction_date', 'amount', 'trans_type', 'org_id', 'trans_status')
     column_list=('id','tracking_id','batch_status', 'transaction_date', 'amount', 'trans_type','trans_status', 'org_id', 'campaign_name', 'created_at')
     column_labels=dict(tracking_id='Tracking Id', batch_status='Batch Status', transaction_date='Transaction Date', amount='Amount', trans_type='Transaction Type', trans_status='Transaction Status', org_id='Organization', campaign_name='Campaign Name', created_at='Created On')
+    column_filters=column_list
+
+# to see signatories
+class SignatoriesadminView(ModelView):
+    column_sortable_list=('created_at', 'org_id')
+    column_searchable_list=('role','order','org_id','user_id')
+    column_list=('id','user_id', 'role', 'order', 'org_id', 'created_at')
+    column_labels=dict(role='Role', order='Order', org_id='Organization',user_id='user')
     column_filters=column_list
