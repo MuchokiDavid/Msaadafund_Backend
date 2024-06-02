@@ -19,7 +19,7 @@ from auth import auth_bp
 # from views import view_bp
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
-from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView, TransactionAdminView
+from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView, TransactionAdminView,SignatoriesadminView
 from cloudinary.uploader import upload
 import cloudinary.api
 import random
@@ -92,6 +92,7 @@ admin.add_view(OrganisationAdminView(Organisation, db.session))
 admin.add_view(AccountAdminView(Account, db.session))
 admin.add_view(ModelView(TokenBlocklist, db.session))
 admin.add_view(TransactionAdminView(Transactions, db.session))
+admin.add_view(SignatoriesadminView(Signatory, db.session))
 
 # jwt error handler
 @jwt.expired_token_loader
@@ -789,7 +790,8 @@ class Organization(Resource):
     def get(self):
         organizations = Organisation.query.filter_by(isVerified=True).all()
         serialized_organizations = [org.serialize() for org in organizations]
-        return (serialized_organizations), 200
+        response = make_response(jsonify(serialized_organizations), 200)
+        return response
 
 class OrganisationDetail(Resource):
     @jwt_required()
@@ -1228,8 +1230,8 @@ def pending_transactions():
     trans_dict = [tra.serialize() for tra in transactions]
     response = make_response(jsonify(trans_dict), 200)
     return response
+
 # ===========================Approve and Reject transactions====================================================
-# approve transaction
 @app.route("/api/v1.0/approve_transaction", methods=["POST"])
 @jwt_required()
 def approve_transaction():
@@ -1241,35 +1243,30 @@ def approve_transaction():
     # update transaction
     data = request.get_json()
     transaction_id = data.get("transaction_id")
-    approval_status = data['approval_status']
-    campaign_name = data['campaign_name']
-
-    # transaction = Transactions.query.filter_by(id=transaction_id).first()
-    # if not transaction:
-    #     return {"error": "Transaction not found"}, 404
+    approval_status = data.get("approval_status")
+    campaign_name = data.get("campaign_name")
 
     approval = TransactionApproval.query.filter_by(transaction_id=transaction_id, signatory_id=signatory.id).first()
     if not approval:
         return {"error": "Approval not found"}, 404
 
     approval.approval_status = approval_status
+    approval.approval_time = datetime.now()
     db.session.commit()
 
     transaction = Transactions.query.filter_by(id=transaction_id).first()
-    transaction.update_status()
+    signatory_status = transaction.update_status()
 
-    existing_campaign = Campaign.query.filter_by(campaignName=campaign_name).first()
-    if not existing_campaign:
-        return {"error": "Campaign not found"}, 404
-    
-    wallet_id = existing_campaign.walletId
+    if signatory_status == 'Approved':
+        existing_campaign = Campaign.query.filter_by(campaignName=campaign_name).first()
+        if not existing_campaign:
+            return {"error": "Campaign not found"}, 404
+        
+        wallet_id = existing_campaign.walletId
+        existing_organisation = Organisation.query.filter_by(id=existing_campaign.org_id).first()
+        if not existing_organisation:
+            return {"error": "Organisation not found"}, 404
 
-    existing_organisation = Organisation.query.filter_by(id=existing_campaign.org_id).first()
-    if not existing_organisation:
-        return {"error": "Organisation not found"}, 404
-    
-
-    if transaction.signatory_status == 'Approved':
         if transaction.trans_type == 'Buy Airtime':
             return buy_airtime(wallet_id, transaction, existing_organisation.orgName)
         elif transaction.trans_type == 'Pay to Paybill':
@@ -1281,11 +1278,13 @@ def approve_transaction():
         elif transaction.trans_type == 'Pay to Till':
             return pay_to_till(wallet_id, transaction)       
         else:
-            return {"error": "Invalid transaction type"},400
-    elif transaction.signatory_status == 'Rejected':
-        return {"error": "Transaction rejected"},400
+            return {"error": "Invalid transaction type"}, 400
+    elif signatory_status == 'Rejected':
+        return {"error": "Transaction rejected"}, 400
     else:
-        return {"error": "Transaction not approved"},400
+        return {"message": "Approval recorded. Waiting for other signatories."}, 200
+
+
     
 #Route to reject an approval
 @app.route("/api/v1.0/reject_approval/<int:approval_id>", methods=["PATCH"])
@@ -1301,7 +1300,7 @@ def reject_approval(approval_id):
         return {"error": "Approval not found"}, 404
 
     approval.approval_status = False
-    approval_time= datetime.now()
+    approval.approval_time = datetime.now() 
     db.session.commit()
 
     transaction = Transactions.query.filter_by(id=approval.transaction_id).first()
