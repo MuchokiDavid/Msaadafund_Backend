@@ -379,7 +379,7 @@ class Signatory(db.Model):
         }
     
     def __repr__(self):
-        return f"ID: {self.id}, Org ID: {self.org_id}, Role: {self.role}, Order:{self.order}"
+        return f"ID: {self.id}, Org ID: {self.org_id}, Role: {self.role}, Order:{self.order},User:{self.user_id}"
 
 class Transactions(db.Model):
     __tablename__="transactions"
@@ -430,13 +430,13 @@ class Transactions(db.Model):
     def __repr__(self):
         return f"ID: {self.id}, Tracking ID: {self.tracking_id}, Batch Status: {self.batch_status},Bank code: {self.bank_code} ,Transaction Type: {self.trans_type}, Transaction Status: {self.trans_status}, Amount: {self.amount}, Transaction Account No: {self.transaction_account_no}, Request Ref ID: {self.request_ref_id}, Org Name: {self.name},Account reference:{self.acc_refence},Narrative:{self.narrative}, Transaction Date: {self.transaction_date}, Org ID: {self.org_id}, Campaign Name: {self.campaign_name}"
     
-    # update status 
+    
     def update_status(self):
         approvals = self.approvals
-        if len(approvals) >= 3 and all(approval.approval_status for approval in approvals):
+        if any(approval.approval_status is False for approval in approvals):
+            self.signatory_status = 'Pending'
+        elif all(approval.approval_status for approval in approvals) and len(approvals) == 3:
             self.signatory_status = 'Approved'
-        elif any(approval.approval_status is False for approval in approvals):
-            self.signatory_status = 'Rejected'
         else:
             self.signatory_status = 'Pending'
         db.session.commit()
