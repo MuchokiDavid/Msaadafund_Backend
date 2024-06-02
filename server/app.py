@@ -576,10 +576,11 @@ def delete(campaignId):
         # db.session.delete(campaign)
         db.session.commit()
         # return that campaign
-        response = make_response(jsonify(existing_campaign.serialize()))
-        return {"message": "Campaign deactivated successfully",
-                "data":response                
-            },200   
+        response = make_response(jsonify(existing_campaign.serialize()),200)
+        # return {"message": "Campaign deactivated successfully",
+        #         "data":response                
+        #     }
+        return response
 
 #Get  specific campaign details by id
 class campaignById(Resource):
@@ -881,7 +882,7 @@ class Signatories(Resource):
 
         existing_user = User.query.filter_by(email=email).first()
         if not existing_user:
-            return {"error": "User not found"}, 404
+            return {"error": "User not registered"}, 404
 
     
         all_signataries = Signatory.query.filter_by(org_id=existing_organisation.id).all()
@@ -931,18 +932,36 @@ class SignatoryDetail(Resource):
         if not existing_organisation:
             return {"error": "Organisation not found"}, 404
 
-        signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
-        if not signatory:
-            return {"error": "Signatory not found"}, 404
-        user = User.query.filter_by(id=signatory.user_id).first()
-        if not user:
-            return {"error": "User not found"}, 404
-        
+        try:
+            signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
+            if not signatory:
+                return {"error": "Signatory not found"}, 404
+            user = User.query.filter_by(id=signatory.user_id).first()
+            if not user:
+                return {"error": "User not found"}, 404      
 
-        db.session.delete(signatory)
-        db.session.commit()
-        sendMail.send_signatory_email_removal(user.email, user.firstName, existing_organisation.orgName)
-        return {"message": "Signatory deleted successfully"}, 200
+            # Before deleting the signatory, handle the dependent transaction approvals
+            # transaction_approvals = TransactionApproval.query.filter_by(signatory_id=signatory.id).all()
+            # for approval in transaction_approvals:
+            #     if signatory.id == 1:
+            #         approval.signatory_id = 2  # Or set to another valid signatory_id
+            #     elif signatory.id == 2:
+            #         approval.signatory_id = 1
+            #     elif signatory.id == 3:
+            #         approval.signatory_id = 1
+            #     db.session.add(approval)      
+
+            db.session.delete(signatory)
+            db.session.commit()
+            sendMail.send_signatory_email_removal(user.email, user.firstName, existing_organisation.orgName)
+            return {"message": "Signatory deleted successfully"}, 200
+        
+        except IntegrityError as e:
+            db.session.rollback()
+            raise ValueError(f"Database integrity error: {str(e)}")
+        except Exception as e:
+            db.session.rollback()
+            return {"error": f"Unexpected error: {str(e)}"}, 500
     
     @jwt_required()
     def patch(self, id):
