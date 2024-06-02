@@ -577,10 +577,11 @@ def delete(campaignId):
         # db.session.delete(campaign)
         db.session.commit()
         # return that campaign
-        response = make_response(jsonify(existing_campaign.serialize()))
-        return {"message": "Campaign deactivated successfully",
-                "data":response                
-            },200   
+        response = make_response(jsonify(existing_campaign.serialize()),200)
+        # return {"message": "Campaign deactivated successfully",
+        #         "data":response                
+        #     }
+        return response
 
 #Get  specific campaign details by id
 class campaignById(Resource):
@@ -719,22 +720,22 @@ class addAccount(Resource):
 #Get account by id
 class accountById(Resource):
     @jwt_required()
-    def delete(self):
-        data = request.get_json()
+    def delete(self,id):
+        # data = request.get_json()
         current_user = get_jwt_identity()
         existing_organisation = Organisation.query.filter_by(id=current_user).first()
         if not existing_organisation:
             return {"error":"Organisation not found"}, 404
-        
-    
-        account = Account.query.filter_by(accountNumber=data['accountNumber']).first()
-        if not account:
-            return {"error":"Account not found"}, 404
-        else:     
+        try:
+            account = Account.query.filter_by(id=id).first()
+            if not account:
+                return {"error":"Account not found"}, 404
             db.session.delete(account)
             db.session.commit()
 
-            return {"message": "Account deleted successfully"},200   
+            return {"message": "Account deleted successfully"},200  
+        except Exception as e:
+            return  
 
 #===============================Account pin routes==============================================================
 
@@ -851,7 +852,7 @@ class OrganisationDetail(Resource):
             db.session.commit()
             return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
         except Exception as e:
-            return {"error": "Failed to update organisation"}, 500
+            return {"error":str(e)}, 500
 
 # ===================================Signatories routes================================================================
 class Signatories(Resource):
@@ -883,7 +884,7 @@ class Signatories(Resource):
 
         existing_user = User.query.filter_by(email=email).first()
         if not existing_user:
-            return {"error": "User not found"}, 404
+            return {"error": "User not registered"}, 404
 
     
         all_signataries = Signatory.query.filter_by(org_id=existing_organisation.id).all()
@@ -933,18 +934,36 @@ class SignatoryDetail(Resource):
         if not existing_organisation:
             return {"error": "Organisation not found"}, 404
 
-        signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
-        if not signatory:
-            return {"error": "Signatory not found"}, 404
-        user = User.query.filter_by(id=signatory.user_id).first()
-        if not user:
-            return {"error": "User not found"}, 404
-        
+        try:
+            signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
+            if not signatory:
+                return {"error": "Signatory not found"}, 404
+            user = User.query.filter_by(id=signatory.user_id).first()
+            if not user:
+                return {"error": "User not found"}, 404      
 
-        db.session.delete(signatory)
-        db.session.commit()
-        sendMail.send_signatory_email_removal(user.email, user.firstName, existing_organisation.orgName)
-        return {"message": "Signatory deleted successfully"}, 200
+            # Before deleting the signatory, handle the dependent transaction approvals
+            # transaction_approvals = TransactionApproval.query.filter_by(signatory_id=signatory.id).all()
+            # for approval in transaction_approvals:
+            #     if signatory.id == 1:
+            #         approval.signatory_id = 2  # Or set to another valid signatory_id
+            #     elif signatory.id == 2:
+            #         approval.signatory_id = 1
+            #     elif signatory.id == 3:
+            #         approval.signatory_id = 1
+            #     db.session.add(approval)      
+
+            db.session.delete(signatory)
+            db.session.commit()
+            sendMail.send_signatory_email_removal(user.email, user.firstName, existing_organisation.orgName)
+            return {"message": "Signatory deleted successfully"}, 200
+        
+        except IntegrityError as e:
+            db.session.rollback()
+            raise ValueError(f"Database integrity error: {str(e)}")
+        except Exception as e:
+            db.session.rollback()
+            return {"error": f"Unexpected error: {str(e)}"}, 500
     
     @jwt_required()
     def patch(self, id):
@@ -1018,7 +1037,7 @@ def campaign_money_withdrawal():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 3:
-        return jsonify({"error": "3 signatories are required to initialize a transaction!"}), 400
+        return jsonify({"error": "There should be three signatories in order to create a transaction."}), 400
     
     #check wallet balance
     if float(check_wallet_balance(campaigns.walletId))<float(amount):
@@ -1051,7 +1070,7 @@ def campaign_money_withdrawal():
 
                 sendMail.send_approval_message(user.firstName,user.email,organisation.orgName,amount,new_transaction.trans_type,account)
 
-            return jsonify({"message": "Transaction created and awaiting approval."}), 201
+            return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
         
         elif providers=="Bank":
             bank= data.get("bank_code")
@@ -1082,7 +1101,7 @@ def campaign_money_withdrawal():
 
                     sendMail.send_approval_message(user.firstName,user.email,organisation.orgName,amount,new_transaction.trans_type,account)
 
-                return jsonify({"message": "Transaction created and awaiting approval."}), 201
+                return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
             # try:
             #     url = "https://sandbox.intasend.com/api/v1/send-money/initiate/"
 
@@ -1153,7 +1172,7 @@ def campaign_buy_airtime():
     name= data.get("name")
     amount= float(data.get("amount"))
     phone_number= data.get("phone_number")
-    campaign= int(data.get("campaign"))
+    campaign= data.get("campaign")
 
     current_campaign= Campaign.query.filter_by(id=campaign, org_id=organisation.id, isActive=True).first()
     if not current_campaign:
@@ -1169,7 +1188,7 @@ def campaign_buy_airtime():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 3:
-        return jsonify({"error": "3 signatories are required to initialize a transaction!"}), 400
+        return jsonify({"error": "There should be three signatories in order to create a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
@@ -1196,7 +1215,7 @@ def campaign_buy_airtime():
 
         sendMail.send_approval_message(user.firstName,user.email,organisation.orgName,amount,new_transaction.trans_type,phone_number)
 
-    return jsonify({"message": "Transaction created and awaiting approval."}), 201
+    return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
 
 # get pending transactions
 @app.route("/api/v1.0/pending_transactions", methods=["GET"])
@@ -1212,6 +1231,7 @@ def pending_transactions():
     response = make_response(jsonify(trans_dict), 200)
     return response
 
+# ===========================Approve and Reject transactions====================================================
 @app.route("/api/v1.0/approve_transaction", methods=["POST"])
 @jwt_required()
 def approve_transaction():
@@ -1323,7 +1343,7 @@ def campaign_pay_to_paybill():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 3:
-        return jsonify({"error": "3 signatories are required to initialize a transaction!"}), 400
+        return jsonify({"error": "There should be three signatories in order to create a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
@@ -1352,7 +1372,7 @@ def campaign_pay_to_paybill():
 
         sendMail.send_approval_message(user.firstName,user.email,existing_org.orgName,amount,new_transaction.trans_type,account)
 
-    return jsonify({"message": "Transaction created and awaiting approval."}), 201
+    return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
 
 # #Route to pay to a till number
 @app.route("/api/v1.0/pay_to_till", methods=["POST"])
@@ -1381,11 +1401,12 @@ def campaign_pay_to_till():
             # Check the available balance of the origin wallet
             if float(wallet_details) < float(amount):
                 return jsonify({"error":"Insufficient funds!"}),400
+            
         signatories = Signatory.query.filter_by(org_id=existing_org.id).all()
         if len(signatories) < 1:
             return jsonify({"error": "No signatories found!"}), 404
         elif len(signatories) < 3:
-            return jsonify({"error": "3 signatories are required to initialize a transaction!"}), 400
+            return jsonify({"error": "There should be three signatories in order to create a transaction."}), 400
         
         new_transaction=Transactions(tracking_id='Pending',
                                         batch_status= 'Pending',
@@ -1413,7 +1434,7 @@ def campaign_pay_to_till():
 
             sendMail.send_approval_message(user.firstName,user.email,existing_org.orgName,amount,new_transaction.trans_type,account)
 
-        return jsonify({"message": "Transaction created and awaiting approval."}), 201
+        return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
             
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -1864,40 +1885,7 @@ def get_all_donations():
     donation_dict= [don.serialize() for don in all_donations]
     return {'message':donation_dict}
 
-#-------------------------------Donate via card-----------------------------------------------------------------------
-# @app.route('/api/v1.0/donate_card', methods=['POST'])
-# def donate_via_card():
-#     data= request.get_json()
-#     # donor_name= data.get("donorName")
-#     email= data.get('email')
-#     phoneNumber= data.get("phoneNumber")
-#     amount= data.get('amount')
-#     campaign_id= data.get('campaignId')
-
-#     if not amount:
-#         return make_response(jsonify({"error":"Amount is required."}), 400)
-#     if int(amount) <100:
-#             return make_response(jsonify({"error":"Donation must be above Kshs 100."}), 400)
-
-#     try:
-#         existing_campaign= Campaign.query.get(campaign_id)
-#         if not existing_campaign:
-#             return {"error":"Campaign does not exist"},404
-
-#         response = service.collect.checkout(wallet_id=existing_campaign.walletId, phone_number=phoneNumber,
-#                                     email=email, amount=amount, currency="KES", 
-#                                     comment=f"Donation to {existing_campaign.campaignName}", redirect_url='http://example.com/thank-you')
-#         if response.get("errors"):
-#             error_message = response.get("errors")[0].get("detail")
-#             return  make_response(jsonify({'error':error_message}),400)
-        
-#         result= response
-#         result_url= response.get("url")
-#         return jsonify({'url':result_url})
-    
-#     except Exception as e:
-#         return jsonify({"error": "An error occurred while processing your request"}),400
-
+#=======================Donate via card/bitcoin/cashapp=============================================================
 #---------------------Donate card when user is not logged in----------------------------------------------------------
 @app.route('/api/v1.0/donate_card', methods=['POST'])
 def donate_via_card():
@@ -2456,7 +2444,7 @@ api.add_resource(campaignData, '/api/v1.0/campaigns')
 api.add_resource(campaignById, '/api/v1.0/org_campaigns')
 api.add_resource(OrgCampaigns, '/api/v1.0/org_all_campaigns')    
 api.add_resource(addAccount, '/api/v1.0/accounts')
-api.add_resource(accountById , '/api/v1.0/orgaccounts')
+api.add_resource(accountById , '/api/v1.0/orgaccounts/<int:id>')
 api.add_resource(Organization, '/api/v1.0/organisations')
 api.add_resource(OrganisationDetail, '/api/v1.0/organisation')
 api.add_resource(Donate, '/api/v1.0/user/donations')
