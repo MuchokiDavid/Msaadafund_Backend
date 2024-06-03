@@ -905,7 +905,7 @@ class Signatories(Resource):
 
         db.session.add(new_signatory)
         db.session.commit()
-        response = make_response(jsonify(new_signatory.serialize()))
+        response = make_response(jsonify({'message':new_signatory.serialize()}))
 
         sendMail.send_signatory_email(existing_user.email,existing_user.firstName,existing_organisation.orgName)
         sendMail.send_signatory_add( existing_user.firstName,existing_organisation.orgName, existing_organisation.orgEmail)
@@ -941,17 +941,8 @@ class SignatoryDetail(Resource):
             user = User.query.filter_by(id=signatory.user_id).first()
             if not user:
                 return {"error": "User not found"}, 404      
-
-            # Before deleting the signatory, handle the dependent transaction approvals
-            # transaction_approvals = TransactionApproval.query.filter_by(signatory_id=signatory.id).all()
-            # for approval in transaction_approvals:
-            #     if signatory.id == 1:
-            #         approval.signatory_id = 2  # Or set to another valid signatory_id
-            #     elif signatory.id == 2:
-            #         approval.signatory_id = 1
-            #     elif signatory.id == 3:
-            #         approval.signatory_id = 1
-            #     db.session.add(approval)      
+            
+            TransactionApproval.query.filter_by(signatory_id=id).delete()
 
             db.session.delete(signatory)
             db.session.commit()
@@ -1952,7 +1943,7 @@ def donate_via_card():
             # print(error_message)
             return  make_response(jsonify({'error':error_message}),400)
         
-        new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id,donor_name= donor_names, api_ref=res, method= "CARD", currency= currency)
+        new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id,donor_name= donor_names, api_ref=res, method= "OTHER", currency= currency)
         db.session.add(new_donation)
         db.session.commit()
 

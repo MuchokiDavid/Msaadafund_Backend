@@ -340,7 +340,7 @@ class Signatory(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     role= db.Column(db.String(20), nullable=False)
     order = db.Column(db.Integer, nullable=False)
-    approvals= db.relationship('TransactionApproval', backref='signatory')
+    approvals= db.relationship('TransactionApproval', backref='signatory', cascade="all, delete-orphan")
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
 
