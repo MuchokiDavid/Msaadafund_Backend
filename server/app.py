@@ -905,7 +905,7 @@ class Signatories(Resource):
 
         db.session.add(new_signatory)
         db.session.commit()
-        response = make_response(jsonify(new_signatory.serialize()))
+        response = make_response(jsonify({'message':new_signatory.serialize()}))
 
         sendMail.send_signatory_email(existing_user.email,existing_user.firstName,existing_organisation.orgName)
         sendMail.send_signatory_add( existing_user.firstName,existing_organisation.orgName, existing_organisation.orgEmail)
