@@ -820,9 +820,9 @@ class OrganisationDetail(Resource):
         orgPhoneNumber = request.form.get('orgPhoneNumber')
         orgAddress = request.form.get('orgAddress')
         orgDescription = request.form.get('orgDescription')
-        youtube_link = request.form.get('youtubeLink')
+        youtube_link = request.form.get('youtube_link')
         orgType = request.form.get('orgType')
-        website_link = request.form.get('weblink')
+        website_link = request.form.get('website_link')
         profileImage = request.files.get('profileImage')
 
         existing_org = Organisation.query.filter_by(id=current_user).first()
