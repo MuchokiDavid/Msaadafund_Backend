@@ -1478,9 +1478,9 @@ def collection_webhook():
                                                         donating_user.email, 
                                                         campaign_organisation.orgName)
             #send to pocket 
-            app_commission= net_amount * 0.15  
-            if app_commission < 10:
-                return  jsonify({"error":"Amount is less than sh.10"}),404
+            app_commission= round((float(net_amount) * 0.15),2)  
+            if app_commission < float(10):
+                app_commission = float(0)
             transactions = [{'name': 'In App', 'account': main_pocket, 'amount': app_commission}]
             response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, currency='KES', transactions=transactions) #wallet to mpesa
             # response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount=app_commission, narrative= "In App") #wallet to wallet
@@ -1500,7 +1500,7 @@ def collection_webhook():
                                             amount= approved_response.get('transactions')[0].get('amount'),
                                             transaction_account_no=approved_response.get('transactions')[0].get('account'),
                                             request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
-                                            org_name= approved_response.get('transactions')[0].get('name'),
+                                            name= approved_response.get('transactions')[0].get('name'),
                                             org_id=campaign_organisation.id,
                                             campaign_name= donation_campaign.campaignName
                                         )
@@ -1530,7 +1530,7 @@ def collection_webhook():
     #     return jsonify({'error': 'Invalid third party response'}), 400
     except Exception as e:
         print(e)
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 400
     
 #Intersend web hook to listen to changes in send money ie. Withdraw and buy airtime
 @app.route('/api/v1.0/send-money-webhook', methods = ['POST'])
