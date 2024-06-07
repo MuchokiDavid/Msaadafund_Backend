@@ -313,8 +313,8 @@ def post():
                 available_campaigns.append(c)
                 if c.campaignName==campaignName:
                     return {"error": "Campaign with this name already exists"},400
-        if len(available_campaigns)>=12:
-            return make_response(jsonify({'error':'You cannot create more than  12 campaigns.'}),400)
+        # if len(available_campaigns)>=12:
+        #     return make_response(jsonify({'error':'You cannot create more than  12 campaigns.'}),400)
             
     # except  Exception as e :
     #     print(e)
@@ -1442,16 +1442,15 @@ def collection_webhook():
         net_amount = payload.get('net_amount')
         api_ref= payload.get('api_ref')        
         state = payload.get('state')
-        donating_user=''
 
-        # donation = Donation.query.filter_by(invoice_id=invoice_id).first()
-        if invoice_id:
+        if api_ref== "API Request":
             donation = Donation.query.filter_by(invoice_id=invoice_id).first()
 
-        elif api_ref and api_ref != "API Request":
+        else:
             donation = Donation.query.filter_by(api_ref=api_ref).first()
-            donation.invoice_id = invoice_id
-            db.session.commit()
+            if donation.invoice_id == None:
+                donation.invoice_id = invoice_id
+                db.session.commit()
         
         if not donation:
             return  jsonify({"error":"Donation record not found"}),404
@@ -1474,7 +1473,7 @@ def collection_webhook():
             if donating_user:
                 sendMail.send_mail_on_donation_completion(donation.amount, 
                                                         donation.donationDate, 
-                                                        donating_user.Firstname, 
+                                                        donating_user.firstName, 
                                                         donation_campaign.campaignName,
                                                         donating_user.email, 
                                                         campaign_organisation.orgName)
@@ -1527,8 +1526,11 @@ def collection_webhook():
                                                         campaign_organisation.orgName)
         
         return jsonify({'message': 'Webhook received successfully'})
-    except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid third party response'}), 400
+    # except (ValueError, TypeError):
+    #     return jsonify({'error': 'Invalid third party response'}), 400
+    except Exception as e:
+        print(e)
+        return jsonify({'error': str(e)}), 500
     
 #Intersend web hook to listen to changes in send money ie. Withdraw and buy airtime
 @app.route('/api/v1.0/send-money-webhook', methods = ['POST'])
@@ -1552,8 +1554,8 @@ def send_money_webhook():
         
         return jsonify({'message': 'Webhook received successfully'}), 200
         
-    except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid third party response'}), 400
+    # except (ValueError, TypeError):
+    #     return jsonify({'error': 'Invalid third party response'}), 400
     except Exception as e:
         print(e)
         return jsonify({'error': str(e)}), 500
@@ -1925,7 +1927,7 @@ def donate_via_card():
             "wallet_id": existing_campaign.walletId,
             "method": "CARD-PAYMENT",
             "amount": amount,
-            "redirect_url": "https://www.msaadamshinani.co.ke/thank-you",
+            "redirect_url": "http://localhost:3000/thank-you",
             "currency": currency,
             "card_tarrif": "BUSINESS-PAYS",
             "api_ref": res
@@ -1992,7 +1994,7 @@ def donate_via_card_logged_in():
             "wallet_id": existing_campaign.walletId,
             "method": "CARD-PAYMENT",
             "amount": amount,
-            "redirect_url": "https://www.msaadamshinani.co.ke/thank-you",
+            "redirect_url": "http://localhost:3000/thank-you",
             "currency": currency,
             "card_tarrif": "BUSINESS-PAYS",
             "api_ref": res
