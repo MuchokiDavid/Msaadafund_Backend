@@ -313,8 +313,8 @@ def post():
                 available_campaigns.append(c)
                 if c.campaignName==campaignName:
                     return {"error": "Campaign with this name already exists"},400
-        if len(available_campaigns)>=12:
-            return make_response(jsonify({'error':'You cannot create more than  12 campaigns.'}),400)
+        # if len(available_campaigns)>=12:
+        #     return make_response(jsonify({'error':'You cannot create more than  12 campaigns.'}),400)
             
     # except  Exception as e :
     #     print(e)
