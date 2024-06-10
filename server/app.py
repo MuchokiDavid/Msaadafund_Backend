@@ -1170,7 +1170,21 @@ def pending_transactions():
     if not signatory:
         return {"error": "Unauthorized Signatory"}, 401
 
-    transactions = Transactions.query.filter_by(signatory_status='Pending').all()
+    transactions = Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting'])).all()
+    trans_dict = [tra.serialize() for tra in transactions]
+    response = make_response(jsonify(trans_dict), 200)
+    return response
+
+# Get org approvals
+@app.route("/api/v1.0/org_awaiting_approvals", methods=["GET"])
+@jwt_required()
+def org_awaiting_approvals():
+    current_user = get_jwt_identity()
+    organisation = Organisation.query.filter_by(id=current_user).first()
+    if not organisation:
+        return {"error": "Organisation not found"}, 404
+
+    transactions = Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting'])).all()
     trans_dict = [tra.serialize() for tra in transactions]
     response = make_response(jsonify(trans_dict), 200)
     return response
@@ -1251,6 +1265,7 @@ def reject_approval(approval_id):
     transaction.update_status()
 
     return {"message": "Approval rejected successfully"}, 200
+
 
 # #Route to pay to a paybill from a campaign
 @app.route("/api/v1.0/pay_to_paybill", methods=["POST"])

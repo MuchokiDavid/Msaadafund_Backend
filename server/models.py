@@ -305,8 +305,8 @@ class  Campaign(db.Model, SerializerMixin):
             'orgDescription': self.organisation.orgDescription,
             'isVerified': self.organisation.isVerified,
             },
-            # 'donations': [donation.serialize() for donation in self.donations]
-            'donations': [donation.serialize() for donation in self.donations if donation.status == 'COMPLETE']
+            'donations': [donation.serialize() for donation in self.donations]
+            # 'donations': [donation.serialize() for donation in self.donations if donation.status == 'COMPLETE']
         }
 
     def __repr__ (self):
@@ -435,11 +435,11 @@ class Transactions(db.Model):
     def update_status(self):
         approvals = self.approvals
         if any(approval.approval_status is False for approval in approvals):
-            self.signatory_status = 'Pending'
+            self.signatory_status = 'Rejected'
         elif all(approval.approval_status for approval in approvals) and len(approvals) == 3:
             self.signatory_status = 'Approved'
         else:
-            self.signatory_status = 'Pending'
+            self.signatory_status = 'Awaiting'
         db.session.commit()
         return self.signatory_status
 
@@ -450,7 +450,7 @@ class TransactionApproval(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     transaction_id = db.Column(db.Integer, db.ForeignKey('transactions.id'), nullable=False)
     signatory_id = db.Column(db.Integer, db.ForeignKey('signatories.id'), nullable=False)
-    approval_status = db.Column(db.Boolean, default=False)
+    approval_status = db.Column(db.Boolean)
     approval_time = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
