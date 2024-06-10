@@ -1170,7 +1170,21 @@ def pending_transactions():
     if not signatory:
         return {"error": "Unauthorized Signatory"}, 401
 
-    transactions = Transactions.query.filter_by(signatory_status='Pending').all()
+    transactions = Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting'])).all()
+    trans_dict = [tra.serialize() for tra in transactions]
+    response = make_response(jsonify(trans_dict), 200)
+    return response
+
+# Get org approvals
+@app.route("/api/v1.0/org_awaiting_approvals", methods=["GET"])
+@jwt_required()
+def org_awaiting_approvals():
+    current_user = get_jwt_identity()
+    organisation = Organisation.query.filter_by(id=current_user).first()
+    if not organisation:
+        return {"error": "Organisation not found"}, 404
+
+    transactions = Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting'])).all()
     trans_dict = [tra.serialize() for tra in transactions]
     response = make_response(jsonify(trans_dict), 200)
     return response
@@ -1251,44 +1265,6 @@ def reject_approval(approval_id):
     transaction.update_status()
 
     return {"message": "Approval rejected successfully"}, 200
-
-# Routes to get transaction approvals for and organisation
-@app.route("/api/v1.0/transaction_approvals", methods=["GET"])
-@jwt_required()
-def get_transaction_approvals():
-    current_user_id = get_jwt_identity()
-    existing_org= Organisation.query.filter_by(id=current_user_id).first()
-
-    if not existing_org:
-        return jsonify({"error": "organisation not found"}), 404
-    
-    all_approvals= []
-    all_approve= []
-    try:
-        existing_signatory= Signatory.query.filter_by(org_id=existing_org.id).all()
-        if not existing_signatory:
-            return jsonify({"error": "No signatories found for this organisation"}), 404
-        
-        for sign in existing_signatory:    
-            approvals = TransactionApproval.query.filter_by(signatory_id=sign.id).all()
-            if not approvals:
-                return jsonify({"error": "No approvals found for this organisation"}), 404
-            all_approvals.append(approvals)
-
-        for approve in all_approvals:
-            # approval_list = [approval.serialize() for approval in all_approvals]
-            all_approve.append(approve)
-
-
-        response = make_response(jsonify(all_approve), 200)
-        print(all_approvals)
-
-        return response
-    
-    except Exception as e:
-        print(e)
-        return jsonify({"error": str(e)}), 500
-
 
 
 # #Route to pay to a paybill from a campaign
