@@ -305,7 +305,8 @@ class  Campaign(db.Model, SerializerMixin):
             'orgDescription': self.organisation.orgDescription,
             'isVerified': self.organisation.isVerified,
             },
-            'donations': [donation.serialize() for donation in self.donations]
+            # 'donations': [donation.serialize() for donation in self.donations]
+            'donations': [donation.serialize() for donation in self.donations if donation.status == 'COMPLETE']
         }
 
     def __repr__ (self):

@@ -1828,7 +1828,8 @@ class Donate(Resource):
 @app.route('/api/v1.0/all_donations', methods=['GET'])
 def get_all_donations():
     """Get a list of all Donations"""
-    all_donations= Donation.query.all()
+    # all_donations= Donation.query.all()
+    all_donations= Donation.query.filter_by(status='COMPLETE').all()
     donation_dict= [don.serialize() for don in all_donations]
     return {'message':donation_dict}
 
