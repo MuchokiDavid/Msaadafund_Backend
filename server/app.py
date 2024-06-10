@@ -1468,16 +1468,16 @@ def collection_webhook():
             db.session.commit()
 
         elif state== "FAILED":
-            donation.status="FAILED"
-            db.session.delete(donation)
-            db.session.commit()
+            donation.status="FAILED"            
             if  donating_user:
                 sendMail.send_mail_donation_not_successiful(donation.amount, 
                                                         donation.donationDate, 
-                                                        donating_user.firstname, 
+                                                        donating_user.firstName, 
                                                         donation_campaign.campaignName, 
                                                         donating_user.email,
                                                         campaign_organisation.orgName)
+            db.session.delete(donation)
+            db.session.commit()
         
         return jsonify({'message': 'Webhook received successfully'})
     except (ValueError, TypeError):
