@@ -35,15 +35,15 @@ class sendMail():
     def send_mail_on_donation_completion(amount,date,name,campaign,email,organisation):
         from app import mail
         subject = f"Donation to {campaign} by {organisation} was successful"
-        body = f"Dear {name},\n\n Thank you for donating to {campaign} campaign on {date}.\nYour contribution is highly appreciated as it is used to make an impact in our community\n Best regards,\n {organisation}"
+        body = f"Dear {name},\n\n Thank you for donating to {campaign} campaign on {date}.\nYour contribution is highly appreciated as it is used to make an impact in our community\n\n Best regards,\n {organisation}"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
     #Send mail if the donation was not successiful
     def send_mail_donation_not_successiful(amount,date,name,campaign,email,organisation):
         from app import mail
-        subject = "Donation failed"
-        body = f"Dear {name},\n\n Thank you for donating to {campaign} campaign on {date}.\nUnfortunately your contribution was not successiful. Please try again\n Best regards,\n {organisation}"
+        subject = f"Donation to {campaign} failed"
+        body = f"Dear {name},\n\nUnfortunately your contribution to {campaign} campaign on {date} was not successiful. Please try again\n\n Best regards,\n {organisation}"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
@@ -51,7 +51,7 @@ class sendMail():
     def send_mail_on_successiful_withdrawal(amount, date, name, campaign, email, organisation):
         from app import mail
         subject = "Withdrawal successful"
-        body = f"Dear {name},\n\n Thank you for withdrawing from {campaign} campaign on {date}.\nYour withdrawal is highly appreciated as it is used to make an impact in our community\n Best regards,\n {organisation}"
+        body = f"Dear {name},\n\n Thank you for withdrawing from {campaign} campaign on {date}.\nYour withdrawal is highly appreciated as it is used to make an impact in our community\n\n Best regards,\n {organisation}"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
@@ -89,7 +89,7 @@ class sendMail():
     def send_org_verification_mail(org):
         from app import mail
         subject = "Welcome to Msaada Mashinani"
-        body = f"Dear {org.orgName},\n\n Thank you for registering on our Msaada Mashinani Platform.\nYour account is not verified. Please reply to this email for verification\n Best regards,\n Msaada Mashinani Team"
+        body = f"Dear {org.orgName},\n\n Thank you for registering on our Msaada Mashinani Platform.\nYour account is not verified. Please reply to this email for verification\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [org.orgEmail]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     

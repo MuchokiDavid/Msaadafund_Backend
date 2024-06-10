@@ -1093,53 +1093,6 @@ def campaign_money_withdrawal():
                     sendMail.send_approval_message(user.firstName,user.email,organisation.orgName,amount,new_transaction.trans_type,account)
 
                 return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
-            # try:
-            #     url = "https://sandbox.intasend.com/api/v1/send-money/initiate/"
-
-            #     payload = {
-            #         "currency": "KES",
-            #         "provider": "PESALINK",
-            #         "wallet_id": campaigns.walletId,
-            #         "transactions": [
-            #             {
-            #                 "account": accountNumber,
-            #                 "amount": amount,
-            #                 "bank_code": bank,
-            #                 "narrative": "Withdrawal Money"
-            #             }
-            #         ]
-            #     }
-            #     headers = {
-            #         "accept": "application/json",
-            #         "content-type": "application/json",
-            #         "Authorization": "Bearer " + token
-            #     }
-
-            #     response = requests.post(url, json=payload, headers=headers)
-            #     intersend_data=response.json()
-            #     # print(intersend_data)
-            #     if intersend_data.get("errors"):
-            #         error_message = intersend_data.get("errors")[0].get("detail")
-            #         return  make_response(jsonify({'error':error_message}),400)
-            #     approved_response = service.transfer.approve(intersend_data)
-                
-            #     # if response.status_code ==200:
-            #     new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
-            #                                     batch_status= approved_response.get('status'),
-            #                                     trans_type= 'Withdraw to bank',
-            #                                     trans_status= approved_response.get('transactions')[0].get('status'),
-            #                                     amount= approved_response.get('transactions')[0].get('amount'),
-            #                                     transaction_account_no=approved_response.get('transactions')[0].get('account'),
-            #                                     request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
-            #                                     org_name= approved_response.get('transactions')[0].get('name'),
-            #                                     org_id=organisation.id,
-            #                                     campaign_name= campaigns.campaignName,
-            #                                     bank_code= bank
-            #                                 )
-                
-            #     db.session.add(new_transaction)
-            #     db.session.commit()
-            #     return jsonify({"message":approved_response})
                   
             except Exception as e:
                 print(e)
@@ -1480,7 +1433,8 @@ def collection_webhook():
             #send to pocket 
             app_commission= round((float(net_amount) * 0.15),2)  
             if app_commission < float(10):
-                app_commission = float(0)
+                print("App commission is less than Ksh. 10")
+
             transactions = [{'name': 'In App', 'account': main_pocket, 'amount': app_commission}]
             response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, currency='KES', transactions=transactions) #wallet to mpesa
             # response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount=app_commission, narrative= "In App") #wallet to wallet
@@ -1514,20 +1468,20 @@ def collection_webhook():
             db.session.commit()
 
         elif state== "FAILED":
-            donation.status="FAILED"
-            db.session.delete(donation)
-            db.session.commit()
+            donation.status="FAILED"            
             if  donating_user:
                 sendMail.send_mail_donation_not_successiful(donation.amount, 
                                                         donation.donationDate, 
-                                                        donating_user.firstname, 
+                                                        donating_user.firstName, 
                                                         donation_campaign.campaignName, 
                                                         donating_user.email,
                                                         campaign_organisation.orgName)
+            db.session.delete(donation)
+            db.session.commit()
         
         return jsonify({'message': 'Webhook received successfully'})
-    # except (ValueError, TypeError):
-    #     return jsonify({'error': 'Invalid third party response'}), 400
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid third party response'}), 400
     except Exception as e:
         print(e)
         return jsonify({'error': str(e)}), 400
