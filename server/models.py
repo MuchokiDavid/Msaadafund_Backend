@@ -462,6 +462,26 @@ class TransactionApproval(db.Model):
             'signatory_id': self.signatory_id,
             'approval_status': self.approval_status,
             'approval_time': self.approval_time,
+            'transaction': {
+                'id': self.transaction.id,
+                'tracking_id': self.transaction.tracking_id,
+                'batch_status': self.transaction.batch_status,
+                'trans_type': self.transaction.trans_type,
+                'trans_status': self.transaction.trans_status,
+                'amount': self.transaction.amount,
+                'acc_refence': self.transaction.acc_refence,
+                'narrative': self.transaction.narrative,
+                'transaction_account_no': self.transaction.transaction_account_no,
+                'request_ref_id': self.transaction.request_ref_id,
+                'name': self.transaction.name,
+                'transaction_date': self.transaction.transaction_date,
+                'org_id': self.transaction.org_id,
+                'campaign_name': self.transaction.campaign_name,
+                'bank_code': self.transaction.bank_code,
+                'signatory_status': self.transaction.signatory_status,
+                'created_at': self.transaction.created_at,
+                'updated_at': self.transaction.updated_at
+            },
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }
