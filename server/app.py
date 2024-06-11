@@ -3,7 +3,7 @@ from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
 from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription, TransactionApproval, Signatory
-from utility import check_wallet_balance, sendMail, OTPGenerator, Send_acc
+from utility import check_wallet_balance, sendMail, OTPGenerator
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -709,7 +709,7 @@ class addAccount(Resource):
             new_account = Account(providers=providers, bank=bank, bank_code=bank_code, accountName=accountName, accountNumber=accountNumber, pin=hashed_pin, orgId=existing_organisation.id)
             db.session.add(new_account)
             db.session.commit()
-            Send_acc.send_user_signup_account(email, new_account.providers, new_account.accountNumber, orgName)
+            sendMail.send_user_signup_account(email, new_account.providers, new_account.accountNumber, orgName)
             return ({
                 "message": "Account registered successfully",
                 "user": new_account.serialize()
@@ -1215,15 +1215,19 @@ def approve_transaction():
     transaction = Transactions.query.filter_by(id=transaction_id).first()
     signatory_status = transaction.update_status()
 
+    existing_campaign = Campaign.query.filter_by(campaignName=campaign_name).first()
+    if not existing_campaign:
+        return {"error": "Campaign not found"}, 404
+
+    existing_organisation = Organisation.query.filter_by(id=existing_campaign.org_id).first()
+    if not existing_organisation:
+            return {"error": "Organisation not found"}, 404
+
     if signatory_status == 'Approved':
-        existing_campaign = Campaign.query.filter_by(campaignName=campaign_name).first()
-        if not existing_campaign:
-            return {"error": "Campaign not found"}, 404
+        # Send mail to notify transaction approved
+        sendMail.org_approval_message(existing_organisation, transaction)        
         
         wallet_id = existing_campaign.walletId
-        existing_organisation = Organisation.query.filter_by(id=existing_campaign.org_id).first()
-        if not existing_organisation:
-            return {"error": "Organisation not found"}, 404
 
         if transaction.trans_type == 'Buy Airtime':
             return buy_airtime(wallet_id, transaction, existing_organisation.orgName)
@@ -1238,6 +1242,8 @@ def approve_transaction():
         else:
             return {"error": "Invalid transaction type"}, 400
     elif signatory_status == 'Rejected':
+        # Send mail to notify transaction rejected
+        sendMail.org_rejected_message(existing_organisation, transaction)
         return {"error": "Transaction rejected"}, 400
     else:
         return {"message": "Approval recorded. Waiting for other signatories."}, 200
@@ -1263,6 +1269,13 @@ def reject_approval(approval_id):
 
     transaction = Transactions.query.filter_by(id=approval.transaction_id).first()
     transaction.update_status()
+
+    existin_org= Organisation.query.filter_by(id=signatory.org_id).first()
+    if not existin_org:
+        return {"error": "Organisation not found"}, 404
+
+    # Send mail to notify transaction rejected
+    sendMail.org_rejected_message(existin_org,transaction)
 
     return {"message": "Approval rejected successfully"}, 200
 
@@ -1302,7 +1315,7 @@ def campaign_pay_to_paybill():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 3:
-        return jsonify({"error": "There should be three signatories in order to create a transaction."}), 400
+        return jsonify({"error": "There should be three signatories in order to initiate a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
@@ -1450,7 +1463,7 @@ def collection_webhook():
             if app_commission < float(10):
                 print("App commission is less than Ksh. 10")
 
-            transactions = [{'name': 'In App', 'account': main_pocket, 'amount': app_commission}]
+            transactions = [{'name': 'App service', 'account': main_pocket, 'amount': app_commission}]
             response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, currency='KES', transactions=transactions) #wallet to mpesa
             # response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount=app_commission, narrative= "In App") #wallet to wallet
             
@@ -1464,7 +1477,7 @@ def collection_webhook():
             # if response.status_code ==200:
             new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
                                             batch_status= approved_response.get('status'),
-                                            trans_type= 'Service fee',
+                                            trans_type= 'App service',
                                             trans_status= approved_response.get('transactions')[0].get('status'),
                                             amount= approved_response.get('transactions')[0].get('amount'),
                                             transaction_account_no=approved_response.get('transactions')[0].get('account'),
