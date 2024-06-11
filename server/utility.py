@@ -131,10 +131,9 @@ class sendMail():
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
-
+    # been selected to be a signatory
     def send_signatory_email(email, name,organisation):
-        from app import mail
-        # been selected to be a signatory
+        from app import mail        
         subject = f"Signatory Selection by {organisation}"
         body = f"Dear {name},\n\nYou have been selected to be a signatory on Msaada Mashinani Platform By {organisation}.\n\nBest regards,\nMsaada Mashinani Team"
         recipients = [email]
@@ -158,22 +157,33 @@ class sendMail():
         from app import mail
         url = "http://localhost:3000/user/login"  #change after hosting
         subject = f"Approval Request for {trans_type} by {organisation}"
-        body = f"Dear {name},\n\nYou have been requested to approve a {trans_type} request of Ksh {amount} to {trans_account} by {organisation}.\n Please login to approve the request {url}.\n\nBest regards,\nMsaada Mashinani Team"
+        body = f"Dear {name},\n\nYou have been requested to approve a {trans_type} request of Ksh {amount} to {trans_account} by {organisation}.\n Please login to approve the request {url}.\n\n\nBest regards,\nMsaada Mashinani Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
+    # Send mail after a transaction has been approved by all signatories
+    def org_approval_message(org, trans):
+        from app import mail
+        subject = f"Transaction id {trans.id} Approved"
+        body = f"Dear {org.orgName},\nYour transaction: \n\nID: {trans.id} \n Type: {trans.trans_type} \n Amount: {trans.amount}\n Campaign: {trans.campaign_name}\nAccount: {trans.transaction_account_no} \n has been approved.\n\nBest regards,\n Msaada Mashinani Team"
+        recipients = [org.orgEmail]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
 
-
-
+    # Send mail after a transaction has been rejected by signatories
+    def org_rejected_message(org, trans):
+        from app import mail
+        subject = f"Transaction id {trans.id} Rejected"
+        body = f"Dear {org.orgName},\nYour transaction: \n\nID: {trans.id} \nType: {trans.trans_type} \nAmount: {trans.amount}\nCampaign: {trans.campaign_name}\nAccount: {trans.transaction_account_no} \n has been rejected.\n\nBest regards,\n Msaada Mashinani Team"
+        recipients = [org.orgEmail]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
     
-class Send_acc():    
+    # Send sign up account
     def send_user_signup_account(email, providers, accountNumber, orgName):
         from app import mail
         subject = f"{providers} Account Created Successful"
         body = f"Dear {orgName},\n\n Thank you for registering your {providers} account with account number {accountNumber} on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
-
 
 
 # Generate otp
