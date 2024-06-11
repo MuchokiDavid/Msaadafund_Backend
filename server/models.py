@@ -460,6 +460,11 @@ class TransactionApproval(db.Model):
             'id': self.id,
             'transaction_id': self.transaction_id,
             'signatory_id': self.signatory_id,
+            'signatory': {
+                'firstname': self.signatory.user.firstName,
+                'lastname': self.signatory.user.lastName,
+                'role': self.signatory.role
+            },
             'approval_status': self.approval_status,
             'approval_time': self.approval_time,
             'created_at': self.created_at,
