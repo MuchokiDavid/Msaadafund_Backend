@@ -164,7 +164,7 @@ class sendMail():
     # Send mail after a transaction has been approved by all signatories
     def org_approval_message(org, trans):
         from app import mail
-        subject = f"Transaction id {trans.id} Approved"
+        subject = f"Transaction Approved"
         body = f"Dear {org.orgName},\nYour transaction: \n\nID: {trans.id} \n Type: {trans.trans_type} \n Amount: {trans.amount}\n Campaign: {trans.campaign_name}\nAccount: {trans.transaction_account_no} \n has been approved.\n\nBest regards,\n Msaada Mashinani Team"
         recipients = [org.orgEmail]
         mail.send_message(subject=subject, recipients=recipients, body=body)
@@ -172,7 +172,7 @@ class sendMail():
     # Send mail after a transaction has been rejected by signatories
     def org_rejected_message(org, trans):
         from app import mail
-        subject = f"Transaction id {trans.id} Rejected"
+        subject = f"{trans.trans_type} transaction Rejected"
         body = f"Dear {org.orgName},\nYour transaction: \n\nID: {trans.id} \nType: {trans.trans_type} \nAmount: {trans.amount}\nCampaign: {trans.campaign_name}\nAccount: {trans.transaction_account_no} \n has been rejected.\n\nBest regards,\n Msaada Mashinani Team"
         recipients = [org.orgEmail]
         mail.send_message(subject=subject, recipients=recipients, body=body)

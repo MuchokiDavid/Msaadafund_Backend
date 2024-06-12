@@ -850,8 +850,12 @@ class OrganisationDetail(Resource):
                 if "secure_url" in result:
                     existing_org.profileImage = result["secure_url"]
             db.session.commit()
-            return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
+
+            response= make_response(jsonify({"message": "Organisation has been updated", "Data": existing_org.serialize()}))
+            # return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
+            return response
         except Exception as e:
+            print(e)
             return {"error":str(e)}, 500
 
 # ===================================Signatories routes================================================================
