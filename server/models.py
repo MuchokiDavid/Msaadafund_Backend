@@ -1,5 +1,4 @@
 #ORM
-import datetime 
 import bcrypt
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy_serializer import SerializerMixin
@@ -68,8 +67,8 @@ class User(db.Model, SerializerMixin):
             'isActive': self.isActive,
             'role': self.role,
             'address': self.address,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None,
             'donations': [donation.serialize() for donation in self.donations],
             "subscriptions":[sub.serialize() for sub in self.subscriptions],
             "signatories":[sign.serialize() for sign in self.signatories]
@@ -142,7 +141,8 @@ class Organisation(db.Model, SerializerMixin):
             "orgDescription": self.orgDescription,
             "website_link": self.website_link,
             "youtube_link": self.youtube_link,
-            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None,
             "campaigns": [camp.serialize() for camp in self.campaigns],
             "accounts": [acc.serialize() for acc in self.accounts],
             "subscriptions":[sub.serialize() for sub in self.subscriptions],
@@ -226,8 +226,6 @@ class Donation (db.Model, SerializerMixin):
                 'isActive': self.campaign.isActive,
                 'walletId': self.campaign.walletId,
                 'featured': self.campaign.featured,
-                'created_at': self.campaign.created_at.isoformat() if self.campaign.created_at else None,
-                'updated_at': self.campaign.updated_at.isoformat() if self.campaign.updated_at else None,
                 'org_id': self.campaign.org_id,
                 'organisation': {
                     'id': self.campaign.organisation.id,
@@ -245,8 +243,8 @@ class Donation (db.Model, SerializerMixin):
             'invoice_id':self.invoice_id,
             'method':self.method,
             'api_ref':self.api_ref,
-            'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None
+            'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None,
         }
     
     def __repr__(self):
@@ -289,8 +287,8 @@ class  Campaign(db.Model, SerializerMixin):
             'isActive': self.isActive,
             'walletId': self.walletId,
             'featured': self.featured,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None,
             'org_id': self.org_id,
             'organisation': {
             'id': self.organisation.id,
@@ -352,17 +350,14 @@ class Signatory(db.Model):
             'role': self.role,
             'order': self.order,
             'approvals': [approval.serialize() for approval in self.approvals],
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+            'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None,
             'user':{
                 'id':self.user.id,
                 'firstName':self.user.firstName,
                 'lastName':self.user.lastName,
                 'email':self.user.email,
-                'phoneNumber':self.user.phoneNumber,
-                'created_at':self.user.created_at,
-                'updated_at':self.user.updated_at,
-
+                'phoneNumber':self.user.phoneNumber
             },
             'organisation':{
                 'id': self.organisation.id,
@@ -422,8 +417,8 @@ class Transactions(db.Model):
             'org_id': self.org_id,
             'campaign_name': self.campaign_name,
             'bank_code': self.bank_code,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+            'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None,
             'signatory_status': self.signatory_status,
             'approvals': [approval.serialize() for approval in self.approvals]
         }
@@ -467,8 +462,8 @@ class TransactionApproval(db.Model):
             },
             'approval_status': self.approval_status,
             'approval_time': self.approval_time,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at
+            'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None,
         }
 
     def __repr__(self):
