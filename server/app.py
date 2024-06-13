@@ -1476,10 +1476,11 @@ def collection_webhook():
             app_commission= round((float(net_amount) * 0.15),2)  
             if app_commission < float(10):
                 print("App commission is less than Ksh. 10")
+                app_commission= 10.0
 
-            transactions = [{'name': 'App service', 'account': main_pocket, 'amount': app_commission}]
-            response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, currency='KES', transactions=transactions) #wallet to mpesa
-            # response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount=app_commission, narrative= "In App") #wallet to wallet
+            # transactions = [{'name': 'App service', 'account': main_pocket, 'amount': app_commission}]
+            # response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, currency='KES', transactions=transactions) #wallet to mpesa
+            response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount=app_commission, narrative= "In App") #wallet to wallet
             
             approved_response = service.transfer.approve(response) #Approve response
             # print(response)
