@@ -1042,7 +1042,7 @@ def campaign_money_withdrawal():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 3:
-        return jsonify({"error": "There should be three signatories in order to create a transaction."}), 400
+        return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
     
     #check wallet balance
     if float(check_wallet_balance(campaigns.walletId))<float(amount):
@@ -1146,7 +1146,7 @@ def campaign_buy_airtime():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 3:
-        return jsonify({"error": "There should be three signatories in order to create a transaction."}), 400
+        return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
@@ -1329,7 +1329,7 @@ def campaign_pay_to_paybill():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 3:
-        return jsonify({"error": "There should be three signatories in order to initiate a transaction."}), 400
+        return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
@@ -1392,7 +1392,7 @@ def campaign_pay_to_till():
         if len(signatories) < 1:
             return jsonify({"error": "No signatories found!"}), 404
         elif len(signatories) < 3:
-            return jsonify({"error": "There should be three signatories in order to create a transaction."}), 400
+            return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
         
         new_transaction=Transactions(tracking_id='Pending',
                                         batch_status= 'Pending',
