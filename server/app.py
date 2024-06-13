@@ -257,8 +257,18 @@ class GetSubscription(Resource):
 
         return {"message": "Subscription deleted successfully"},200
         
-       
-        
+# Get all subscriptions in an organisation to show on org dashboard
+class OrgSubscriptions(Resource):
+    @jwt_required()
+    def get(self):
+        current_user= get_jwt_identity()
+        existing_org= Organisation.query.filter_by(id=current_user).first()
+        if not existing_org:
+            return jsonify({"error":"Organisation does not exist."}),404
+        all_subscriptions= Subscription.query.filter_by(organisation_id=existing_org.id).all()
+        response_dict = [sub.serialize() for sub in all_subscriptions]
+        response = make_response(jsonify({'message':response_dict}), 200)    
+        return response             
         
 #===============================Campaign model routes==============================================================
         
@@ -2431,6 +2441,7 @@ api.add_resource(Donate, '/api/v1.0/user/donations')
 api.add_resource(ExpressDonations, '/api/v1.0/express/donations')
 api.add_resource(GetTransactions, '/api/v1.0/withdraw_transactions')
 api.add_resource(GetSubscription, '/api/v1.0/subscription/<int:org_id>')
+api.add_resource(OrgSubscriptions, '/api/v1.0/org_subscription')
 api.add_resource(Signatories, '/api/v1.0/signatories')
 api.add_resource(SignatoryDetail, '/api/v1.0/signatories/<int:id>')
 
