@@ -519,7 +519,7 @@ def readOne(campaignId):
 
 
 # patch campaign by specific id
-@app.route("/api/v1.0/campaign/<int:campaignId>", methods=["PATCH"])
+@app.route("/api/v1.0/updatecampaign/<int:campaignId>", methods=["PATCH"])
 @jwt_required()
 def updateOne(campaignId):
     try:
@@ -1472,6 +1472,14 @@ def collection_webhook():
                                                         donation_campaign.campaignName,
                                                         donating_user.email, 
                                                         campaign_organisation.orgName)
+                
+            # if donation.email: #do migration and add email to donation table
+            #     sendMail.send_mail_on_donation_completion(donation.amount,
+            #                                             donation.donationDate,
+            #                                             donating_user.firstName,
+            #                                             donation_campaign.campaignName,
+            #                                             donation.email,
+            #                                             campaign_organisation.orgName)
             #send to pocket 
             app_commission= round((float(net_amount) * 0.15),2)  
             if app_commission < float(10):
