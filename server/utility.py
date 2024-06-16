@@ -196,7 +196,7 @@ class sendMail():
     def send_mail_on_send_money_failure (email, amount, transType, orgName):
         from app import mail
         subject = f"Transacation Failed"
-        body = f"Dear {orgName},\n\n Your transaction of Ksh {amount} for {transType} on our Msaada Mashinani Platform was not successiful.\n\n Best regards,\n Msaada Mashinani Team"
+        body = f"Dear {orgName},\n\n Your transaction of Ksh {amount} for {transType} on our Msaada Mashinani Platform was not successiful.Please try again\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
