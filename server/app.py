@@ -23,13 +23,13 @@ from views import UserAdminView,DonationAdminView,CampaignAdminView,Organisation
 from cloudinary.uploader import upload
 import cloudinary.api
 import random
-import json
 import string
 from flask_cors import CORS
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4,legal
 from reportlab.lib.units import inch
 import io
+import re
 import textwrap
 import tempfile
 from sqlalchemy.exc import IntegrityError
@@ -271,7 +271,7 @@ class OrgSubscriptions(Resource):
         return response             
         
 #===============================Campaign model routes==============================================================
-        
+
 @app.route("/api/v1.0/setCampaign", methods=["POST"])
 @jwt_required()
 def post():
@@ -283,106 +283,92 @@ def post():
     endDateStr = request.form.get('endDate')
     targetAmount = request.form.get('targetAmount')
     banner = request.files.get('banner')
-    youtube_link = request.form.get('youtubeLink')    
+    youtube_link = request.form.get('youtubeLink')
     
-    available_org= Organisation.query.filter_by(id=current_user).first()
+    # Fetch organization by current user ID
+    available_org = Organisation.query.filter_by(id=current_user).first()
     if not available_org:
-        return jsonify({"error":"Organisation does not exist."}),404
-    # print(available_org.orgName)
+        return jsonify({"error": "Organisation does not exist."}), 404
 
     # Convert date strings to Python date objects
     startDate = datetime.strptime(startDateStr, '%Y-%m-%d').date()
     endDate = datetime.strptime(endDateStr, '%Y-%m-%d').date()
-
-    # print(startDate, endDate)
     current_date = datetime.now().date()
+
+    # Validate dates
     if startDate < current_date:
-        return {'error': 'cannot create a campaign in the past'}, 400 
+        return jsonify({'error': 'cannot create a campaign in the past'}), 400 
     if endDate < current_date:
-        return {'error':'enddate  should be greater than current date'} ,400  
+        return jsonify({'error': 'end date should be greater than current date'}), 400  
     if endDate < startDate:
-        return {'error': 'end date cannot be before start date'}, 400
+        return jsonify({'error': 'end date cannot be before start date'}), 400
  
     if not (campaignName and description and startDate and endDate):
-        return jsonify({"error":"Please provide complete information"}),400
-    # print(description)
+        return jsonify({"error": "Please provide complete information"}), 400
     
-    if startDate == current_date:
-        isActive = True
-    elif startDate > current_date:
-        isActive = True
-    elif endDate > current_date:
-        isActive = False
+    isActive = startDate >= current_date
 
-    # try:
-    if available_org:
-        all_campaigns= Campaign.query.filter_by(org_id= available_org.id).all()
-        available_campaigns= []
-        for c in all_campaigns:
-            if c.isActive:
-                available_campaigns.append(c)
-                if c.campaignName==campaignName:
-                    return {"error": "Campaign with this name already exists"},400
-        # if len(available_campaigns)>=12:
-        #     return make_response(jsonify({'error':'You cannot create more than  12 campaigns.'}),400)
-            
-    # except  Exception as e :
-    #     print(e)
-    #     return {"error": "You cannot create more than 8 campaigns."},500
+    # Check for existing active campaigns and campaign name duplication
+    all_campaigns = Campaign.query.filter_by(org_id=available_org.id).all()
+    available_campaigns = [c for c in all_campaigns if c.isActive]
 
+    if any(c.campaignName == campaignName for c in available_campaigns):
+        return jsonify({"error": "Campaign with this name already exists"}), 400
+
+    # Upload the banner image to Cloudinary and create a new campaign
     try:
-        # Upload the banner image to Cloudinary
         result = upload(banner)
-        if "secure_url" in result:
-            new_campaign = Campaign(
-                campaignName=campaignName,
-                description=description,
-                category=category,
-                youtube_link=youtube_link,
-                banner=result["secure_url"],
-                startDate=startDate,
-                endDate=endDate,
-                targetAmount=float(targetAmount),
-                isActive=isActive,
-                org_id=available_org.id
-            )
+        if "secure_url" not in result:
+            return jsonify({"error": "Failed to upload banner to Cloudinary"}), 404
 
-            #create wallet
-            try:
-                response = service.wallets.create(currency="KES",  label=str(uuid.uuid4()), can_disburse=True)
+        new_campaign = Campaign(
+            campaignName=campaignName,
+            description=description,
+            category=category,
+            youtube_link=youtube_link,
+            banner=result["secure_url"],
+            startDate=startDate,
+            endDate=endDate,
+            targetAmount=float(targetAmount),
+            isActive=isActive,
+            org_id=available_org.id
+        )
 
-                if response.get('errors'):
-                    error_message = response.get("errors")[0].get("detail")
-                    return jsonify({'error':error_message})
+        # Create wallet
+        try:
+            response = service.wallets.create(currency="KES", label=str(uuid.uuid4()), can_disburse=True)
+            if response.get('errors'):
+                error_message = response.get("errors")[0].get("detail")
+                return jsonify({'error': error_message})
 
-                new_campaign.walletId=response.get("wallet_id")
-            except Exception as e:
-                return {"error": str(e)}, 404
+            new_campaign.walletId = response.get("wallet_id")
+        except Exception as e:
+            return jsonify({"error": str(e)}), 404
+
+        # Save campaign to database
+        try:
+            db.session.add(new_campaign)
+            db.session.commit()
+
+            sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate, endDate)
             
-            try:
-                db.session.add(new_campaign)
-                db.session.commit()
+            # Notify subscribed users
+            users_subscribed = Subscription.query.filter_by(organisation_id=available_org.id).all()
+            for user in users_subscribed:
+                user_detail = User.query.get(user.user_id)
+                sendMail.send_subscribers_createCampaign(
+                    user_detail.email, user_detail.firstName, new_campaign.campaignName,
+                    new_campaign.description, new_campaign.startDate, new_campaign.endDate,
+                    new_campaign.targetAmount, available_org.orgName
+                )
 
-                sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate,endDate)
-            
-                # check users subscribed to organisation
-                users_subscibed = Subscription.query.filter_by(organisation_id=available_org.id).all()
-                if users_subscibed:
-                    for user in users_subscibed:
-                        user_detail = User.query.get(user.user_id)
-                        sendMail.send_subscribers_createCampaign(user_detail.email,user_detail.firstName,new_campaign.campaignName,new_campaign.description,new_campaign.startDate,new_campaign.endDate,new_campaign.targetAmount,available_org.orgName)
+        except Exception as e:
+            return jsonify({"error": "Something went wrong while creating your campaign"}), 500
 
+        return jsonify({"message": new_campaign.serialize()}), 200
 
-            except Exception as e:
-                print(e)
-                return jsonify({"error": "Something went wrong while creating your campaign"}),500
-            return jsonify({"message":new_campaign.serialize()}),200
-
-        else:
-            return {"error": "Failed to upload banner to Cloudinary"},404
     except Exception as e:
-        return {"error": str(e)}, 404
-    
+        return jsonify({"error": str(e)}), 404
 
 #get campaigns
 class campaignData(Resource):
@@ -1437,26 +1423,38 @@ def collection_webhook():
         net_amount = payload.get('net_amount')
         api_ref= payload.get('api_ref')        
         state = payload.get('state')
+        donated_amount= payload.get('value')
+        currency= payload.get('currency')
+        provider= payload.get('provider')
+        account= payload.get('account')
+        email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 
         if api_ref== "API Request":
             donation = Donation.query.filter_by(invoice_id=invoice_id).first()
+            donation.method= provider
+            db.session.commit()
 
         else:
             donation = Donation.query.filter_by(api_ref=api_ref).first()
             if donation.invoice_id == None:
                 donation.invoice_id = invoice_id
+                donation.currency= currency
+                donation.amount = donated_amount
+                donation.method= provider
                 db.session.commit()
         
         if not donation:
             return  jsonify({"error":"Donation record not found"}),404
+        
+        donating_user= None
         if donation.user_id:
-            donating_user= User.query.get(donation.user_id)
+            donating_user= User.query.filter_by(id=donation.user_id).first()
 
-        donation_campaign= Campaign.query.get(donation.campaign_id)
+        donation_campaign= Campaign.query.filter_by(id=donation.campaign_id).first()
         if not donation_campaign:
             return jsonify({'error':'campaign not listed'})
         
-        campaign_organisation= Organisation.query.get(donation_campaign.org_id)
+        campaign_organisation= Organisation.query.filter_by(id=donation_campaign.org_id).first()
         if not campaign_organisation:
             return jsonify({'error':'Organisation not found'})
         
@@ -1465,33 +1463,30 @@ def collection_webhook():
             # Update the donation status in the database
             donation.status = "COMPLETE"
             db.session.commit()
-            if donating_user:
-                sendMail.send_mail_on_donation_completion(donation.amount, 
-                                                        donation.donationDate, 
-                                                        donating_user.firstName, 
-                                                        donation_campaign.campaignName,
-                                                        donating_user.email, 
-                                                        campaign_organisation.orgName)
-                
-            # if donation.email: #do migration and add email to donation table
-            #     sendMail.send_mail_on_donation_completion(donation.amount,
-            #                                             donation.donationDate,
-            #                                             donating_user.firstName,
-            #                                             donation_campaign.campaignName,
-            #                                             donation.email,
-            #                                             campaign_organisation.orgName)
+
+            if not main_pocket:
+                return jsonify({"error": "Main pocket not found"}), 404
             #send to pocket 
             app_commission= round((float(net_amount) * 0.15),2)  
-            if app_commission < float(10):
-                print("App commission is less than Ksh. 10")
-                app_commission= 10.0
+            print(f"App commission is {app_commission}")
 
-            # transactions = [{'name': 'App service', 'account': main_pocket, 'amount': app_commission}]
+            if app_commission < float(10):
+                return jsonify({"message":"No commission for this donation"})
+
+            # transactions = [{'name': 'App_service', 'account': main_pocket, 'amount': app_commission}]
             # response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, currency='KES', transactions=transactions) #wallet to mpesa
-            response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount=app_commission, narrative= "In App") #wallet to wallet
+            response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount=app_commission, narrative= "InApp") #wallet to wallet
             
             approved_response = service.transfer.approve(response) #Approve response
             # print(response)
+            
+            # transactions = [{'name': 'Api', 'account': main_pocket, 'amount': app_commission}]
+            # # requires_approval = 'NO'
+            # response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, 
+            #                                            currency='KES', 
+            #                                            transactions=transactions) #wallet to mpesa
+            # approved_response = service.transfer.approve(response) #Approve response
+            
             if approved_response.get("errors"):
                 error_message = approved_response.get("errors")[0].get("detail")
                 return  make_response(jsonify({'error':error_message}),400)
@@ -1509,17 +1504,40 @@ def collection_webhook():
                                             org_id=campaign_organisation.id,
                                             campaign_name= donation_campaign.campaignName
                                         )
+            print(new_transaction)
             
             db.session.add(new_transaction)
             db.session.commit()
+            print(approved_response)
+            
+            if donating_user:
+                sendMail.send_mail_on_donation_completion(donation.amount, 
+                                                        donation.donationDate, 
+                                                        donating_user.firstName, 
+                                                        donation_campaign.campaignName,
+                                                        donating_user.email, 
+                                                        campaign_organisation.orgName)
+                
+            elif re.match(email_regex, account):
+                sendMail.send_mail_on_donation_completion(
+                    donation.amount,
+                    donation.donationDate,
+                    donating_user.firstName if donating_user else 'Supporter',
+                    donation_campaign.campaignName,
+                    account,
+                    campaign_organisation.orgName)              
+                
+
             return jsonify({"message":approved_response})
+                
             
         elif state == "PROCESSING":
             donation.status = "PROCESSING"
             db.session.commit()
 
         elif state== "FAILED":
-            donation.status="FAILED"            
+            donation.status="FAILED"   
+            db.session.commit()        
             if  donating_user:
                 sendMail.send_mail_donation_not_successiful(donation.amount, 
                                                         donation.donationDate, 
@@ -1527,12 +1545,20 @@ def collection_webhook():
                                                         donation_campaign.campaignName, 
                                                         donating_user.email,
                                                         campaign_organisation.orgName)
-            db.session.delete(donation)
-            db.session.commit()
+            elif re.match(email_regex, account):
+                sendMail.send_mail_donation_not_successiful(
+                    donation.amount,
+                    donation.donationDate,
+                    donating_user.firstName if donating_user else 'Supporter',
+                    donation_campaign.campaignName,
+                    account,
+                    campaign_organisation.orgName
+                )
+            # db.session.delete(donation)
+            
         
         return jsonify({'message': 'Webhook received successfully'})
-    except (ValueError, TypeError):
-        return jsonify({'error': 'Invalid third party response'}), 400
+    
     except Exception as e:
         print(e)
         return jsonify({'error': str(e)}), 400
@@ -1555,6 +1581,15 @@ def send_money_webhook():
         existing_transaction.batch_status= batch_status
         existing_transaction.trans_status= trans_status
         db.session.commit()
+
+        existing_org= Organisation.query.filter_by(id=existing_transaction.org_id)
+        if not existing_org:
+            return jsonify({"error": "organisation not found"}), 404
+
+        if batch_status== "Completed" and trans_status == "complete":
+            sendMail.send_mail_on_send_money_success(existing_org.orgEmail,existing_transaction.amount, existing_transaction.trans_type, existing_org.orgName)
+        elif trans_status == "Unsuccessful" or batch_status=="Failed Processing" or trans_status== "failed":
+            sendMail.send_mail_on_send_money_failure(existing_org.orgEmail,existing_transaction.amount, existing_transaction.trans_type, existing_org.orgName)
 
         
         return jsonify({'message': 'Webhook received successfully'}), 200
@@ -1744,14 +1779,10 @@ class  ExpressDonations(Resource):
     def post(self):
         data= request.get_json()
         donor_name= data.get("donorName")
-        email= "msaadaanonymous@gmail.com"
+        email= data.get("donorEmail")
         phoneNumber= data.get("phoneNumber")
         amount= data.get('amount')
         campaign_id= data.get('campaignId')
-        
-
-        if not email:
-            return make_response(jsonify({"error":"Email is required."}),400)
         
         if not phoneNumber:
             return make_response(jsonify({"error":"Phone number is required."}),400)
@@ -1892,7 +1923,7 @@ def donate_via_card():
     # donor_name= data.get("donorName")
     first_name= data.get('firstName')
     last_name= data.get('lastName')    
-    email= data.get('email')
+    email= data.get('cardEmail')
     phoneNumber= data.get("phoneNumber")
     currency= data.get('currency')
     amount= data.get('amount')
@@ -1951,7 +1982,7 @@ def donate_via_card():
             # print(error_message)
             return  make_response(jsonify({'error':error_message}),400)
         
-        new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id,donor_name= donor_names, api_ref=res, method= "OTHER", currency= currency)
+        new_donation=Donation(amount= float(amount),campaign_id=existing_campaign.id,donor_name= donor_names, api_ref=res, method= "CARD", currency= currency)
         db.session.add(new_donation)
         db.session.commit()
 

@@ -184,6 +184,21 @@ class sendMail():
         body = f"Dear {orgName},\n\n Thank you for registering your {providers} account with account number {accountNumber} on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
+    
+    # send mail on success send money hook
+    def send_mail_on_send_money_success(email, amount, transType, orgName):
+        from app import mail
+        subject = f"Transacation Successful"
+        body = f"Dear {orgName},\n\n You transaction of Ksh {amount} to {transType} on our Msaada Mashinani Platform was successiful.\n\n Best regards,\n Msaada Mashinani Team"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+    
+    def send_mail_on_send_money_failure (email, amount, transType, orgName):
+        from app import mail
+        subject = f"Transacation Failed"
+        body = f"Dear {orgName},\n\n Your transaction of Ksh {amount} for {transType} on our Msaada Mashinani Platform was not successiful.Please try again\n\n Best regards,\n Msaada Mashinani Team"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
 
 
 # Generate otp
