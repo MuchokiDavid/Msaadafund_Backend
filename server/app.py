@@ -14,7 +14,7 @@ from flask_bcrypt import Bcrypt
 import requests
 from datetime import datetime, date
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
-from flask_mail import Mail, Message
+from flask_mail import Mail
 from auth import auth_bp
 # from views import view_bp
 from flask_admin import Admin
@@ -1468,24 +1468,13 @@ def collection_webhook():
                 return jsonify({"error": "Main pocket not found"}), 404
             #send to pocket 
             app_commission= round((float(net_amount) * 0.15),2)  
-            print(f"App commission is {app_commission}")
+            amount=app_commission
+            narrative= "Msaada"
 
             if app_commission < float(10):
                 return jsonify({"message":"No commission for this donation"})
 
-            # transactions = [{'name': 'App_service', 'account': main_pocket, 'amount': app_commission}]
-            # response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, currency='KES', transactions=transactions) #wallet to mpesa
-            response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount=app_commission, narrative= "InApp") #wallet to wallet
-            
-            approved_response = service.transfer.approve(response) #Approve response
-            # print(response)
-            
-            # transactions = [{'name': 'Api', 'account': main_pocket, 'amount': app_commission}]
-            # # requires_approval = 'NO'
-            # response = service.transfer.mpesa(wallet_id=donation_campaign.walletId, 
-            #                                            currency='KES', 
-            #                                            transactions=transactions) #wallet to mpesa
-            # approved_response = service.transfer.approve(response) #Approve response
+            approved_response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount, narrative) #wallet to wallet
             
             if approved_response.get("errors"):
                 error_message = approved_response.get("errors")[0].get("detail")
@@ -1493,22 +1482,21 @@ def collection_webhook():
             
             
             # if response.status_code ==200:
-            new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
-                                            batch_status= approved_response.get('status'),
-                                            trans_type= 'App service',
-                                            trans_status= approved_response.get('transactions')[0].get('status'),
-                                            amount= approved_response.get('transactions')[0].get('amount'),
-                                            transaction_account_no=approved_response.get('transactions')[0].get('account'),
-                                            request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
-                                            name= approved_response.get('transactions')[0].get('name'),
-                                            org_id=campaign_organisation.id,
-                                            campaign_name= donation_campaign.campaignName
-                                        )
-            print(new_transaction)
+            # new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
+            #                                 batch_status= approved_response.get('status'),
+            #                                 trans_type= 'App service',
+            #                                 trans_status= approved_response.get('transactions')[0].get('status'),
+            #                                 amount= approved_response.get('transactions')[0].get('amount'),
+            #                                 transaction_account_no=approved_response.get('transactions')[0].get('account'),
+            #                                 request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
+            #                                 name= approved_response.get('transactions')[0].get('name'),
+            #                                 org_id=campaign_organisation.id,
+            #                                 campaign_name= donation_campaign.campaignName
+            #                             )
+            # print(new_transaction)
             
-            db.session.add(new_transaction)
-            db.session.commit()
-            print(approved_response)
+            # db.session.add(new_transaction)
+            # db.session.commit()
             
             if donating_user:
                 sendMail.send_mail_on_donation_completion(donation.amount, 
@@ -1554,7 +1542,7 @@ def collection_webhook():
                     account,
                     campaign_organisation.orgName
                 )
-            # db.session.delete(donation)
+            db.session.delete(donation)
             
         
         return jsonify({'message': 'Webhook received successfully'})
