@@ -151,7 +151,7 @@ class userDataByid(Resource):
         lastName = data.get('lastName')
         phoneNumber = data.get('phoneNumber')
         address = data.get('address')
-        nationalId = data.get('national_id')
+        nationalId = data.get('nationalId')
 
         existing_user = User.query.filter_by(id = current_user).first()
         if not existing_user:
