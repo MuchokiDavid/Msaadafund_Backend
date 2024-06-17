@@ -4,7 +4,7 @@
 import random
 import string
 from flask_mail import Message
-from flask import jsonify, url_for, render_template
+from flask import jsonify
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -41,6 +41,7 @@ class sendMail():
 
     #Send mail if the donation was not successiful
     def send_mail_donation_not_successiful(amount,date,name,campaign,email,organisation):
+        print(email)
         from app import mail
         subject = f"Donation to {campaign} failed"
         body = f"Dear {name},\n\nUnfortunately your contribution to {campaign} campaign on {date} was not successiful. Please try again\n\n Best regards,\n {organisation}"
