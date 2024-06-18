@@ -888,7 +888,7 @@ class Signatories(Resource):
 
     
         all_signataries = Signatory.query.filter_by(org_id=existing_organisation.id).all()
-        if len(all_signataries) >= 3:
+        if len(all_signataries) >5:
             return {"error": "Maximum number of signatories reached"}, 400
         
         existing_signatory = Signatory.query.filter_by(user_id=existing_user.id, org_id=existing_organisation.id).first()
