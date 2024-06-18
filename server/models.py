@@ -269,7 +269,7 @@ class  Campaign(db.Model, SerializerMixin):
     featured=db.Column(db.Boolean(), default= False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
-    org_id = db.Column(db.String(), db.ForeignKey('organisations.id'))
+    org_id = db.Column(db.Integer(), db.ForeignKey('organisations.id'))
     # withdrawals = db.relationship('Withdraw', backref='campaign'), Serial_rule: '-withdrawals.campaign',
     donations =db.relationship('Donation', backref='campaign')
 
