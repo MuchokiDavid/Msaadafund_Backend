@@ -525,6 +525,22 @@ def updateOne(campaignId):
         if youtube_link:
             existing_campaign.youtube_link = youtube_link
         if banner:
+
+            # Delete the existing banner from Cloudinary
+            if existing_campaign.banner:
+                public_id = existing_campaign.banner.split('/')[-1].split('.')[0]
+                try:
+                    # Delete the image using the public_id
+                    res = cloudinary.uploader.destroy(public_id)
+                    print(f"Delete response: {res}")
+                    if res.get('result') == 'ok':
+                        print("Image deleted successfully.")
+                    else:
+                        print("Failed to delete the image.")
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+
+            # Upload the new banner to Cloudinary
             result = upload(banner)
             if "secure_url" in result:
                 existing_campaign.banner = result["secure_url"]
@@ -842,6 +858,18 @@ class OrganisationDetail(Resource):
             if website_link:
                 existing_org.website_link = website_link
             if profileImage:
+                public_id = existing_org.profileImage.split('/')[-1].split('.')[0]
+                try:
+                    # Delete the image using the public_id
+                    res = cloudinary.uploader.destroy(public_id)
+                    print(f"Delete response: {res}")
+                    if res.get('result') == 'ok':
+                        print("Image deleted successfully.")
+                    else:
+                        print("Failed to delete the image.")
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                    
                 result = upload(profileImage)
                 if "secure_url" in result:
                     existing_org.profileImage = result["secure_url"]
@@ -1465,7 +1493,7 @@ def collection_webhook():
             db.session.commit()
 
             if not main_pocket:
-                return jsonify({"error": "Main pocket not found"}), 404
+                return jsonify({"error": "Main pocket not found"})
             #send to pocket 
             app_commission= round((float(net_amount) * 0.15),2)  
             amount=app_commission
@@ -1478,25 +1506,7 @@ def collection_webhook():
             
             if approved_response.get("errors"):
                 error_message = approved_response.get("errors")[0].get("detail")
-                return  make_response(jsonify({'error':error_message}),400)
-            
-            
-            # if response.status_code ==200:
-            # new_transaction=Transactions(tracking_id=approved_response.get('tracking_id'), 
-            #                                 batch_status= approved_response.get('status'),
-            #                                 trans_type= 'App service',
-            #                                 trans_status= approved_response.get('transactions')[0].get('status'),
-            #                                 amount= approved_response.get('transactions')[0].get('amount'),
-            #                                 transaction_account_no=approved_response.get('transactions')[0].get('account'),
-            #                                 request_ref_id= approved_response.get('transactions')[0].get('request_reference_id'),
-            #                                 name= approved_response.get('transactions')[0].get('name'),
-            #                                 org_id=campaign_organisation.id,
-            #                                 campaign_name= donation_campaign.campaignName
-            #                             )
-            # print(new_transaction)
-            
-            # db.session.add(new_transaction)
-            # db.session.commit()
+                return  make_response(jsonify({'error':error_message}))
             
             if donating_user:
                 sendMail.send_mail_on_donation_completion(donation.amount, 
@@ -1545,12 +1555,11 @@ def collection_webhook():
             db.session.delete(donation)
             
         
-        return jsonify({'message': 'Webhook received successfully'})
+        print ('Webhook received successfully')
     
     except Exception as e:
-        print(e)
-        return jsonify({'error': str(e)}), 400
-    
+        print(f"Collecting hook error occurred: {e}")
+
 #Intersend web hook to listen to changes in send money ie. Withdraw and buy airtime
 @app.route('/api/v1.0/send-money-webhook', methods = ['POST'])
 def send_money_webhook():
@@ -1563,7 +1572,7 @@ def send_money_webhook():
 
         existing_transaction= Transactions.query.filter_by(tracking_id=tracking_id).first()
         if not existing_transaction:
-            return  jsonify({"status":"Transaction record not found"}),404
+            print  ("Transaction record not found")
         
         #Update the transaction status in the database
         existing_transaction.batch_status= batch_status
@@ -1572,7 +1581,7 @@ def send_money_webhook():
 
         existing_org= Organisation.query.filter_by(id=existing_transaction.org_id)
         if not existing_org:
-            return jsonify({"error": "organisation not found"}), 404
+            print ("organisation not found")
 
         if batch_status== "Completed" and trans_status == "complete":
             sendMail.send_mail_on_send_money_success(existing_org.orgEmail,existing_transaction.amount, existing_transaction.trans_type, existing_org.orgName)
@@ -1580,13 +1589,10 @@ def send_money_webhook():
             sendMail.send_mail_on_send_money_failure(existing_org.orgEmail,existing_transaction.amount, existing_transaction.trans_type, existing_org.orgName)
 
         
-        return jsonify({'message': 'Webhook received successfully'}), 200
-        
-    # except (ValueError, TypeError):
-    #     return jsonify({'error': 'Invalid third party response'}), 400
+        print ('Webhook received successfully')
+    
     except Exception as e:
-        print(e)
-        return jsonify({'error': str(e)}), 500
+        print(f"Send money hook error occurred: {e}")
         
 #Route to check intasend transaction status
 @app.route("/api/v1.0/check_transaction_status", methods=["POST"])
