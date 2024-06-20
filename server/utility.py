@@ -98,7 +98,7 @@ class sendMail():
     def send_registration_email(org_email, org_name):
         from app import mail
         subject = "Organization Registration Confirmation"
-        body = f"Hello: {org_name},\n\nThank you for registering on our Msaada Mashinani Platform.\n\nRegards,\n Msaada Mashinani Team"
+        body = f"Hello: {org_name},\n\nThank you for registering on our Msaada Mashinani Platform.\n\nTo complete your registration and begin using our services, Please contact our support team for verification. This step is necessary to ensure the integrity and security of our platform.\n\nWe appreciate your cooperation and look forward to assisting you.\n\nRegards,\nMsaada Mashinani Team"
         
         try:
             mail.send_message(subject=subject, recipients=[org_email], body=body)
