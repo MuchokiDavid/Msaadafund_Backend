@@ -1495,7 +1495,7 @@ def collection_webhook():
             if not main_pocket:
                 return jsonify({"error": "Main pocket not found"})
             #send to pocket 
-            app_commission= round((float(net_amount) * 0.15),2)  
+            app_commission= round((float(donated_amount) * 0.15),2)  
             amount=app_commission
             narrative= "Msaada"
 
