@@ -1671,7 +1671,7 @@ def withdraw_pdf():
         pdf.setTitle("Msaada_Mashinani/transactions")
         pdf.setFont("Helvetica", 12)
 
-        logo_url = "https://res.cloudinary.com/dml7sp2zm/image/upload/v1718797966/msaadaLogo_syqygm.png"
+        logo_url = "https://res.cloudinary.com/dml7sp2zm/image/upload/b_rgb:FFFFFF/v1718886990/msaadaLogo-transparent_wac7jg.png"
         response = requests.get(logo_url)
         if response.status_code == 200:
             # Create a temporary file to store the logo image
@@ -1683,10 +1683,10 @@ def withdraw_pdf():
 
         # Draw logo
         def draw_logo(pdf):
-            logo_width = 1 * inch
+            logo_width = 2 * inch
             logo_height = 1 * inch
             pdf.drawImage(tmp_file.name, x=0.5 * inch, y=10.5 * inch, width=logo_width, height=logo_height)
-            pdf.drawString(1.8 * inch, 11 * inch, f"Transactions for {existing_org.orgName}")
+            pdf.drawString(2.8 * inch, 11 * inch, f"Transactions for {existing_org.orgName}")
 
         # Add table headers
         draw_logo(pdf)
@@ -1694,7 +1694,7 @@ def withdraw_pdf():
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawString(0.5 * inch, y, "No.")
         pdf.drawString(6.6 * inch, y, "TransactionType")
-        pdf.drawString(1 * inch, y, "TransactionDate")
+        pdf.drawString(1 * inch, y, "Date")
         pdf.drawString(5.6 * inch, y, "Status")
         pdf.drawString(4.8 * inch, y, "Amount")
         pdf.drawString(3   * inch, y, "Campaign Name")
@@ -1715,7 +1715,7 @@ def withdraw_pdf():
                 pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(0.5 * inch, y, "No.")
                 pdf.drawString(6.6 * inch, y, "TransactionType")
-                pdf.drawString(1 * inch, y, "TransactionDate")
+                pdf.drawString(1 * inch, y, "Date")
                 pdf.drawString(5.6 * inch, y, "Status")
                 pdf.drawString(4.8 * inch, y, "Amount")
                 pdf.drawString(3 * inch, y, "Campaign Name")
@@ -1737,7 +1737,7 @@ def withdraw_pdf():
             pdf.setFont("Helvetica", 10)
             pdf.drawString(0.5 * inch, y, str(index))
             pdf.drawString(6.6 * inch, y, str(transaction.trans_type))
-            pdf.drawString(1 * inch, y, transaction.transaction_date)
+            pdf.drawString(1 * inch, y, transaction.transaction_date.strftime('%Y-%m-%d'))
             pdf.drawString(5.6 * inch, y, transaction.trans_status)
             pdf.drawString(4.8 * inch, y, str(transaction.amount))
             pdf.drawString(3   * inch, y, campaign_name[0])
@@ -1762,7 +1762,7 @@ def withdraw_pdf():
 
     
     except Exception as e:
-        return jsonify({"error": "An error occurred while processing your request"}),500
+        return jsonify({"error": str(e)}), 500
 
 
     
