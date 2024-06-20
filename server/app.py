@@ -2236,7 +2236,7 @@ def get_org_donations_pdf():
         # pdf.drawString(1.8 * inch, 11 * inch, f"Donations for {existing_org.orgName}")
 
          # Load and add the logo
-        logo_url = "https://res.cloudinary.com/dml7sp2zm/image/upload/v1713528345/gbrbn0e9ciepzhm5ggjp.jpg"
+        logo_url = "https://res.cloudinary.com/dml7sp2zm/image/upload/b_rgb:FFFFFF/v1718886990/msaadaLogo-transparent_wac7jg.png"
         
         # Download the logo image from the URL
         response = requests.get(logo_url)
@@ -2252,10 +2252,10 @@ def get_org_donations_pdf():
         
         # draw logo
         def draw_logo(pdf):
-            logo_width = 1 * inch
-            logo_height = 1 * inch
+            logo_width = 2 * inch
+            logo_height = 0.9 * inch
             pdf.drawImage(tmp_file.name, x=0.5 * inch, y=10.5 * inch, width=logo_width, height=logo_height)
-            pdf.drawString(1.8 * inch, 11 * inch, f"Donations for {existing_org.orgName}")
+            pdf.drawString(2.8 * inch, 11 * inch, f"Donations for {existing_org.orgName}")
 
     
         # Add table headers
