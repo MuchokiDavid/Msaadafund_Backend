@@ -63,7 +63,7 @@ app.config['OTP_STORAGE'] = {}
 
 migrate = Migrate(app, db)
 db.init_app(app)
-cache.init_app(app)
+cache.init_app(app, config={'CACHE_TYPE': 'simple'})
 CORS(app)
 # admin.init_app(app)
 api = Api(app)
@@ -504,7 +504,6 @@ def unfeature_campaign(campaign_id):
 
 #Get one campaign by id in unprotected route
 @app.route("/api/v1.0/campaign/<int:campaignId>", methods=["GET"])
-@cache.cached(timeout=300) 
 def readOne(campaignId):
     """Get the details of one specific campaign."""
     try:
@@ -667,7 +666,6 @@ class campaignById(Resource):
 #Get wallet balance for a campaign
 @app.route('/api/v1.0/campaign_wallet/<int:id>', methods=['GET'])
 @jwt_required()
-@cache.cached(timeout=300, key_prefix=lambda: f"campaignwallet_{get_jwt_identity()}")
 def check_wallet(id):
     current_user_id = get_jwt_identity()
     existing_org = Organisation.query.filter_by(id=current_user_id).first()
