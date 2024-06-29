@@ -138,7 +138,7 @@ class userData (Resource):
 #Get user by id
 class userDataByid(Resource):
     @jwt_required()
-    @cache.cached(timeout=300, key_prefix=lambda: f"userdata_{get_jwt_identity()}")
+    @cache.cached(timeout=30, key_prefix=lambda: f"userdata_{get_jwt_identity()}")
     def get(self):
         current_user = get_jwt_identity()
         user = User.query.filter_by(id=current_user, isActive=True).first()
@@ -195,7 +195,7 @@ class userDataByid(Resource):
 #===============================subscription  routes==============================================================
 @app.route('/api/v1.0/subscription_status',methods=['GET'])
 @jwt_required()
-@cache.cached(timeout=300, key_prefix=lambda: f"substatus_{get_jwt_identity()}")
+@cache.cached(timeout=30, key_prefix=lambda: f"substatus_{get_jwt_identity()}")
 def get_subscription():
     current_user = get_jwt_identity()
     user = User.query.filter_by(id=current_user).first()
@@ -210,7 +210,7 @@ def get_subscription():
 
 class GetSubscription(Resource):
     @jwt_required()
-    @cache.cached(timeout=300, key_prefix=lambda: f"usersubs_{get_jwt_identity()}")
+    @cache.cached(timeout=30, key_prefix=lambda: f"usersubs_{get_jwt_identity()}")
     def get(self,org_id):
         current_user = get_jwt_identity()
         user = User.query.filter_by(id=current_user).first()
@@ -266,7 +266,7 @@ class GetSubscription(Resource):
 # Get all subscriptions in an organisation to show on org dashboard
 class OrgSubscriptions(Resource):
     @jwt_required()
-    @cache.cached(timeout=300, key_prefix=lambda: f"orgsubs_{get_jwt_identity()}")
+    @cache.cached(timeout=30, key_prefix=lambda: f"orgsubs_{get_jwt_identity()}")
     def get(self):
         current_user= get_jwt_identity()
         existing_org= Organisation.query.filter_by(id=current_user).first()
@@ -380,7 +380,7 @@ def post():
 #get campaigns
 class campaignData(Resource):
     # @jwt_required()
-    @cache.cached(timeout=300, key_prefix='all_campaigns')
+    @cache.cached(timeout=30, key_prefix='all_campaigns')
     def get(self):
         page = request.args.get('page', default=1, type=int)
         per_page = request.args.get('per_page', default=12, type=int)
@@ -391,7 +391,7 @@ class campaignData(Resource):
 
 #Get all campaigns without pagination
 @app.route('/api/v1.0/get_all_campaigns', methods=['GET'])
-@cache.cached(timeout=300, key_prefix='get_campaigns')
+@cache.cached(timeout=30, key_prefix='get_campaigns')
 def get_all_campaigns():
     try:
         campaigns = Campaign.query.order_by(Campaign.created_at.desc()).all()
@@ -406,7 +406,6 @@ def get_all_campaigns():
 #Get all campaigns  by organization id
 class OrgCampaigns(Resource):
     @jwt_required()
-    @cache.cached(timeout=300, key_prefix=lambda: f"org_campaigns_{get_jwt_identity()}")
     def get(self):
         current_user = get_jwt_identity()
         campaigns = Campaign.query.filter_by(org_id=current_user, isActive=True).all()
@@ -417,7 +416,6 @@ class OrgCampaigns(Resource):
 #Get inactive campaigns
 @app.route('/api/v1.0/get_inactive', methods=['GET'])
 @jwt_required()
-@cache.cached(timeout=300) 
 def  getInactiveCampaign():
     try:
         current_user = get_jwt_identity()
@@ -460,7 +458,7 @@ def activateCampaign(campaignId):
 
 #---------------------------------------Get featured campaigns---------------------------------------------
 @app.route('/api/v1.0/featured', methods= ['GET'])
-@cache.cached(timeout=300) 
+@cache.cached(timeout=30) 
 def featured_campaigns():
     try:
         today = date.today().isoformat()
@@ -610,7 +608,7 @@ def delete(campaignId):
 #Get  specific campaign details by id
 class campaignById(Resource):
     @jwt_required()
-    @cache.cached(timeout=300, key_prefix=lambda: f"campaign_{get_jwt_identity()}")
+    @cache.cached(timeout=30, key_prefix=lambda: f"campaign_{get_jwt_identity()}")
     def get(self):
         current_user = get_jwt_identity()
         campaign = Campaign.query.filter_by(org_id=current_user).all()
@@ -692,7 +690,7 @@ def check_wallet(id):
     
 class addAccount(Resource):
     @jwt_required()
-    @cache.cached(timeout=300, key_prefix=lambda: f"account_{get_jwt_identity()}")
+    @cache.cached(timeout=30, key_prefix=lambda: f"account_{get_jwt_identity()}")
     def get(self):
         current_user = get_jwt_identity()
         existing_organisation = Organisation.query.filter_by(id=current_user).first()
@@ -802,7 +800,7 @@ def confirm_accountotp():
 
 #====================================Organisation by id routes==============================================================
 @app.route('/api/v1.0/org_by_id/<string:orgName>', methods=['GET'])
-@cache.cached(timeout=300) 
+@cache.cached(timeout=30) 
 def org_by_id(orgName):
     organisation= Organisation.query.filter_by(orgName=orgName, isVerified=True).first()
     if not organisation:
@@ -900,7 +898,7 @@ class OrganisationDetail(Resource):
 # ===================================Signatories routes================================================================
 class Signatories(Resource):    
     @jwt_required()
-    @cache.cached(timeout=300, key_prefix=lambda: f"signatories_{get_jwt_identity()}")
+    @cache.cached(timeout=30, key_prefix=lambda: f"signatories_{get_jwt_identity()}")
     def get(self):
         current_user = get_jwt_identity()
         existing_organisation = Organisation.query.filter_by(id=current_user).first()
@@ -959,7 +957,7 @@ class Signatories(Resource):
             
 class SignatoryDetail(Resource):
     @jwt_required()
-    @cache.cached(timeout=300, key_prefix=lambda: f"signatory_{get_jwt_identity()}")
+    @cache.cached(timeout=30, key_prefix=lambda: f"signatory_{get_jwt_identity()}")
     def get(self, id):
         current_user = get_jwt_identity()
         existing_organisation = Organisation.query.filter_by(id=current_user).first()
@@ -1649,7 +1647,7 @@ def check_transaction_status():
 #Get all transactions
 class GetTransactions(Resource):
     @jwt_required()
-    @cache.cached(timeout=300, key_prefix=lambda: f"alltransactions_{get_jwt_identity()}")
+    @cache.cached(timeout=30, key_prefix=lambda: f"alltransactions_{get_jwt_identity()}")
     def get(self):
         current_user_id = get_jwt_identity()
         existing_org = Organisation.query.get(current_user_id)
@@ -1672,7 +1670,7 @@ class GetTransactions(Resource):
 # get pdf 
 @app.route ("/api/v1.0/withdraw_pdf", methods=["GET"])
 @jwt_required()
-@cache.cached(timeout=300, key_prefix=lambda: f"withdrawpdf_{get_jwt_identity()}")
+@cache.cached(timeout=30, key_prefix=lambda: f"withdrawpdf_{get_jwt_identity()}")
 def withdraw_pdf():
     current_user = get_jwt_identity()
     existing_org = Organisation.query.filter_by(id=current_user).first()
@@ -1842,7 +1840,7 @@ class  ExpressDonations(Resource):
 #Route to get all donations by a logged in organisation
 @app.route("/api/v1.0/org_donations",methods=["GET"])
 @jwt_required()
-@cache.cached(timeout=300, key_prefix=lambda: f"donations_{get_jwt_identity()}")
+@cache.cached(timeout=30, key_prefix=lambda: f"donations_{get_jwt_identity()}")
 def get():
     current_user = get_jwt_identity()
     existing_org = Organisation.query.filter_by(id=current_user).first()
@@ -1863,7 +1861,7 @@ def get():
 #Handle donation for logged users
 class Donate(Resource):    
     @jwt_required()  
-    @cache.cached(timeout=300, key_prefix=lambda: f"donations_{get_jwt_identity()}") 
+    @cache.cached(timeout=30, key_prefix=lambda: f"donations_{get_jwt_identity()}") 
     def get(self):
         current_user = get_jwt_identity()
         user = User.query.filter_by(id=current_user).first()
@@ -1924,7 +1922,7 @@ class Donate(Resource):
 
 ##Route to get all donations without authentication
 @app.route('/api/v1.0/all_donations', methods=['GET'])
-@cache.cached(timeout=300, key_prefix="all_donations")
+@cache.cached(timeout=30, key_prefix="all_donations")
 def get_all_donations():
     """Get a list of all Donations"""
     # all_donations= Donation.query.all()
@@ -2081,7 +2079,7 @@ def donate_via_card_logged_in():
 # Get campaign transactions filters
 @app.route('/api/v1.0/filter_transactions/<string:wallet_id>', methods=['POST','GET'])
 @jwt_required()
-@cache.cached(timeout=300, key_prefix=lambda: f"transactions_{get_jwt_identity()}")  
+@cache.cached(timeout=30, key_prefix=lambda: f"transactions_{get_jwt_identity()}")  
 def wallet_transactions_filters(wallet_id):
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.get(current_user_id)
@@ -2147,7 +2145,7 @@ def wallet_transactions_filters(wallet_id):
 #===============================Transaction pdf route==============================================================
 @app.route("/api/v1.0/transactions_pdf/<string:wallet_id>", methods=["GET"])
 @jwt_required()
-@cache.cached(timeout=300, key_prefix=lambda: f"transpdf_{get_jwt_identity()}")
+@cache.cached(timeout=30, key_prefix=lambda: f"transpdf_{get_jwt_identity()}")
 def get_transactions_pdf(wallet_id):
     current_user = get_jwt_identity()
     existing_org = Organisation.query.filter_by(id=current_user).first()
@@ -2234,7 +2232,7 @@ def get_transactions_pdf(wallet_id):
 
 @app.route("/api/v1.0/org_donations_pdf", methods=["GET"])
 @jwt_required()
-@cache.cached(timeout=300, key_prefix=lambda: f"donpdf_{get_jwt_identity()}")
+@cache.cached(timeout=30, key_prefix=lambda: f"donpdf_{get_jwt_identity()}")
 def get_org_donations_pdf():
     current_user = get_jwt_identity()
     existing_org = Organisation.query.filter_by(id=current_user).first()
