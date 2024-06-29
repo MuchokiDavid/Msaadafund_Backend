@@ -838,12 +838,11 @@ class OrganisationDetail(Resource):
         db.session.delete(org)
         db.session.commit()
         return {'message' : 'Organisation deleted successfully'}, 200
-    
+        
     @jwt_required()
     def patch(self):
         current_user = get_jwt_identity()
         orgName = request.form.get('orgName')
-        # orgEmail = request.form.get('orgEmail')
         orgPhoneNumber = request.form.get('orgPhoneNumber')
         orgAddress = request.form.get('orgAddress')
         orgDescription = request.form.get('orgDescription')
@@ -858,8 +857,6 @@ class OrganisationDetail(Resource):
         try:
             if orgName:
                 existing_org.orgName = orgName
-            # if orgEmail:
-            #     existing_org.orgEmail = orgEmail  #issue 2
             if orgPhoneNumber:
                 existing_org.orgPhoneNumber = orgPhoneNumber
             if orgAddress:
@@ -873,29 +870,31 @@ class OrganisationDetail(Resource):
             if website_link:
                 existing_org.website_link = website_link
             if profileImage:
-                public_id = existing_org.profileImage.split('/')[-1].split('.')[0]
-                try:
-                    # Delete the image using the public_id
-                    res = cloudinary.uploader.destroy(public_id)
-                    print(f"Delete response: {res}")
-                    if res.get('result') == 'ok':
-                        print("Image deleted successfully.")
-                    else:
-                        print("Failed to delete the image.")
-                except Exception as e:
-                    print(f"An error occurred: {e}")
-                    
+                # Check if existing_org.profileImage is not None and not empty
+                if existing_org.profileImage:
+                    public_id = existing_org.profileImage.split('/')[-1].split('.')[0]
+                    try:
+                        # Delete the image using the public_id
+                        res = cloudinary.uploader.destroy(public_id)
+                        print(f"Delete response: {res}")
+                        if res.get('result') == 'ok':
+                            print("Image deleted successfully.")
+                        else:
+                            print("Failed to delete the image.")
+                    except Exception as e:
+                        print(f"An error occurred: {e}")
+                        
                 result = upload(profileImage)
                 if "secure_url" in result:
                     existing_org.profileImage = result["secure_url"]
             db.session.commit()
 
-            response= make_response(jsonify({"message": "Organisation has been updated", "Data": existing_org.serialize()}))
-            # return {"message": "Organisation has been updated", "Data": existing_org.serialize()}
+            response = make_response(jsonify({"message": "Organisation has been updated", "Data": existing_org.serialize()}))
             return response
         except Exception as e:
             print(e)
-            return {"error":str(e)}, 500
+            return {"error": str(e)}, 500
+
 
 # ===================================Signatories routes================================================================
 class Signatories(Resource):    
@@ -2320,6 +2319,7 @@ def get_org_donations_pdf():
             
             # Fetch campaign details for each donation
             campaign = Campaign.query.filter_by(id=donation.campaign_id).first()
+            # print(campaign)
 
             # Determine the width based on the length of the campaign name
             name_length = len(campaign.campaignName)
@@ -2328,16 +2328,18 @@ def get_org_donations_pdf():
                 width == 25
 
             campaign_name = textwrap.wrap(campaign.campaignName, width=width)
-            print("Wrapped campaign name:",campaign_name)
+            # print("Wrapped campaign name:",campaign_name)
 
 
             pdf.setFont("Helvetica", 12)
             # Add donation details to the PDF
+            invoice_id = donation.invoice_id if donation.invoice_id else "N/A"
             pdf.drawString(0.5 * inch, y, str(index))
             pdf.drawString(1 * inch, y, campaign_name[0])  # Limit campaign name length
             pdf.drawString(3 * inch, y, f"KSH {donation.amount:.2f}")
-            pdf.drawString(5 * inch, y, donation.invoice_id)
+            pdf.drawString(5 * inch, y, invoice_id)
             pdf.drawString(6.5 * inch, y, donation.status)
+
             
             # Move y-coordinate down and increment donation counter
             y -= 0.5 * inch
@@ -2361,7 +2363,8 @@ def get_org_donations_pdf():
         return Response(buffer.getvalue(), mimetype="application/pdf", headers={"Content-Disposition": "attachment;filename=donations.pdf"})
     
     except Exception as e:
-        return jsonify({"error": f"Internal Server Error: {str(e)}"}), 500
+        # return the error e
+        return jsonify({'error': str(e)}), 500
 
 #===============================Contact us form route==============================================================
 
