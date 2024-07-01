@@ -1839,7 +1839,7 @@ class  ExpressDonations(Resource):
 #Route to get all donations by a logged in organisation
 @app.route("/api/v1.0/org_donations",methods=["GET"])
 @jwt_required()
-# @cache.cached(timeout=30, key_prefix=lambda: f"donations_{get_jwt_identity()}")
+@cache.cached(timeout=30, key_prefix=lambda: f"donations_{get_jwt_identity()}")
 def get():
     current_user = get_jwt_identity()
     existing_org = Organisation.query.filter_by(id=current_user).first()
@@ -1851,7 +1851,7 @@ def get():
         all_donations=Donation.query.filter(Donation.campaign_id.in_(all_campaign_id)).all()
         if not all_donations:
             return {"error": "No donations found"}, 404
-        response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE' or donation.status=='PENDING']
+        response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE']
         response = make_response(jsonify({"message":response_dict}),200)
         return response
     except  Exception as e:
