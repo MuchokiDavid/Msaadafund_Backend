@@ -1851,7 +1851,7 @@ def get():
         all_donations=Donation.query.filter(Donation.campaign_id.in_(all_campaign_id)).all()
         if not all_donations:
             return {"error": "No donations found"}, 404
-        response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE' or donation.status=='PENDING']
+        response_dict = [donation.serialize() for donation in all_donations if donation.status=='COMPLETE']
         response = make_response(jsonify({"message":response_dict}),200)
         return response
     except  Exception as e:
