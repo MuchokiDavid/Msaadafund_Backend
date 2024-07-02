@@ -74,17 +74,25 @@ class sendMail():
         existing_campaign = Campaign.query.filter_by(campaignName=campaignName).first()
         url = f"http://localhost:3000/campaign/{existing_campaign.id}" #update once deployed 
         subject = f"{campaignName.upper()} Created Successfully"
-        body = f"Hello {organisation.orgName}!\n\nYou have successfully created a campaign.\n\n" \
-            f"Campaign Name: {campaignName}\n\n" \
-            f"Description: {description}\n\n" \
-            f"Category: {category}.\n" \
-            f"Your target amount is Ksh: {targetAmount} \n" \
-            f"Start Date: {startDate}\n" \
-            f"End Date: {endDate} \n" \
-            f"Campaign link: {url} \n\n" \
-            f"Good luck  with your campaign!"
+        
+        html_body = f"""
+            <p>Hello {organisation.orgName}!</p>
+            <p>You have successfully created a campaign.</p>
+            <p><strong>Campaign Name:</strong> {campaignName}</p>
+            <p><strong>Description:</strong> {description}</p>
+            <p><strong>Category:</strong> {category}</p>
+            <p><strong>Your target amount is Ksh:</strong> {targetAmount}</p>
+            <p><strong>Start Date:</strong> {startDate}</p>
+            <p><strong>End Date:</strong> {endDate}</p>
+            <p><strong>Campaign link:</strong> <a href="{url}">{url}</a></p>
+            <p>Good luck with your campaign!</p>
+        """
 
-        mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
+        # mail.send_message(subject=subject, recipients=[organisation.orgEmail], body=body)
+        msg = Message(subject, recipients=[organisation.orgEmail])
+        msg.html = html_body
+        mail.send(msg)
+
     
     #Function to send verification to organisation
     def send_org_verification_mail(org):
@@ -128,9 +136,21 @@ class sendMail():
         existing_campaign = Campaign.query.filter_by(campaignName=campaignName).first()
         url = f"http://localhost:3000/campaign/{existing_campaign.id}" #update once deployed 
         subject = f"{campaignName.upper()} by {org_name.upper()}"
-        body = f"Dear {user},\n\nWe're thrilled to announce the launch of our latest campaign,{campaignName.upper()}. This initiative represents our continued commitment to our cause.\n\n Here's a brief overview of the campaign: \n Title:{campaignName}\n Description:{description}\n Start Date: {startDate}\n End Date: {endDate}\n Budget:{budget}\n Campaign link:{url}\n\nYou're now part of our community dedicated to making a positive impact.\n\nWe invite you to join us in making a difference by supporting this campaign. Whether it's spreading the word, volunteering your time, or contributing in any way you can, your participation is invaluable.\n\nStay tuned for updates as the campaign progresses. Together, we can achieve meaningful impact and create positive change in our community.\n\n Best regards,\n Msaada Mashinani Team"
-        recipients = [email]
-        mail.send_message(subject=subject, recipients=recipients, body=body)
+        html_body = f"""
+            <p>Hello {user}!. </p>
+            <p>{org_name} is thrilled to announce the launch their latest campaign.</p>
+            <p><strong>Campaign Name:</strong> {campaignName}</p>
+            <p><strong>Description:</strong> {description}</p>
+            <p><strong>Your target amount is Ksh:</strong> {budget}</p>
+            <p><strong>Start Date:</strong> {startDate}</p>
+            <p><strong>End Date:</strong> {endDate}</p>
+            <p><strong>Campaign link:</strong> <a href="{url}">{url}</a></p>
+            <p>Together, we can achieve meaningful impact and create positive change in our community!</p>
+        """
+
+        msg = Message(subject, recipients=[email])
+        msg.html = html_body
+        mail.send(msg)
 
     # been selected to be a signatory
     def send_signatory_email(email, name,organisation):
