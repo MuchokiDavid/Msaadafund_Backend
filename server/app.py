@@ -524,6 +524,7 @@ def updateOne(campaignId):
         startDateStr = request.form.get('startDate')
         endDateStr = request.form.get('endDate')    
         youtube_link = request.form.get('youtubeLink')
+        print(f"Link: {youtube_link}")
 
         current_user = get_jwt_identity()
         
@@ -534,6 +535,8 @@ def updateOne(campaignId):
             existing_campaign.description = description
         if youtube_link:
             existing_campaign.youtube_link = youtube_link
+        if not youtube_link:
+            existing_campaign.youtube_link = None
         if banner:
 
             # Delete the existing banner from Cloudinary
