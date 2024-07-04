@@ -866,10 +866,14 @@ class OrganisationDetail(Resource):
                 existing_org.orgDescription = orgDescription
             if youtube_link:
                 existing_org.youtube_link = youtube_link
+            if not youtube_link:
+                existing_org.youtube_link = None
             if orgType:
                 existing_org.orgType = orgType
             if website_link:
                 existing_org.website_link = website_link
+            if not website_link:
+                existing_org.website_link = None
             if profileImage:
                 # Check if existing_org.profileImage is not None and not empty
                 if existing_org.profileImage:
