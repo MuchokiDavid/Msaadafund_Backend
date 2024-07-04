@@ -383,7 +383,7 @@ class campaignData(Resource):
     @cache.cached(timeout=30, key_prefix='all_campaigns')
     def get(self):
         page = request.args.get('page', default=1, type=int)
-        per_page = request.args.get('per_page', default=12, type=int)
+        per_page = request.args.get('per_page', default=16, type=int)
         campaigns = Campaign.query.filter_by(isActive=True).paginate(page=page, per_page=per_page)
         data = [campaign.serialize() for campaign in campaigns.items]
         response = make_response(jsonify(data), 200)
