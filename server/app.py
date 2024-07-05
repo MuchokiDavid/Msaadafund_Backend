@@ -1846,7 +1846,6 @@ class  ExpressDonations(Resource):
 #Route to get all donations by a logged in organisation
 @app.route("/api/v1.0/org_donations",methods=["GET"])
 @jwt_required()
-@cache.cached(timeout=30, key_prefix=lambda: f"donations_{get_jwt_identity()}")
 def get():
     current_user = get_jwt_identity()
     existing_org = Organisation.query.filter_by(id=current_user).first()
