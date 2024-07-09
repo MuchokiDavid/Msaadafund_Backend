@@ -97,8 +97,8 @@ class sendMail():
     #Function to send verification to organisation
     def send_org_verification_mail(org):
         from app import mail
-        subject = "Welcome to Msaada Mashinani"
-        body = f"Dear {org.orgName},\n\n Thank you for registering on our Msaada Mashinani Platform.\nYour account is not verified. Please reply to this email for verification\n\n Best regards,\n Msaada Mashinani Team"
+        subject = "Welcome to Msaada Hub"
+        body = f"Dear {org.orgName},\n\n Thank you for registering on our Msaada Hub Platform.\nYour account is not verified. Please reply to this email for verification\n\n Best regards,\n Msaada Hub Team"
         recipients = [org.orgEmail]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
@@ -106,7 +106,7 @@ class sendMail():
     def send_registration_email(org_email, org_name):
         from app import mail
         subject = "Organization Registration Confirmation"
-        body = f"Hello: {org_name},\n\nThank you for registering on our Msaada Mashinani Platform.\n\nTo complete your registration and begin using our services, Please contact our support team for verification. This step is necessary to ensure the integrity and security of our platform.\n\nWe appreciate your cooperation and look forward to assisting you.\n\nRegards,\nMsaada Mashinani Team"
+        body = f"Hello: {org_name},\n\nThank you for registering on our Msaada Hub Platform.\n\nTo complete your registration and begin using our services, Please contact our support team for verification. This step is necessary to ensure the integrity and security of our platform.\n\nWe appreciate your cooperation and look forward to assisting you.\n\nRegards,\nMsaada Hub Team"
         
         try:
             mail.send_message(subject=subject, recipients=[org_email], body=body)
@@ -118,8 +118,8 @@ class sendMail():
     #Function to send users email after sign up
     def send_user_signup_mail(user):
         from app import mail
-        subject = "Welcome to Msaada Mashinani"
-        body = f"Dear {user.firstName} {user.lastName},\n\n Thank you for registering on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
+        subject = "Welcome to Msaada Hub"
+        body = f"Dear {user.firstName} {user.lastName},\n\n Thank you for registering on our Msaada Hub Platform.\n\n Best regards,\n Msaada Hub Team"
         recipients = [user.email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
@@ -127,7 +127,7 @@ class sendMail():
     def send_subscription_email(email,user,org_name):
         from app import mail
         subject = f"Subscription to {org_name.upper()}"
-        body = f"Dear {user},\n\nWe're excited to inform you that you've successfully subscribed to receive updates on {org_name.upper()} latest campaigns and initiatives.\n\nYou're now part of our community dedicated to making a positive impact..\n\nBest regards,\nMsaada Mashinani Team"
+        body = f"Dear {user},\n\nWe're excited to inform you that you've successfully subscribed to receive updates on {org_name.upper()} latest campaigns and initiatives.\n\nYou're now part of our community dedicated to making a positive impact..\n\nBest regards,\nMsaada Hub Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
@@ -156,21 +156,21 @@ class sendMail():
     def send_signatory_email(email, name,organisation):
         from app import mail        
         subject = f"Signatory Selection by {organisation}"
-        body = f"Dear {name},\n\nYou have been selected to be a signatory on Msaada Mashinani Platform By {organisation}.\n\nBest regards,\nMsaada Mashinani Team"
+        body = f"Dear {name},\n\nYou have been selected to be a signatory on Msaada Hub Platform By {organisation}.\n\nBest regards,\nMsaada Hub Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
     def send_signatory_email_removal(email, name, organisation):
         from app import mail
         subject = f"Signatory Removal from {organisation}"
-        body = f"Dear {name},\n\nYou have been removed as a signatory from Msaada Mashinani Platform By {organisation}.\n\nBest regards,\nMsaada Mashinani Team"
+        body = f"Dear {name},\n\nYou have been removed as a signatory from Msaada Hub Platform By {organisation}.\n\nBest regards,\nMsaada Hub Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
     def send_signatory_add(name,organisation,email):
         from app import mail
         subject = f"Signatory Added by {organisation}"
-        body = f"Dear {organisation},\n\nYou have  added {name} as your signatory on Msaada Mashinani Platform.\n\nBest regards,\nMsaada Mashinani Team"
+        body = f"Dear {organisation},\n\nYou have  added {name} as your signatory on Msaada Hub Platform.\n\nBest regards,\nMsaada Hub Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
@@ -178,7 +178,7 @@ class sendMail():
         from app import mail
         url = "http://localhost:3000/user/login"  #change after hosting
         subject = f"Approval Request for {trans_type} by {organisation}"
-        body = f"Dear {name},\n\nYou have been requested to approve a {trans_type} request of Ksh {amount} to {trans_account} by {organisation}.\n Please login to approve the request {url}.\n\n\nBest regards,\nMsaada Mashinani Team"
+        body = f"Dear {name},\n\nYou have been requested to approve a {trans_type} request of Ksh {amount} to {trans_account} by {organisation}.\n Please login to approve the request {url}.\n\n\nBest regards,\nMsaada Hub Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
@@ -186,7 +186,7 @@ class sendMail():
     def org_approval_message(org, trans):
         from app import mail
         subject = f"Transaction Approved"
-        body = f"Dear {org.orgName},\nYour transaction: \n\nID: {trans.id} \n Type: {trans.trans_type} \n Amount: {trans.amount}\n Campaign: {trans.campaign_name}\nAccount: {trans.transaction_account_no} \n has been approved.\n\nBest regards,\n Msaada Mashinani Team"
+        body = f"Dear {org.orgName},\nYour transaction: \n\nID: {trans.id} \n Type: {trans.trans_type} \n Amount: {trans.amount}\n Campaign: {trans.campaign_name}\nAccount: {trans.transaction_account_no} \n has been approved.\n\nBest regards,\n Msaada Hub Team"
         recipients = [org.orgEmail]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
@@ -194,7 +194,7 @@ class sendMail():
     def org_rejected_message(org, trans):
         from app import mail
         subject = f"{trans.trans_type} transaction Rejected"
-        body = f"Dear {org.orgName},\nYour transaction: \n\nID: {trans.id} \nType: {trans.trans_type} \nAmount: {trans.amount}\nCampaign: {trans.campaign_name}\nAccount: {trans.transaction_account_no} \n has been rejected.\n\nBest regards,\n Msaada Mashinani Team"
+        body = f"Dear {org.orgName},\nYour transaction: \n\nID: {trans.id} \nType: {trans.trans_type} \nAmount: {trans.amount}\nCampaign: {trans.campaign_name}\nAccount: {trans.transaction_account_no} \n has been rejected.\n\nBest regards,\n Msaada Hub Team"
         recipients = [org.orgEmail]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
@@ -202,7 +202,7 @@ class sendMail():
     def send_user_signup_account(email, providers, accountNumber, orgName):
         from app import mail
         subject = f"{providers} Account Created Successful"
-        body = f"Dear {orgName},\n\n Thank you for registering your {providers} account with account number {accountNumber} on our Msaada Mashinani Platform.\n\n Best regards,\n Msaada Mashinani Team"
+        body = f"Dear {orgName},\n\n Thank you for registering your {providers} account with account number {accountNumber} on our Msaada Hub Platform.\n\n Best regards,\n Msaada Hub Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
@@ -210,14 +210,14 @@ class sendMail():
     def send_mail_on_send_money_success(email, amount, transType, orgName):
         from app import mail
         subject = f"Transacation Successful"
-        body = f"Dear {orgName},\n\n You transaction of Ksh {amount} to {transType} on our Msaada Mashinani Platform was successiful.\n\n Best regards,\n Msaada Mashinani Team"
+        body = f"Dear {orgName},\n\n You transaction of Ksh {amount} to {transType} on our Msaada Hub Platform was successiful.\n\n Best regards,\n Msaada Hub Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
     
     def send_mail_on_send_money_failure (email, amount, transType, orgName):
         from app import mail
         subject = f"Transacation Failed"
-        body = f"Dear {orgName},\n\n Your transaction of Ksh {amount} for {transType} on our Msaada Mashinani Platform was not successiful.Please try again\n\n Best regards,\n Msaada Mashinani Team"
+        body = f"Dear {orgName},\n\n Your transaction of Ksh {amount} for {transType} on our Msaada Hub Platform was not successiful.Please try again\n\n Best regards,\n Msaada Hub Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
