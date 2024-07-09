@@ -1,10 +1,11 @@
-# Msaada Hub - Backend
+# Msaadafund - Backend
 
 Welcome to the backend repository for Msaada Hub, an automated donation platform dedicated to providing support and assistance to communities in need, with a focus on grassroots-level initiatives in Kenya.
 
+
 ## Overview
 
-Msaada Mshinani's backend is built with Flask, a lightweight and versatile web framework for Python. This repository contains the backend codebase responsible for handling API requests, processing transactions, managing user accounts, and interacting with the database.
+Msaadafund's backend is built with Flask, a lightweight and versatile web framework for Python. This repository contains the backend codebase responsible for handling API requests, processing transactions, managing user accounts, and interacting with the database.
 
 ## Features
 
@@ -17,12 +18,12 @@ Msaada Mshinani's backend is built with Flask, a lightweight and versatile web f
 
 ## Getting Started
 
-To get started with the Msaada Mshinani backend, follow these steps:
+To get started with the Msaadafund backend, follow these steps:
 
 1. Clone this repository to your local machine:
 
    ```bash
-   git clone https://github.com/MuchokiDavid/MsaadaMashinani_Backend.git
+   git clone https://github.com/MuchokiDavid/Msaadafund_Backend.git
     ```
 2. Install dependencies using pip:
 
@@ -35,7 +36,7 @@ To get started with the Msaada Mshinani backend, follow these steps:
     - Example:
 
         ```bash
-        DATABASE_URL=postgresql://username:password@localhost:5432/msaada_mshinani
+        DATABASE_URL=postgresql://username:password@localhost:5432/msaada
         INTERSEND_API_KEY=your-api-key
         INTERSEND_PUBLIC_KEY= your-key
         SECRET_KEY=your-secret-key
@@ -64,7 +65,7 @@ To get started with the Msaada Mshinani backend, follow these steps:
 
 ## Contributing
 
-We welcome contributions from the community to help improve Msaada Mshinani. If you'd like to contribute, please follow these guidelines:
+We welcome contributions from the community to help improve Msaadafund. If you'd like to contribute, please follow these guidelines:
 
 1. Fork the repository and create a new branch for your feature or bug fix.
 2. Make your changes and ensure that tests and linting pass.
