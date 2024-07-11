@@ -46,6 +46,7 @@ service = APIService(token=token,publishable_key=publishable_key, test=True)
 cache = Cache()
 
 app = Flask(__name__)
+application = app
 admin = Admin(app, name='My Admin Panel', template_mode='bootstrap4')
 
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
