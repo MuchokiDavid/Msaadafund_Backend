@@ -1,8 +1,8 @@
-"""Models created
+"""initial migration
 
-Revision ID: 958aeef9374d
+Revision ID: c17f490e3835
 Revises: 
-Create Date: 2024-05-31 21:13:21.265364
+Create Date: 2024-07-14 22:41:41.841717
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '958aeef9374d'
+revision = 'c17f490e3835'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -68,6 +68,7 @@ def upgrade():
     sa.Column('transaction_date', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('org_id', sa.String(), nullable=True),
     sa.Column('campaign_name', sa.String(), nullable=True),
+    sa.Column('bank_code', sa.String(), nullable=True),
     sa.Column('signatory_status', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -96,6 +97,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('providers', sa.String(), nullable=False),
     sa.Column('bank', sa.String(), nullable=True),
+    sa.Column('bank_code', sa.String(), nullable=True),
     sa.Column('accountName', sa.String(), nullable=False),
     sa.Column('accountNumber', sa.String(), nullable=False),
     sa.Column('hashed_pin', sa.String(length=8), nullable=False),
@@ -119,7 +121,7 @@ def upgrade():
     sa.Column('featured', sa.Boolean(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('org_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['org_id'], ['organisations.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('campaignName'),
