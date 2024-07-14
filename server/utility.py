@@ -16,7 +16,7 @@ from models import Campaign
 
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
-service = APIService(token=token,publishable_key=publishable_key, test=True)
+service = APIService(token=token,publishable_key=publishable_key, test=False)
 
 def check_wallet_balance(wallet_id):
     try:
