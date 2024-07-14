@@ -13,10 +13,19 @@ from intasend import APIService
 from models import Campaign
 
 
-
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
-service = APIService(token=token,publishable_key=publishable_key, test=False)
+# service = APIService(token=token,publishable_key=publishable_key, test=False)
+
+# Initialize APIService with error handling
+service = None
+if token and publishable_key:
+    try:
+        service = APIService(token=token, publishable_key=publishable_key, test=False)
+    except Exception as e:
+        print(f"Error initializing APIService: {e}")
+else:
+    print("Missing IntaSend token or publishable key")
 
 def check_wallet_balance(wallet_id):
     try:
