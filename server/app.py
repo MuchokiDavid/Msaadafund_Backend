@@ -42,7 +42,7 @@ from flask_caching import Cache
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
 main_pocket= os.getenv('MAIN_WALLET')
-service = APIService(token=token,publishable_key=publishable_key, test=True)
+service = APIService(token=token,publishable_key=publishable_key, test=False)
 cache = Cache()
 
 app = Flask(__name__)
