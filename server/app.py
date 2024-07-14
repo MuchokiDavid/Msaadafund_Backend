@@ -1124,8 +1124,8 @@ def campaign_money_withdrawal():
     signatories = Signatory.query.filter_by(org_id=organisation.id).all()
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
-    elif len(signatories) < 3:
-        return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
+    elif len(signatories) < 2:
+        return jsonify({"error": "Please register atleast two signatories to initiate a transaction."}), 400
     
     #check wallet balance
     if float(check_wallet_balance(campaigns.walletId))<float(amount):
@@ -1230,8 +1230,8 @@ def campaign_buy_airtime():
     signatories = Signatory.query.filter_by(org_id=organisation.id).all()
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
-    elif len(signatories) < 3:
-        return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
+    elif len(signatories) < 2:
+        return jsonify({"error": "Please register atleast two signatories to initiate a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
@@ -1413,8 +1413,8 @@ def campaign_pay_to_paybill():
     signatories = Signatory.query.filter_by(org_id=existing_org.id).all()
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
-    elif len(signatories) < 3:
-        return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
+    elif len(signatories) < 2:
+        return jsonify({"error": "Please register atleast two signatories to initiate a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
@@ -1476,8 +1476,8 @@ def campaign_pay_to_till():
         signatories = Signatory.query.filter_by(org_id=existing_org.id).all()
         if len(signatories) < 1:
             return jsonify({"error": "No signatories found!"}), 404
-        elif len(signatories) < 3:
-            return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
+        elif len(signatories) < 2:
+            return jsonify({"error": "Please register atleast two signatories to initiate a transaction."}), 400
         
         new_transaction=Transactions(tracking_id='Pending',
                                         batch_status= 'Pending',

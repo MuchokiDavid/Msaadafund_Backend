@@ -431,7 +431,7 @@ class Transactions(db.Model):
         approvals = self.approvals
         if any(approval.approval_status is False for approval in approvals):
             self.signatory_status = 'Rejected'
-        elif all(approval.approval_status for approval in approvals) and len(approvals) >= 3:
+        elif all(approval.approval_status for approval in approvals) and len(approvals) >= 2:
             self.signatory_status = 'Approved'
         else:
             self.signatory_status = 'Awaiting'
