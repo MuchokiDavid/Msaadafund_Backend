@@ -35,7 +35,7 @@ import tempfile
 from sqlalchemy.exc import IntegrityError
 from intasendrequests import buy_airtime,pay_to_paybill,pay_to_till,withdraw_to_bank,withdraw_to_mpesa
 from flask_caching import Cache
-
+import logging
 
 
 #fetch environment variables  for the api key and server url
@@ -61,6 +61,9 @@ app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['OTP_STORAGE'] = {}
+logging.basicConfig(filename='app.log', level=logging.ERROR,
+                    format='%(asctime)s %(levelname)s %(name)s %(message)s')
+
 
 migrate = Migrate(app, db)
 db.init_app(app)
@@ -199,70 +202,87 @@ class userDataByid(Resource):
 @cache.cached(timeout=30, key_prefix=lambda: f"substatus_{get_jwt_identity()}")
 def get_subscription():
     current_user = get_jwt_identity()
-    user = User.query.filter_by(id=current_user).first()
-    if not user:
-        return {"error":"User not found"}, 404
-    subscriptions = Subscription.query.filter_by(user_id=user.id).all()
-    if not subscriptions:
-        return {"error":"No subscription found"}, 404
-    response_dict = [sub.serialize() for sub in subscriptions]
-    response = make_response(jsonify(response_dict), 200)
-    return response
+    try:
+        user = User.query.filter_by(id=current_user).first()
+        if not user:
+            return {"error":"User not found"}, 404
+        subscriptions = Subscription.query.filter_by(user_id=user.id).all()
+        if not subscriptions:
+            return {"error":"No subscription found"}, 404
+        response_dict = [sub.serialize() for sub in subscriptions]
+        response = make_response(jsonify(response_dict), 200)
+        return response
+    except Exception as e:
+        logging.error(e)
+        return {"error": str(e)}, 500
 
 class GetSubscription(Resource):
     @jwt_required()
     @cache.cached(timeout=30, key_prefix=lambda: f"usersubs_{get_jwt_identity()}")
     def get(self,org_id):
         current_user = get_jwt_identity()
-        user = User.query.filter_by(id=current_user).first()
-        if not user:
-            return {"error":"User not found"}, 404
-        subscriptions = Subscription.query.filter_by(user_id=user.id, organisation_id=org_id).first()
-        if not subscriptions:
-            return {"error":"No subscription found"}, 404
-        # response_dict = [sub.serialize() for sub in subscriptions]
-        response_dict = subscriptions.serialize()
-        response = make_response(jsonify(response_dict), 200)
-        return response
+        try:
+            user = User.query.filter_by(id=current_user).first()
+            if not user:
+                return {"error":"User not found"}, 404
+            subscriptions = Subscription.query.filter_by(user_id=user.id, organisation_id=org_id).first()
+            if not subscriptions:
+                return {"error":"No subscription found"}, 404
+            # response_dict = [sub.serialize() for sub in subscriptions]
+            response_dict = subscriptions.serialize()
+            response = make_response(jsonify(response_dict), 200)
+            return response
+        except Exception as e:
+            logging.error(e)
+            return {"error": str(e)}, 500
     
     @jwt_required()
     def post(self,org_id):
         current_user = get_jwt_identity()
-        user = User.query.filter_by(id=current_user).first()
-        if not user:
-            return {"error":"User not found"}, 404
+        try:
+            user = User.query.filter_by(id=current_user).first()
+            if not user:
+                return {"error":"User not found"}, 404
+            
+            org = Organisation.query.filter_by(id=org_id).first()
+            if not org:
+                return {"error":"Organisation not found"}, 404
+            org_name = org.orgName
+            available_subscription = Subscription.query.filter_by(user_id=user.id, organisation_id=org_id).first()
+            if available_subscription:
+                return {"error":"Subscription already exists"}, 404
+            
+            
+            new_subs = Subscription(user_id=user.id, organisation_id=org_id)
         
-        org = Organisation.query.filter_by(id=org_id).first()
-        if not org:
-            return {"error":"Organisation not found"}, 404
-        org_name = org.orgName
-        available_subscription = Subscription.query.filter_by(user_id=user.id, organisation_id=org_id).first()
-        if available_subscription:
-            return {"error":"Subscription already exists"}, 404
-        
-        
-        new_subs = Subscription(user_id=user.id, organisation_id=org_id)
-    
-        db.session.add(new_subs)
-        db.session.commit()
-        sendMail.send_subscription_email(user.email, user.firstName, org_name)
+            db.session.add(new_subs)
+            db.session.commit()
+            sendMail.send_subscription_email(user.email, user.firstName, org_name)
 
-        response = make_response(jsonify(new_subs.serialize()), 200)
-        return response
+            response = make_response(jsonify(new_subs.serialize()), 200)
+            return response
+        
+        except Exception as e:
+            logging.error(e)
+            return {"error": str(e)}, 500
     
     @jwt_required()
     def delete(self, org_id):
         current_user = get_jwt_identity()
-        user = User.query.filter_by(id=current_user).first()
-        if not user:
-            return {"error":"User not found"}, 404
-        available_subscription = Subscription.query.filter_by(user_id=user.id, organisation_id=org_id).first()
-        if not available_subscription:
-            return {"error":"Subscription not found"}, 404
-        db.session.delete(available_subscription)
-        db.session.commit()
+        try:
+            user = User.query.filter_by(id=current_user).first()
+            if not user:
+                return {"error":"User not found"}, 404
+            available_subscription = Subscription.query.filter_by(user_id=user.id, organisation_id=org_id).first()
+            if not available_subscription:
+                return {"error":"Subscription not found"}, 404
+            db.session.delete(available_subscription)
+            db.session.commit()
 
-        return {"message": "Subscription deleted successfully"},200
+            return {"message": "Subscription deleted successfully"},200
+        except Exception as e:
+            logging.error(e)
+            return {"error": str(e)}, 500
         
 # Get all subscriptions in an organisation to show on org dashboard
 class OrgSubscriptions(Resource):
@@ -270,13 +290,17 @@ class OrgSubscriptions(Resource):
     @cache.cached(timeout=30, key_prefix=lambda: f"orgsubs_{get_jwt_identity()}")
     def get(self):
         current_user= get_jwt_identity()
-        existing_org= Organisation.query.filter_by(id=current_user).first()
-        if not existing_org:
-            return jsonify({"error":"Organisation does not exist."}),404
-        all_subscriptions= Subscription.query.filter_by(organisation_id=existing_org.id).all()
-        response_dict = [sub.serialize() for sub in all_subscriptions]
-        response = make_response(jsonify({'message':response_dict}), 200)    
-        return response             
+        try:
+            existing_org= Organisation.query.filter_by(id=current_user).first()
+            if not existing_org:
+                return jsonify({"error":"Organisation does not exist."}),404
+            all_subscriptions= Subscription.query.filter_by(organisation_id=existing_org.id).all()
+            response_dict = [sub.serialize() for sub in all_subscriptions]
+            response = make_response(jsonify({'message':response_dict}), 200)    
+            return response       
+        except Exception as e:
+            logging.error(e)
+            return {"error": str(e)}, 500      
         
 #===============================Campaign model routes==============================================================
 
@@ -351,6 +375,7 @@ def post():
 
             new_campaign.walletId = response.get("wallet_id")
         except Exception as e:
+            logging.error(e)
             return jsonify({"error": str(e)}), 404
 
         # Save campaign to database
@@ -371,11 +396,14 @@ def post():
                 )
 
         except Exception as e:
+            db.session.rollback()
+            logging.error(e)
             return jsonify({"error": "Something went wrong while creating your campaign"}), 500
 
         return jsonify({"message": new_campaign.serialize()}), 200
 
     except Exception as e:
+        logging.error(e)
         return jsonify({"error": str(e)}), 404
 
 #get campaigns
@@ -402,7 +430,8 @@ def get_all_campaigns():
             output.append(campaign_dict)
         return jsonify(output)
     except Exception as e:
-        return {'error': 'Error getting all campaigns: {}'.format(str(e))}, 500
+        logging.error(e)
+        return {"error": str(e)}, 500
     
 #Get all campaigns  by organization id
 class OrgCampaigns(Resource):
@@ -431,6 +460,7 @@ def  getInactiveCampaign():
         response = make_response(jsonify(data), 200)
         return response
     except Exception as e:
+        logging.error(e)
         return {"error":str(e)}
    
 
@@ -453,6 +483,7 @@ def activateCampaign(campaignId):
         return response
 
     except Exception as e:
+        logging.error(e)
         return {"error":str(e)}
 
 
@@ -486,6 +517,7 @@ def feature_campaign(campaign_id):
         return jsonify({"message": "Campaign featured successfully."}), 200
     except Exception as e:
         print("Error occured : ", e)
+        logging.error(e)
         return jsonify({"error": "An error occurred while retrieving the featured campaigns."})
 
 @app.route('/campaigns/<int:campaign_id>/unfeature', methods=['POST'])
@@ -497,6 +529,7 @@ def unfeature_campaign(campaign_id):
         return jsonify({"message": "Campaign unfeatured successfully."}), 200
     except Exception as e:
         print("Error occured : ", e)
+        logging.error(e)
         return jsonify({"error": "An error occurred while retrieving the featured campaigns."})
     
 #-----------------------------------------------------------------------------------------------------------------
@@ -508,6 +541,7 @@ def readOne(campaignId):
     try:
         campaign = Campaign.query.get(campaignId)
     except Exception as e:
+        logging.error(e)
         print(e)
         return jsonify({"error":f"Invalid campaign ID: {campaignId}"}), 400
 
@@ -552,6 +586,7 @@ def updateOne(campaignId):
                     else:
                         print("Failed to delete the image.")
                 except Exception as e:
+                    logging.error(e)
                     print(f"An error occurred: {e}")
 
             # Upload the new banner to Cloudinary
@@ -574,6 +609,8 @@ def updateOne(campaignId):
             if endDate < startDate:
                 return {'error': 'end date cannot be before start date'}, 400
         except Exception as e:
+            print(e)
+            logging.error(e)
             return {"error":str(e)}
     
         
@@ -583,6 +620,7 @@ def updateOne(campaignId):
         return response
     except Exception as e:
         print(e)
+        logging.error(e)
         return {"error":str(e)}
 
 # delete campaign
@@ -688,6 +726,7 @@ def check_wallet(id):
 
         return jsonify({'wallet_details': response}), 200
     except Exception as e:
+        logging.error(e)
         return jsonify({ "error":"Internal server error"}), 400
     
 #==================================Account model routes==============================================================
@@ -743,6 +782,7 @@ class addAccount(Resource):
                 "user": new_account.serialize()
             }), 200
         except Exception as e:
+            logging.error(e)
             return ({"error": "Failed to create account"}), 500
 
 #Get account by id
@@ -763,7 +803,8 @@ class accountById(Resource):
 
             return {"message": "Account deleted successfully"},200  
         except Exception as e:
-            return  
+            logging.error(e)
+            return ({"error": "Failed to create account"}), 500
 
 #===============================Account pin routes==============================================================
 
@@ -888,6 +929,7 @@ class OrganisationDetail(Resource):
                         else:
                             print("Failed to delete the image.")
                     except Exception as e:
+                        logging.error(e)
                         print(f"An error occurred: {e}")
                         
                 result = upload(profileImage)
@@ -899,6 +941,7 @@ class OrganisationDetail(Resource):
             return response
         except Exception as e:
             print(e)
+            logging.error(e)
             return {"error": str(e)}, 500
 
 
@@ -1004,6 +1047,7 @@ class SignatoryDetail(Resource):
             raise ValueError(f"Database integrity error: {str(e)}")
         except Exception as e:
             db.session.rollback()
+            logging.error(e)
             return {"error": f"Unexpected error: {str(e)}"}, 500
     
     @jwt_required()
@@ -1029,6 +1073,7 @@ class SignatoryDetail(Resource):
             return response
 
         except Exception as e:
+            logging.error(e)
             return {"error":str(e)}, 500
     
 #=====================================Intasend sdk routes==============================================================
@@ -1044,6 +1089,7 @@ def bank_data():
         return jsonify(data), 200
         
     except Exception as e:
+        logging.error(e)
         print(e)
         return jsonify({"error": "An error occurred while processing your request"}),500
 
@@ -1147,10 +1193,12 @@ def campaign_money_withdrawal():
                   
             except Exception as e:
                 print(e)
+                logging.error(e)
                 return jsonify({"error":str(e)}),500       
         else:
             return jsonify({"error":"select transaction"}),400
     except Exception as e :
+        logging.error(e)
         print(e)
         return jsonify({"error":str(e)}),500
 
@@ -1460,6 +1508,7 @@ def campaign_pay_to_till():
         return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
             
     except Exception as e:
+        logging.error(e)
         return jsonify({"error": str(e)}), 400
 
 #----------------------------------Webhooks----------------------------------------
@@ -1581,6 +1630,7 @@ def collection_webhook():
         print ('Webhook received successfully')
     
     except Exception as e:
+        logging.error(f"Collecting hook error occurred: {e}")
         print(f"Collecting hook error occurred: {e}")
 
 #Intersend web hook to listen to changes in send money ie. Withdraw and buy airtime
@@ -1615,6 +1665,7 @@ def send_money_webhook():
         print ('Webhook received successfully')
     
     except Exception as e:
+        logging.error(e)
         print(f"Send money hook error occurred: {e}")
         
 #Route to check intasend transaction status
@@ -1648,6 +1699,7 @@ def check_transaction_status():
         return jsonify({"status": status})
 
     except Exception as e:
+        logging.error(e)
         return jsonify({"error": str(e)}), 500
     
 #============================== Transactions route===========================================================
@@ -1671,6 +1723,7 @@ class GetTransactions(Resource):
 
         except Exception as e:
             error_message = str(e)
+            logging.error(error_message)
             print("Error in GetTransactions:", error_message)
             return jsonify({"error": error_message}), 500
 
@@ -1787,6 +1840,7 @@ def withdraw_pdf():
 
     
     except Exception as e:
+        logging.error(e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -1842,6 +1896,7 @@ class  ExpressDonations(Resource):
         except Exception as e:
             print (e)
             if e:
+                logging.error(e)
                 return make_response(jsonify({"error": f"Unexpected Error: {str(e)}"}), 400)
 
 #Route to get all donations by a logged in organisation
@@ -1923,6 +1978,7 @@ class Donate(Resource):
                 db.session.rollback()
                 return {"error":"An error occurred while processing your donation"}
         except Exception as e:
+            logging.error(e)
             print (e)
             return jsonify({"error": "An error occurred while processing your request. Please try again later"}), 500
 
@@ -2011,6 +2067,7 @@ def donate_via_card():
     
     except Exception as e:
         print(e)
+        logging.error(e)
         return jsonify({"error": "An error occurred while processing your request"}),400
 
 #--------------------Donate card when user is logged in--------------------------------------------
@@ -2079,6 +2136,7 @@ def donate_via_card_logged_in():
     
     except Exception as e:
         print(e)
+        logging.error(e)
         return jsonify({"error": "An error occurred while processing your request"}),400
 
 #=======================================Intasend routes==============================================================
@@ -2107,6 +2165,7 @@ def wallet_transactions_filters(wallet_id):
             return jsonify(data.get("results")), 200
             
         except Exception as e:
+            logging.error(e)
             return jsonify({"error": "An error occurred while processing your request"}),500
 
     if request.method == 'POST':
@@ -2146,6 +2205,7 @@ def wallet_transactions_filters(wallet_id):
             return jsonify(data.get("results")), 200
             
         except Exception as e:
+            logging.error(e)
             return jsonify({"error": "An error occurred while processing your request"}),500
         
 #===============================Transaction pdf route==============================================================
@@ -2232,6 +2292,7 @@ def get_transactions_pdf(wallet_id):
 
     
     except Exception as e:
+        logging.error(e)
         return jsonify({"error": "An error occurred while processing your request"}),500
 
 #===============================Donation pdf route==============================================================
@@ -2369,6 +2430,7 @@ def get_org_donations_pdf():
     
     except Exception as e:
         # return the error e
+        logging.error(e)
         return jsonify({'error': str(e)}), 500
 
 #===============================Contact us form route==============================================================
@@ -2393,6 +2455,7 @@ def contact_us():
         return  jsonify({"message":"Your message has been received and will be responded to shortly."}),200
     except Exception as e:
         db.session.rollback()
+        logging.error(e)
         return jsonify({"error":f"Email already exists in our database.\n {str(e)}"}),400
 
 #===============================Reset password routes==============================================================
@@ -2490,6 +2553,7 @@ def acc_reset_pin():
             db.session.commit()
             return jsonify({'message': 'PIN reset successfully'}), 200
         except Exception as e:
+            logging.error(e)
             return jsonify({'error': str(e)}), 500
     else:
         return jsonify({'error': 'Invalid OTP or email'}), 400
