@@ -2109,7 +2109,7 @@ def donate_via_card_logged_in():
             "wallet_id": existing_campaign.walletId,
             "method": "CARD-PAYMENT",
             "amount": amount,
-            "redirect_url": "http://localhost:3000/thank-you",
+            "redirect_url": "https://msaadafund.com/thank-you",
             "currency": currency,
             "card_tarrif": "BUSINESS-PAYS",
             "api_ref": res
