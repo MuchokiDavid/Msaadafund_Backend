@@ -14,7 +14,7 @@ service = APIService(token=token,publishable_key=publishable_key, test=True)
 
 def buy_airtime(wallet_id,transaction,org_name):
     try:        
-        url = "https://sandbox.intasend.com/api/v1/send-money/initiate/"
+        url = "https://api.intasend.com/api/v1/send-money/initiate/"
 
         payload = {
             "currency": "KES",
@@ -130,7 +130,7 @@ def pay_to_till(wallet_id, transaction):
 # withdraw to bank function
 def withdraw_to_bank(wallet_id,transaction):
     try:
-        url = "https://sandbox.intasend.com/api/v1/send-money/initiate/"
+        url = "https://api.intasend.com/api/v1/send-money/initiate/"
 
         payload = {
             "currency": "KES",
