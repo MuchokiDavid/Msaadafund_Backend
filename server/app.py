@@ -56,6 +56,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
 app.config['MAIL_PORT'] = os.getenv('MAIL_PORT')
 app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_DEBUG'] = True
+app.config['MAIL_MAX_ENTRIES'] = 10
+app.config['MAIL_SUPPRESS_SEND'] = False
+app.config['MAIL_ASCII_ATTACHMENTS'] = False
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
@@ -1082,7 +1087,7 @@ class SignatoryDetail(Resource):
 @app.route('/api/v1.0/all_banks', methods=['GET'])
 @cache.cached(timeout=10) 
 def bank_data():
-    url = "https://payment.intasend.com/api/v1/send-money/bank-codes/ke/"
+    url = "https://api.intasend.com/api/v1/send-money/bank-codes/ke/"
     try:
         response = requests.get(url)
         data = response.json()
@@ -1254,9 +1259,9 @@ def campaign_buy_airtime():
         user = User.query.filter_by(id=signatory.user_id).first() 
         new_approval = TransactionApproval(transaction_id=new_transaction.id, signatory_id=signatory.id)
         db.session.add(new_approval)
-        db.session.commit()
-
         sendMail.send_approval_message(user.firstName,user.email,organisation.orgName,amount,new_transaction.trans_type,phone_number)
+        
+    db.session.commit()
 
     return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
 
@@ -2005,7 +2010,7 @@ def donate_via_card():
     currency= data.get('currency')
     amount= data.get('amount')
     campaign_id= data.get('campaignId')
-    url = "https://sandbox.intasend.com/api/v1/checkout/"
+    url = "https://api.intasend.com/api/v1/checkout/"
     donor_names= ''
 
     if not amount:
@@ -2083,7 +2088,7 @@ def donate_via_card_logged_in():
     currency= data.get('currency')
     amount= data.get('amount')
     campaign_id= data.get('campaignId')
-    url = "https://sandbox.intasend.com/api/v1/checkout/"
+    url = "https://api.intasend.com/api/v1/checkout/"
 
     if not amount:
         return make_response(jsonify({"error":"Amount is required."}), 400)
@@ -2151,7 +2156,7 @@ def wallet_transactions_filters(wallet_id):
         return  jsonify({"error":"Organisation does not exist"}),401
     
     if request.method== 'GET':
-        url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
+        url = f"https://api.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
         try:
             headers = {
                 "accept": "application/json",
@@ -2179,19 +2184,19 @@ def wallet_transactions_filters(wallet_id):
         #     return  jsonify({"error":"Campaign does not exist'"}),404
         # wallet_id= existing_campaign.walletId
         # if wallet_id:
-        url=f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
+        url=f"https://api.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
         if trans_type:
-            url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}"
+            url = f"https://api.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}"
         if  start_date and trans_type:
-            url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}Q&start_date={start_date}"
+            url = f"https://api.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}Q&start_date={start_date}"
         if start_date and end_date:
-            url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
+            url = f"https://api.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
         if trans_type and end_date:
-            url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&end_date={end_date}"
+            url = f"https://api.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&end_date={end_date}"
         if trans_type and start_date and end_date:
-            url = f"https://sandbox.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
+            url = f"https://api.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
         if end_date:
-            url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&end_date={end_date}"
+            url = f"https://api.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&end_date={end_date}"
         try:
             headers = {
                 "accept": "application/json",
@@ -2220,7 +2225,7 @@ def get_transactions_pdf(wallet_id):
     
     wallet_id = request.args.get('wallet_id')  # Assuming wallet_id is passed as a query parameter
 
-    url = f"https://sandbox.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
+    url = f"https://api.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
     try:
         headers = {
             "accept": "application/json",
