@@ -4,8 +4,8 @@ from faker import Faker
 from random import choice as rc
 from flask_bcrypt import Bcrypt
 import datetime
-from models import db, Campaign, User, Organisation, Donation
-from app import app
+from .models import db, Campaign, User, Organisation, Donation
+from .app import app
 
 fake=Faker()
 bcrypt= Bcrypt()
