@@ -1,4 +1,4 @@
-from models import User,db, bcrypt
+from .models import User,db, bcrypt
 from flask_admin.contrib.sqla import  ModelView
 # from flask import render_template,request,redirect,url_for,jsonify,Blueprint
 # from flask_login import LoginManager,current_user, UserMixin, login_user, logout_user, login_required

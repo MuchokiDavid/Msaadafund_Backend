@@ -1,7 +1,7 @@
 from flask import  Blueprint, jsonify, request, make_response
-from models import User, bcrypt, db,TokenBlocklist, Organisation
+from .models import User, bcrypt, db,TokenBlocklist, Organisation
 from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity,jwt_required,get_jwt
-from utility import sendMail
+from .utility import sendMail
 import re
 
 auth_bp = Blueprint("auth", __name__)

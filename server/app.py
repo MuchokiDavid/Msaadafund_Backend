@@ -2,8 +2,8 @@
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription, TransactionApproval, Signatory
-from utility import check_wallet_balance, sendMail, OTPGenerator
+from .models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription, TransactionApproval, Signatory
+from .utility import check_wallet_balance, sendMail, OTPGenerator
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -15,11 +15,11 @@ import requests
 from datetime import datetime, date
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
 from flask_mail import Mail
-from auth import auth_bp
+from .auth import auth_bp
 # from views import view_bp
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
-from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView, TransactionAdminView,SignatoriesadminView
+from .views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView, TransactionAdminView,SignatoriesadminView
 from cloudinary.uploader import upload
 import cloudinary.api
 import random
@@ -33,7 +33,7 @@ import re
 import textwrap
 import tempfile
 from sqlalchemy.exc import IntegrityError
-from intasendrequests import buy_airtime,pay_to_paybill,pay_to_till,withdraw_to_bank,withdraw_to_mpesa
+from .intasendrequests import buy_airtime,pay_to_paybill,pay_to_till,withdraw_to_bank,withdraw_to_mpesa
 from flask_caching import Cache
 import logging
 
@@ -849,10 +849,11 @@ def confirm_accountotp():
         return jsonify({'error': 'Invalid OTP, Generate a new one'}), 400
 
 #====================================Organisation by id routes==============================================================
-@app.route('/api/v1.0/org_by_id/<string:orgName>', methods=['GET'])
+@app.route('/api/v1.0/org_by_id/<int:id>', methods=['GET'])
 @cache.cached(timeout=30) 
-def org_by_id(orgName):
-    organisation= Organisation.query.filter_by(orgName=orgName, isVerified=True).first()
+def org_by_id(id):
+    organisation= Organisation.query.filter_by(id=id, isVerified=True).first()
+    print("reached")
     if not organisation:
         return {"error":"Organisation not found"}, 404
     
