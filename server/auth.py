@@ -1,16 +1,25 @@
 from flask import  Blueprint, jsonify, request, make_response
-from .models import User, bcrypt, db,TokenBlocklist, Organisation
+from models import User, bcrypt, db,TokenBlocklist, Organisation
 from flask_jwt_extended import create_access_token,create_refresh_token, get_jwt_identity,jwt_required,get_jwt
-from .utility import sendMail
+from utility import sendMail
 import re
+from google.oauth2 import id_token,credentials as google_credentials
+# from google.oauth2.credentials import Credentials
+from google.auth.transport import requests
+# from googleapiclient.discovery import build
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 auth_bp = Blueprint("auth", __name__)
 
 # import mail from app
+CLIENT_ID = os.getenv("CLIENT_ID")
 
 # signup for user 
 @auth_bp.route("/user/register", methods=["POST"])
 def register_user():
+    from app import logging
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid request data"}), 400
@@ -38,9 +47,6 @@ def register_user():
     if existing_email:
         return jsonify({"error": "Email already exists"}), 400
 
-    # existing_national_id = User.query.filter_by(nationalId=nationalId).first()
-    # if existing_national_id:
-    #     return jsonify({"error": "National ID already exists"}), 400
 
     existing_phone_number = User.query.filter_by(phoneNumber=phoneNumber).first()
     if existing_phone_number:
@@ -65,6 +71,8 @@ def register_user():
             "user":new_user.serialize()
         }), 200
     except  Exception as e:
+        db.session.rollback()
+        logging.error(e)
         print("Error in user register route: ", str(e))
         return jsonify({"error": "Failed to create account"}), 500
 
@@ -84,6 +92,8 @@ def login():
         return jsonify({'error': 'User not registered'}), 401 
     
     if user.role in ('User', 'Admin'):
+        if user.hashed_password == '' or user.hashed_password == None:
+            return jsonify({'error': 'Invalid credentials'}), 401
         if not bcrypt.check_password_hash(user.hashed_password, data.get('password')):
             return jsonify({'error': 'Invalid credentials'}), 401 
         
@@ -105,6 +115,118 @@ def login():
         }), 200
     else: 
         return jsonify({'error':'Unauthorized user'}), 401
+
+@auth_bp.route('/user/google-login', methods=["POST"])
+def google_login():
+    token = request.json.get('token')
+    if not token:
+        return jsonify({'error': 'Missing token'}), 400
+    try:
+        # Verify Google OAuth token
+        idinfo = id_token.verify_oauth2_token(
+            token,
+            requests.Request(),
+            CLIENT_ID
+        )
+
+        # Ensure the token is issued by Google
+        if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+            return jsonify({'error': 'Wrong issuer.'}), 400
+
+        # Extract user information
+        user_id = idinfo['sub']
+        user_email = idinfo['email']
+
+        # Check if user exists in your database
+        user = User.query.filter_by(email=user_email, isActive=True).first()
+
+        if not user:
+            # If user does not exist, create a new account
+            user = User(
+                firstName=idinfo.get('given_name', 'Unknown'),
+                lastName=idinfo.get('family_name', ''),
+                username=idinfo.get('email', ''),
+                email=user_email,
+                hashed_password='',
+                phoneNumber='',
+                isActive=True,
+                role='User'
+            )
+            db.session.add(user)
+            db.session.commit()
+        
+        is_signatory = bool(user.signatories)
+
+        # Generate access token for the user
+        access_token = create_access_token(identity=user.id)
+
+        # Return response with JWT and user data
+        return jsonify({
+            "message": 'Welcome {}'.format(user.firstName),
+            "access_token": access_token,
+            "user": user.serialize(),
+            "is_signatory": is_signatory
+        }), 200
+
+    except ValueError as e:
+        print(e)
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        print(e)
+        return jsonify({'error': 'An error occurred'}), 500
+
+# Sign up with google
+@auth_bp.route('/user/google-signup', methods=["POST"])
+def google_signup():
+    token = request.json.get('token')
+    if not token:
+        return jsonify({'error': 'Missing token'}), 400
+    try:
+        # Verify Google OAuth token
+        idinfo = id_token.verify_oauth2_token(
+            token,
+            requests.Request(),
+            CLIENT_ID
+        )
+
+        # Ensure the token is issued by Google
+        if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+            return jsonify({'error': 'Wrong issuer.'}), 400
+
+        # Extract user information
+        user_id = idinfo['sub']
+        user_email = idinfo['email']
+
+        # Check if user exists in your database
+        user = User.query.filter_by(email=user_email, isActive=True).first()
+        if user:
+            return jsonify({'error': 'User already exists'}), 400
+        # If user does not exist, create a new account
+        new_user = User(
+            firstName=idinfo.get('given_name', 'Unknown'),
+            lastName=idinfo.get('family_name', ''),
+            username=idinfo.get('email', ''),
+            email=user_email,
+            hashed_password='',
+            phoneNumber='',
+            isActive=True,
+            role='User'
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        sendMail.send_user_signup_mail(new_user)
+
+        return jsonify({
+            "message": "User registered successfully",
+            "user":new_user.serialize()
+        }), 200
+
+    except ValueError as e:
+        print(e)
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        print(e)
+        return jsonify({'error': 'An error occurred'}), 500
 
 # signup organisation
 @auth_bp.route("/organisation/register", methods=["POST"])
@@ -180,6 +302,7 @@ def login_Organisation():
     except Exception as e:
         print(e)
         return {'error':str(e)},500
+
 
 
 # logout for user

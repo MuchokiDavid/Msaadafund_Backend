@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 # from app import token, publishable_key,service
 from intasend import APIService
-from .models import Campaign
+from models import Campaign
 
 
 token=os.getenv("INTA_SEND_API_KEY")

@@ -3,7 +3,9 @@ from flask import jsonify,make_response
 import os
 from intasend import APIService
 import requests
-from .models import db
+from models import db
+from dotenv import load_dotenv
+load_dotenv()
 
 
 token=os.getenv("INTA_SEND_API_KEY")
