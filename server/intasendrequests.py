@@ -11,7 +11,7 @@ load_dotenv()
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
 main_pocket= os.getenv('MAIN_WALLET')
-service = APIService(token=token,publishable_key=publishable_key, test=True)
+service = APIService(token=token,publishable_key=publishable_key, test=False)
 
 
 def buy_airtime(wallet_id,transaction,org_name):
