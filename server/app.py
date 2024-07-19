@@ -2,8 +2,8 @@
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from .models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription, TransactionApproval, Signatory
-from .utility import check_wallet_balance, sendMail, OTPGenerator
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription, TransactionApproval, Signatory
+from utility import check_wallet_balance, sendMail, OTPGenerator
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -15,11 +15,11 @@ import requests
 from datetime import datetime, date
 from flask_jwt_extended import JWTManager,jwt_required,get_jwt_identity
 from flask_mail import Mail
-from .auth import auth_bp
+from auth import auth_bp
 # from views import view_bp
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
-from .views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView, TransactionAdminView,SignatoriesadminView
+from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView, TransactionAdminView,SignatoriesadminView
 from cloudinary.uploader import upload
 import cloudinary.api
 import random
@@ -33,7 +33,7 @@ import re
 import textwrap
 import tempfile
 from sqlalchemy.exc import IntegrityError
-from .intasendrequests import buy_airtime,pay_to_paybill,pay_to_till,withdraw_to_bank,withdraw_to_mpesa
+from intasendrequests import buy_airtime,pay_to_paybill,pay_to_till,withdraw_to_bank,withdraw_to_mpesa
 from flask_caching import Cache
 import logging
 
@@ -1633,11 +1633,11 @@ def collection_webhook():
             db.session.delete(donation)
             
         
-        print ('Webhook received successfully')
+        return ('Webhook received successfully')
     
     except Exception as e:
         logging.error(f"Collecting hook error occurred: {e}")
-        print(f"Collecting hook error occurred: {e}")
+        return (f"Collecting hook error occurred: {e}")
 
 #Intersend web hook to listen to changes in send money ie. Withdraw and buy airtime
 @app.route('/api/v1.0/send-money-webhook', methods = ['POST'])
@@ -1668,11 +1668,11 @@ def send_money_webhook():
             sendMail.send_mail_on_send_money_failure(existing_org.orgEmail,existing_transaction.amount, existing_transaction.trans_type, existing_org.orgName)
 
         
-        print ('Webhook received successfully')
+        return ('Webhook received successfully')
     
     except Exception as e:
         logging.error(e)
-        print(f"Send money hook error occurred: {e}")
+        return (f"Send money hook error occurred: {e}")
         
 #Route to check intasend transaction status
 @app.route("/api/v1.0/check_transaction_status", methods=["POST"])
