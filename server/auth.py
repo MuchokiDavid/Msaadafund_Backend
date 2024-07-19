@@ -175,58 +175,6 @@ def google_login():
         print(e)
         return jsonify({'error': 'An error occurred'}), 500
 
-# Sign up with google
-@auth_bp.route('/user/google-signup', methods=["POST"])
-def google_signup():
-    token = request.json.get('token')
-    if not token:
-        return jsonify({'error': 'Missing token'}), 400
-    try:
-        # Verify Google OAuth token
-        idinfo = id_token.verify_oauth2_token(
-            token,
-            requests.Request(),
-            CLIENT_ID
-        )
-
-        # Ensure the token is issued by Google
-        if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-            return jsonify({'error': 'Wrong issuer.'}), 400
-
-        # Extract user information
-        user_id = idinfo['sub']
-        user_email = idinfo['email']
-
-        # Check if user exists in your database
-        user = User.query.filter_by(email=user_email, isActive=True).first()
-        if user:
-            return jsonify({'error': 'User already exists'}), 400
-        # If user does not exist, create a new account
-        new_user = User(
-            firstName=idinfo.get('given_name', 'Unknown'),
-            lastName=idinfo.get('family_name', ''),
-            username=idinfo.get('email', ''),
-            email=user_email,
-            hashed_password='',
-            phoneNumber='',
-            isActive=True,
-            role='User'
-        )
-        db.session.add(new_user)
-        db.session.commit()
-        sendMail.send_user_signup_mail(new_user)
-
-        return jsonify({
-            "message": "User registered successfully",
-            "user":new_user.serialize()
-        }), 200
-
-    except ValueError as e:
-        print(e)
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        print(e)
-        return jsonify({'error': 'An error occurred'}), 500
 
 # signup organisation
 @auth_bp.route("/organisation/register", methods=["POST"])
