@@ -1,8 +1,8 @@
-"""initial migration
+"""models change migration
 
-Revision ID: c17f490e3835
+Revision ID: d40cdb8e7c56
 Revises: 
-Create Date: 2024-07-14 22:41:41.841717
+Create Date: 2024-07-19 12:33:22.935869
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'c17f490e3835'
+revision = 'd40cdb8e7c56'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -29,9 +29,9 @@ def upgrade():
     )
     op.create_table('organisations',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('orgName', sa.String(length=64), nullable=False),
+    sa.Column('orgName', sa.String(), nullable=False),
     sa.Column('orgEmail', sa.String(length=254), nullable=False),
-    sa.Column('orgPassword', sa.String(length=128), nullable=False),
+    sa.Column('orgPassword', sa.String(), nullable=False),
     sa.Column('orgAddress', sa.String(), nullable=False),
     sa.Column('orgType', sa.String(), nullable=True),
     sa.Column('orgPhoneNumber', sa.String(), nullable=True),
@@ -78,11 +78,11 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('firstName', sa.String(length=100), nullable=False),
     sa.Column('lastName', sa.String(length=100), nullable=True),
-    sa.Column('username', sa.String(length=64), nullable=False),
-    sa.Column('email', sa.String(length=254), nullable=False),
-    sa.Column('hashed_password', sa.String(length=128), nullable=False),
+    sa.Column('username', sa.String(), nullable=False),
+    sa.Column('email', sa.String(), nullable=False),
+    sa.Column('hashed_password', sa.String(), nullable=False),
     sa.Column('nationalId', sa.Integer(), nullable=True),
-    sa.Column('phoneNumber', sa.String(), nullable=False),
+    sa.Column('phoneNumber', sa.String(), nullable=True),
     sa.Column('isActive', sa.Boolean(), nullable=True),
     sa.Column('address', sa.String(), nullable=True),
     sa.Column('role', sa.String(), nullable=False),
@@ -90,7 +90,6 @@ def upgrade():
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
-    sa.UniqueConstraint('phoneNumber'),
     sa.UniqueConstraint('username')
     )
     op.create_table('accounts',
@@ -100,7 +99,7 @@ def upgrade():
     sa.Column('bank_code', sa.String(), nullable=True),
     sa.Column('accountName', sa.String(), nullable=False),
     sa.Column('accountNumber', sa.String(), nullable=False),
-    sa.Column('hashed_pin', sa.String(length=8), nullable=False),
+    sa.Column('hashed_pin', sa.String(), nullable=False),
     sa.Column('orgId', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['orgId'], ['organisations.id'], ),
     sa.PrimaryKeyConstraint('id'),
@@ -111,7 +110,7 @@ def upgrade():
     sa.Column('campaignName', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=False),
     sa.Column('category', sa.String(), nullable=False),
-    sa.Column('banner', sa.String(length=255), nullable=True),
+    sa.Column('banner', sa.String(), nullable=True),
     sa.Column('youtube_link', sa.String(), nullable=True),
     sa.Column('startDate', sa.String(), nullable=False),
     sa.Column('endDate', sa.String(), nullable=False),
@@ -131,7 +130,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('org_id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('role', sa.String(length=20), nullable=False),
+    sa.Column('role', sa.String(), nullable=False),
     sa.Column('order', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),

@@ -15,11 +15,11 @@ class User(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     firstName = db.Column(db.String(100), nullable=False)
     lastName = db.Column(db.String(100))
-    username = db.Column(db.String(64), unique=True, nullable=False)
-    email = db.Column(db.String(254), unique=True, nullable=False)
-    hashed_password = db.Column(db.String(128), nullable=False)
+    username = db.Column(db.String(), unique=True, nullable=False)
+    email = db.Column(db.String(), unique=True, nullable=False)
+    hashed_password = db.Column(db.String(), nullable=False)
     nationalId = db.Column(db.Integer)
-    phoneNumber = db.Column(db.String, unique=True,nullable=False)
+    phoneNumber = db.Column(db.String, nullable=True)
     isActive = db.Column(db.Boolean(), default=True)
     address = db.Column(db.String())
     role= db.Column(db.String(), default= 'User', nullable=False)
@@ -33,7 +33,7 @@ class User(db.Model, SerializerMixin):
     @validates('phoneNumber')
     def validate_phone_number(self, key, number):
         if not number.isdigit() or len(number) != 12:
-            return "Phone Number must be a 12-digit number"
+            return ""
         return number
     
     @validates('email')
@@ -81,9 +81,9 @@ class Organisation(db.Model, SerializerMixin):
     __tablename__ = 'organisations'
 
     id = db.Column(db.Integer, primary_key=True)
-    orgName = db.Column(db.String(64), unique=True, nullable = False)
+    orgName = db.Column(db.String(), unique=True, nullable = False)
     orgEmail = db.Column(db.String(254), unique=True, nullable=False)
-    orgPassword =db.Column(db.String(128), nullable=False)
+    orgPassword =db.Column(db.String(), nullable=False)
     orgAddress = db.Column(db.String(), nullable = False)
     orgType = db.Column(db.String())
     orgPhoneNumber = db.Column(db.String(),unique=True)
@@ -160,7 +160,7 @@ class Account(db.Model, SerializerMixin):
     bank_code= db.Column(db.String, nullable=True)
     accountName = db.Column(db.String, nullable=False)
     accountNumber = db.Column(db.String, unique=True, nullable=False)
-    hashed_pin = db.Column(db.String(8), nullable=False)
+    hashed_pin = db.Column(db.String, nullable=False)
     orgId = db.Column(db.Integer, db.ForeignKey('organisations.id'), nullable=False)
 
     @hybrid_property
@@ -259,7 +259,7 @@ class  Campaign(db.Model, SerializerMixin):
     campaignName = db.Column(db.String(),nullable=False,unique=True)
     description = db.Column(db.String(),nullable=False)
     category= db.Column(db.String(),nullable=False)
-    banner = db.Column(db.String(255), unique=False)
+    banner = db.Column(db.String(), unique=False)
     youtube_link = db.Column(db.String(), nullable=True)
     startDate = db.Column (db.String(),nullable=False)
     endDate = db.Column(db.String(),nullable=False)
@@ -337,7 +337,7 @@ class Signatory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     org_id = db.Column(db.Integer, db.ForeignKey('organisations.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    role= db.Column(db.String(20), nullable=False)
+    role= db.Column(db.String(), nullable=False)
     order = db.Column(db.Integer, nullable=False)
     approvals= db.relationship('TransactionApproval', backref='signatory', cascade="all, delete-orphan")
     created_at = db.Column(db.DateTime, server_default=db.func.now())
@@ -395,7 +395,7 @@ class Transactions(db.Model):
     org_id= db.Column(db.String())
     campaign_name = db.Column(db.String)
     bank_code= db.Column(db.String, nullable= True)
-    signatory_status = db.Column(db.String,default='pending')
+    signatory_status = db.Column(db.String)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
     approvals = db.relationship('TransactionApproval', backref='transaction')
