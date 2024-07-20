@@ -1,4 +1,5 @@
 #Flask app
+# for admin comment line 23,51,100-107
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
