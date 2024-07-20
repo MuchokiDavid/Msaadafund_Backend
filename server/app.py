@@ -1160,10 +1160,10 @@ def campaign_money_withdrawal():
                 user = User.query.filter_by(id=signatory.user_id).first() 
                 new_approval = TransactionApproval(transaction_id=new_transaction.id, signatory_id=signatory.id)
                 db.session.add(new_approval)
-                db.session.commit()
 
                 sendMail.send_approval_message(user.firstName,user.email,organisation.orgName,amount,new_transaction.trans_type,account)
-
+            
+            db.session.commit()
             return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
         
         elif providers=="Bank":
@@ -1191,9 +1191,9 @@ def campaign_money_withdrawal():
                     user = User.query.filter_by(id=signatory.user_id).first() 
                     new_approval = TransactionApproval(transaction_id=new_transaction.id, signatory_id=signatory.id)
                     db.session.add(new_approval)
-                    db.session.commit()
-
                     sendMail.send_approval_message(user.firstName,user.email,organisation.orgName,amount,new_transaction.trans_type,account)
+                
+                db.session.commit()
 
                 return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
                   
@@ -1219,7 +1219,7 @@ def campaign_buy_airtime():
 
     data=request.get_json()
     name= data.get("name")
-    amount= float(data.get("amount"))
+    amount= data.get("amount")
     phone_number= data.get("phone_number")
     campaign= data.get("campaign")
 
@@ -1445,9 +1445,9 @@ def campaign_pay_to_paybill():
         user = User.query.filter_by(id=signatory.user_id).first() 
         new_approval = TransactionApproval(transaction_id=new_transaction.id, signatory_id=signatory.id)
         db.session.add(new_approval)
-        db.session.commit()
 
         sendMail.send_approval_message(user.firstName,user.email,existing_org.orgName,amount,new_transaction.trans_type,account)
+    db.session.commit()
 
     return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
 
@@ -1507,10 +1507,10 @@ def campaign_pay_to_till():
             user = User.query.filter_by(id=signatory.user_id).first() 
             new_approval = TransactionApproval(transaction_id=new_transaction.id, signatory_id=signatory.id)
             db.session.add(new_approval)
-            db.session.commit()
 
             sendMail.send_approval_message(user.firstName,user.email,existing_org.orgName,amount,new_transaction.trans_type,account)
-
+        
+        db.session.commit()
         return jsonify({"message": "Your transaction was created and is awaiting approval."}), 200
             
     except Exception as e:
