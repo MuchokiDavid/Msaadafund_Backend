@@ -48,7 +48,7 @@ cache = Cache()
 
 app = Flask(__name__)
 application = app
-admin = Admin(app, name='My Admin Panel', template_mode='bootstrap4')
+admin = Admin(app, name='My Admin Panel', template_mode='bootstrap4', url=os.getenv('ADMIN_URL') )
 
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 24 * 60 * 60
@@ -1132,7 +1132,7 @@ def campaign_money_withdrawal():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 2:
-        return jsonify({"error": "Please register atleast two signatories to initiate a transaction."}), 400
+        return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
     
     #check wallet balance
     if float(check_wallet_balance(campaigns.walletId))<float(amount):
@@ -1238,7 +1238,7 @@ def campaign_buy_airtime():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 2:
-        return jsonify({"error": "Please register atleast two signatories to initiate a transaction."}), 400
+        return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
@@ -1421,7 +1421,7 @@ def campaign_pay_to_paybill():
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
     elif len(signatories) < 2:
-        return jsonify({"error": "Please register atleast two signatories to initiate a transaction."}), 400
+        return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
@@ -1484,7 +1484,7 @@ def campaign_pay_to_till():
         if len(signatories) < 1:
             return jsonify({"error": "No signatories found!"}), 404
         elif len(signatories) < 2:
-            return jsonify({"error": "Please register atleast two signatories to initiate a transaction."}), 400
+            return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
         
         new_transaction=Transactions(tracking_id='Pending',
                                         batch_status= 'Pending',
