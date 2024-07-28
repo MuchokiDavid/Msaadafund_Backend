@@ -43,7 +43,7 @@ import logging
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
 main_pocket= os.getenv('MAIN_WALLET')
-service = APIService(token=token,publishable_key=publishable_key, test=False)
+service = APIService(token=token,publishable_key=publishable_key, test=True)
 cache = Cache()
 
 app = Flask(__name__)
@@ -541,11 +541,11 @@ def unfeature_campaign(campaign_id):
 #-----------------------------------------------------------------------------------------------------------------
 
 #Get one campaign by id in unprotected route
-@app.route("/api/v1.0/campaign/<int:campaignId>", methods=["GET"])
+@app.route("/api/v1.0/campaign/<string:campaignId>", methods=["GET"])
 def readOne(campaignId):
     """Get the details of one specific campaign."""
     try:
-        campaign = Campaign.query.get(campaignId)
+        campaign = Campaign.query.filter_by(campaignName=campaignId).first()
     except Exception as e:
         logging.error(e)
         print(e)
@@ -850,11 +850,10 @@ def confirm_accountotp():
         return jsonify({'error': 'Invalid OTP, Generate a new one'}), 400
 
 #====================================Organisation by id routes==============================================================
-@app.route('/api/v1.0/org_by_id/<int:id>', methods=['GET'])
+@app.route('/api/v1.0/org_by_id/<string:id>', methods=['GET'])
 @cache.cached(timeout=30) 
 def org_by_id(id):
-    organisation= Organisation.query.filter_by(id=id, isVerified=True).first()
-    print("reached")
+    organisation= Organisation.query.filter_by(orgName=id, isVerified=True).first()
     if not organisation:
         return {"error":"Organisation not found"}, 404
     
