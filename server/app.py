@@ -37,6 +37,7 @@ from sqlalchemy.exc import IntegrityError
 from intasendrequests import buy_airtime,pay_to_paybill,pay_to_till,withdraw_to_bank,withdraw_to_mpesa
 from flask_caching import Cache
 import logging
+from urllib.parse import unquote
 
 
 #fetch environment variables  for the api key and server url
@@ -544,8 +545,9 @@ def unfeature_campaign(campaign_id):
 @app.route("/api/v1.0/campaign/<string:campaignId>", methods=["GET"])
 def readOne(campaignId):
     """Get the details of one specific campaign."""
+    decoded_name = unquote(campaignId)
     try:
-        campaign = Campaign.query.filter_by(campaignName=campaignId).first()
+        campaign = Campaign.query.filter_by(campaignName=decoded_name).first()
     except Exception as e:
         logging.error(e)
         print(e)
@@ -853,7 +855,8 @@ def confirm_accountotp():
 @app.route('/api/v1.0/org_by_id/<string:id>', methods=['GET'])
 @cache.cached(timeout=30) 
 def org_by_id(id):
-    organisation= Organisation.query.filter_by(orgName=id, isVerified=True).first()
+    decoded_name = unquote(id)
+    organisation= Organisation.query.filter_by(orgName=decoded_name, isVerified=True).first()
     if not organisation:
         return {"error":"Organisation not found"}, 404
     
