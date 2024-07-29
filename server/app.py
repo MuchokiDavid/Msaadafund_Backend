@@ -556,6 +556,19 @@ def readOne(campaignId):
     # Return the serialized campaign
     return jsonify(campaign.serialize())
 
+#Get one campaign by id in unprotected route
+@app.route("/api/v1.0/onecampaign/<int:campaignId>", methods=["GET"])
+def read_one(campaignId):
+    """Get the details of one specific campaign."""
+    try:
+        campaign = Campaign.query.filter_by(id=campaignId).first()
+    except Exception as e:
+        logging.error(e)
+        print(e)
+        return jsonify({"error":f"Invalid campaign ID: {campaignId}"}), 400
+
+    # Return the serialized campaign
+    return jsonify(campaign.serialize())
 
 # patch campaign by specific id
 @app.route("/api/v1.0/updatecampaign/<int:campaignId>", methods=["PATCH"])
