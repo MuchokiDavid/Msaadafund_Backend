@@ -209,6 +209,7 @@ def register_organisation():
         db.session.commit()
 
         if sendMail.send_registration_email(orgEmail, orgName):
+            sendMail.send_org_notification_mail(orgName, orgEmail,orgPhoneNumber)
             return jsonify({"message": "Organization registered successfully and email sent",
                             "organisation":new_organisation.serialize()
                             }), 200

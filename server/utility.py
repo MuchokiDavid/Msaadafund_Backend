@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 load_dotenv()
 # from app import token, publishable_key,service
 from intasend import APIService
-from models import Campaign
 
 
 token=os.getenv("INTA_SEND_API_KEY")
@@ -21,7 +20,7 @@ publishable_key= os.getenv('PUBLISHABLE_KEY')
 service = None
 if token and publishable_key:
     try:
-        service = APIService(token=token, publishable_key=publishable_key, test=False)
+        service = APIService(token=token, publishable_key=publishable_key, test=True)
     except Exception as e:
         print(f"Error initializing APIService: {e}")
 else:
@@ -80,8 +79,8 @@ class sendMail():
     #send mail after a campaign has been created
     def send_post_campaign(organisation, campaignName, description, category, targetAmount, startDate, endDate):
         from app import mail
-        existing_campaign = Campaign.query.filter_by(campaignName=campaignName).first()
-        url = f"https://www.msaadafund.com/campaigns/{existing_campaign.id}" #update once deployed 
+        output_string = campaignName.replace(" ", "-")
+        url = f"https://www.msaadafund.com/campaigns/{output_string}"
         subject = f"{campaignName.upper()} Created Successfully"
         
         html_body = f"""
@@ -142,8 +141,8 @@ class sendMail():
     
     def send_subscribers_createCampaign(email,user,campaignName,description,startDate,endDate,budget,org_name):
         from app import mail
-        existing_campaign = Campaign.query.filter_by(campaignName=campaignName).first()
-        url = f"https://www.msaadafund.com/campaigns/{existing_campaign.id}" #update once deployed 
+        output_string = campaignName.replace(" ", "-")
+        url = f"https://www.msaadafund.com/campaigns/{output_string}" #update once deployed 
         subject = f"{campaignName.upper()} by {org_name.upper()}"
         html_body = f"""
             <p>Hello {user}!. </p>
@@ -228,6 +227,14 @@ class sendMail():
         subject = f"Transacation Failed"
         body = f"Dear {orgName},\n\n Your transaction of Ksh {amount} for {transType} on our MsaadaFund Platform was not successiful.Please try again\n\n Best regards,\n MsaadaFund Team"
         recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+
+    def send_org_notification_mail(orgName, orgEmail, phone):
+        from app import mail
+        default_email= "info@msaadafund.com"
+        subject = f"New Organisation Alert!: {orgName}"
+        body = f"Dear Msaada team,\n\n A new organisation has created an account on our platform.\n\nOrganisation Name: {orgName} \nOrganisation Email: {orgEmail} \nOrganisation Phone: {phone}\n\n Best regards,\n MsaadaFund Team"
+        recipients = [default_email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
 
