@@ -204,7 +204,7 @@ def register_organisation():
     if existing_orgPhoneNumber:
         return{"error":"This Phone number is already registered to an organization"}, 400
     try:
-        new_organisation =  Organisation(orgName=orgName, orgEmail=orgEmail, password=orgPassword,orgPhoneNumber=orgPhoneNumber, orgAddress=orgAddress)
+        new_organisation =  Organisation(orgName=orgName.strip(), orgEmail=orgEmail, password=orgPassword,orgPhoneNumber=orgPhoneNumber, orgAddress=orgAddress)
         db.session.add(new_organisation)
         db.session.commit()
 
