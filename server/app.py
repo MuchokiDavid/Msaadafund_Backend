@@ -361,7 +361,7 @@ def post():
             return jsonify({"error": "Failed to upload banner to Cloudinary"}), 404
 
         new_campaign = Campaign(
-            campaignName=campaignName,
+            campaignName=campaignName.strip(),
             description=description,
             category=category,
             youtube_link=youtube_link,
@@ -1878,6 +1878,7 @@ class  ExpressDonations(Resource):
         phoneNumber= data.get("phoneNumber")
         amount= data.get('amount')
         campaign_id= data.get('campaignId')
+        decoded_name = unquote(campaign_id)
         
         if not phoneNumber:
             return make_response(jsonify({"error":"Phone number is required."}),400)
@@ -1888,7 +1889,7 @@ class  ExpressDonations(Resource):
                 return make_response(jsonify({"error":"Donation must be above Kshs 5."}),400)
 
         
-        existing_campaign= Campaign.query.filter_by(id=campaign_id).first()
+        existing_campaign= Campaign.query.filter_by(campaignName=decoded_name).first()
         if not existing_campaign:
             return  make_response(jsonify({"error":"Campaign does not exist"}),404)
         wallet_id=existing_campaign.walletId
@@ -1969,6 +1970,7 @@ class Donate(Resource):
         campaign_id= data.get('campaignId')
         phoneNumber = data.get('phoneNumber')
         donor_name= data.get('donorName')
+        decoded_name = unquote(campaign_id)
 
         if not amount:
             return make_response(jsonify({"error":"Amount is required."}),400)
@@ -1976,7 +1978,8 @@ class Donate(Resource):
                 return make_response(jsonify({"error":"Donation must be above Kshs 5."}),400)
 
         try:
-            existing_campaign= Campaign.query.get(campaign_id)
+            existing_campaign= Campaign.query.filter_by(campaignName=decoded_name).first()
+
             if not existing_campaign:
                 return {"error":"Campaign does not exist"},404
 
@@ -2029,6 +2032,7 @@ def donate_via_card():
     campaign_id= data.get('campaignId')
     url = "https://api.intasend.com/api/v1/checkout/"
     donor_names= ''
+    decoded_name = unquote(campaign_id)
 
     if not amount:
         return make_response(jsonify({"error":"Amount is required."}), 400)
@@ -2051,7 +2055,7 @@ def donate_via_card():
                              string.digits, k=7)) #random value
 
     try:
-        existing_campaign= Campaign.query.get(campaign_id)
+        existing_campaign= Campaign.query.filter_by(campaignName=decoded_name).first()
         if not existing_campaign:
             return {"error":"Campaign does not exist"},404
         
@@ -2105,6 +2109,8 @@ def donate_via_card_logged_in():
     currency= data.get('currency')
     amount= data.get('amount')
     campaign_id= data.get('campaignId')
+
+    decoded_name = unquote(campaign_id)
     url = "https://api.intasend.com/api/v1/checkout/"
 
     if not amount:
@@ -2119,7 +2125,7 @@ def donate_via_card_logged_in():
     res = ''.join(random.choices(string.ascii_uppercase+
                              string.digits, k=7)) #random value
     try:
-        existing_campaign= Campaign.query.get(campaign_id)
+        existing_campaign= Campaign.query.filter_by(campaignName=decoded_name).first()
         if not existing_campaign:
             return {"error":"Campaign does not exist"},404
         
