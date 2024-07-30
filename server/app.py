@@ -20,7 +20,7 @@ from auth import auth_bp
 # from views import view_bp
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
-from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView, TransactionAdminView,SignatoriesadminView
+from views import UserAdminView,DonationAdminView,CampaignAdminView,OrganisationAdminView,AccountAdminView, TransactionAdminView,SignatoriesadminView,SubscriptionAdminView
 from cloudinary.uploader import upload
 import cloudinary.api
 import random
@@ -106,6 +106,7 @@ admin.add_view(AccountAdminView(Account, db.session))
 admin.add_view(ModelView(TokenBlocklist, db.session))
 admin.add_view(TransactionAdminView(Transactions, db.session))
 admin.add_view(SignatoriesadminView(Signatory, db.session))
+admin.add_view(SubscriptionAdminView(Subscription, db.session))
 
 # jwt error handler
 @jwt.expired_token_loader
@@ -206,7 +207,7 @@ class userDataByid(Resource):
 #===============================subscription  routes==============================================================
 @app.route('/api/v1.0/subscription_status',methods=['GET'])
 @jwt_required()
-@cache.cached(timeout=30, key_prefix=lambda: f"substatus_{get_jwt_identity()}")
+# @cache.cached(timeout=30, key_prefix=lambda: f"substatus_{get_jwt_identity()}")
 def get_subscription():
     current_user = get_jwt_identity()
     try:
