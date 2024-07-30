@@ -494,14 +494,14 @@ class Subscription(db.Model,SerializerMixin):
                 'orgDescription': self.organisation.orgDescription,
                 'isVerified': self.organisation.isVerified,
             },
-            'user':{
-                'id': self.user.id,
-                'username': self.user.username,
-                'firstName': self.user.firstName,
-                'lastName': self.user.lastName,
-                'email': self.user.email,
-                'phoneNumber': self.user.phoneNumber,
-            }
+            'user': {
+            'id': self.user.id if self.user else None,
+            'username': self.user.username if self.user else None,
+            'firstName': self.user.firstName if self.user else None,
+            'lastName': self.user.lastName if self.user else None,
+            'email': self.user.email if self.user else None,
+            'phoneNumber': self.user.phoneNumber if self.user else None,
+            } if self.user else None
         }
     
 
