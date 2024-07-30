@@ -135,3 +135,9 @@ class SignatoriesadminView(ModelView):
     column_list=('id','user_id', 'role', 'order', 'org_id', 'created_at')
     column_labels=dict(role='Role', order='Order', org_id='Organization',user_id='user')
     column_filters=column_list
+
+class SubscriptionAdminView(ModelView):
+    column_searchable_list=('user_id', 'organisation_id')
+    column_list=('id', 'user_id', 'organisation_id')
+    column_labels=dict(user_id='User', organisation_id='Organisation')
+    column_filters=column_list
