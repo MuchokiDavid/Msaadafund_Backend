@@ -39,6 +39,11 @@ from flask_caching import Cache
 import logging
 from urllib.parse import unquote
 
+from functools import wraps
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.exceptions import TooManyRequests
+
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -68,6 +73,7 @@ app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['OTP_STORAGE'] = {}
+app.config['API_KEY'] = os.getenv('API_KEY') #APi key to secure routes
 logging.basicConfig(filename='app.log', level=logging.ERROR,
                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 
@@ -95,6 +101,14 @@ app.register_blueprint(auth_bp, url_prefix='/api/v1.0/auth')
 # register views
 # app.register_blueprint(view_bp, url_prefix ='/auths')
 
+# Requests limiter to prevent abuse
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["300 per day", "100 per hour"]
+)
+
+
 #============================FLask admin panel routes ======================================
 
 # Register the models with Flask-Admin
@@ -121,6 +135,40 @@ def invalid_token(error):
 def missing_token(error):
     return jsonify({'error': 'Request does not contain an access token.', 'error':'token missing'}), 401
 
+# Error 404 handler
+@app.errorhandler(404)
+def not_found_error(error):
+    if app.config['ENV'] == 'production':
+        return jsonify({'message': 'Resource not found'}), 404
+    else:
+        return jsonify({'error': str(error)}), 404
+# Error 500 handler
+@app.errorhandler(500)
+def internal_error(error):
+    if app.config['ENV'] == 'production':
+        return jsonify({'message': 'An unexpected error occurred'}), 500
+    else:
+        return jsonify({'error': str(error)}), 500
+# Error 400 handler
+@app.errorhandler(400)
+def resource_not_found_error(error):
+    if app.config['ENV'] == 'production':
+        return jsonify({'message': 'Resource not found'}), 400
+    else:
+        return jsonify({'error': str(error)}), 400
+        
+# Error 400 handler
+@app.errorhandler(401)
+def unauthorise_err(error):
+    if app.config['ENV'] == 'production':
+        return jsonify({'message': 'Resource unauthorised'}), 401
+    else:
+        return jsonify({'error': str(error)}), 401
+
+@app.errorhandler(TooManyRequests)
+def handle_rate_limit_error(e):
+    return jsonify({"error": "Rate limit exceeded"}), 429
+# -------------------------------------------------------------------------------------------------------------
 
 @jwt.token_in_blocklist_loader #check if the jwt is revocked
 def token_in_blocklist(jwt_header,jwt_data):
@@ -129,6 +177,19 @@ def token_in_blocklist(jwt_header,jwt_data):
     token = db.session.query(TokenBlocklist).filter(TokenBlocklist.jti == jti).scalar()
 # if token is none : it will return false 
     return token is not None
+
+# Function to check api key from a request
+def api_key_required(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        api_key = request.headers.get('X-API-KEY')
+        if not api_key: #if no api key is provided
+            return jsonify({'message': 'API key is required'}), 401
+        if api_key != app.config['API_KEY']:
+            return jsonify({'message': 'Unauthorized'}), 401
+        return f(*args, **kwargs)
+        
+    return decorator    
 
 @app.route("/")
 def index():
@@ -141,7 +202,7 @@ def index():
 
 # classes for users
 class userData (Resource):
-    
+    @api_key_required
     def get(self):
         users = [user.serialize() for user in User.query.filter_by(isActive = True).all()]
         response = make_response(jsonify(users), 200)
@@ -314,6 +375,7 @@ class OrgSubscriptions(Resource):
 
 @app.route("/api/v1.0/setCampaign", methods=["POST"])
 @jwt_required()
+@limiter.limit("10 per minute")
 def post():
     current_user = get_jwt_identity()
     campaignName = request.form.get('campaignName')
@@ -416,7 +478,7 @@ def post():
 
 #get campaigns
 class campaignData(Resource):
-    # @jwt_required()
+    @api_key_required
     @cache.cached(timeout=30, key_prefix='all_campaigns')
     def get(self):
         page = request.args.get('page', default=1, type=int)
@@ -428,6 +490,7 @@ class campaignData(Resource):
 
 #Get all campaigns without pagination
 @app.route('/api/v1.0/get_all_campaigns', methods=['GET'])
+@api_key_required
 @cache.cached(timeout=30, key_prefix='get_campaigns')
 def get_all_campaigns():
     try:
@@ -498,6 +561,7 @@ def activateCampaign(campaignId):
 
 #---------------------------------------Get featured campaigns---------------------------------------------
 @app.route('/api/v1.0/featured', methods= ['GET'])
+@api_key_required
 @cache.cached(timeout=30) 
 def featured_campaigns():
     try:
@@ -515,6 +579,8 @@ def featured_campaigns():
     except  Exception as e:
         print("Error occured : ",e)
         return jsonify({"error": "An error occurred while retrieving the featured campaigns."})
+
+# ----------Feature and unfeature campaign not used----------------------------------------------------------------- 
 
 @app.route('/campaigns/<int:campaign_id>/feature', methods=['POST'])
 def feature_campaign(campaign_id):
@@ -544,6 +610,7 @@ def unfeature_campaign(campaign_id):
 
 #Get one campaign by id in unprotected route
 @app.route("/api/v1.0/campaign/<string:campaignId>", methods=["GET"])
+@api_key_required
 def readOne(campaignId):
     """Get the details of one specific campaign."""
     decoded_name = unquote(campaignId)
@@ -557,12 +624,14 @@ def readOne(campaignId):
     # Return the serialized campaign
     return jsonify(campaign.serialize())
 
+# .................................................................................................................................
 #Get one campaign by id in unprotected route
 @app.route("/api/v1.0/onecampaign/<int:campaignId>", methods=["GET"])
+@api_key_required
 def read_one(campaignId):
     """Get the details of one specific campaign."""
     try:
-        campaign = Campaign.query.filter_by(id=campaignId).first()
+        campaign = Campaign.query.filter_by(id=campaignId).first()   #Not sure where used
     except Exception as e:
         logging.error(e)
         print(e)
@@ -570,6 +639,7 @@ def read_one(campaignId):
 
     # Return the serialized campaign
     return jsonify(campaign.serialize())
+# .................................................................................................................................
 
 # patch campaign by specific id
 @app.route("/api/v1.0/updatecampaign/<int:campaignId>", methods=["PATCH"])
@@ -867,6 +937,7 @@ def confirm_accountotp():
 
 #====================================Organisation by id routes==============================================================
 @app.route('/api/v1.0/org_by_id/<string:id>', methods=['GET'])
+@api_key_required
 @cache.cached(timeout=30) 
 def org_by_id(id):
     decoded_name = unquote(id)
@@ -880,11 +951,18 @@ def org_by_id(id):
 
 #====================================Organisation model routes==============================================================
 class Organization(Resource):
+    @api_key_required
     def get(self):
-        organizations = Organisation.query.filter_by(isVerified=True).all()
-        serialized_organizations = [org.serialize() for org in organizations]
-        response = make_response(jsonify(serialized_organizations), 200)
-        return response
+        try:
+            organizations = Organisation.query.filter_by(isVerified=True).all()
+            serialized_organizations = [org.serialize() for org in organizations]
+            response = make_response(jsonify(serialized_organizations), 200)
+            return response
+        
+        except Exception as e:
+            logging.error(e)
+            return {"error": "Internal server error"}, 500
+
 
 class OrganisationDetail(Resource):
     @jwt_required()
@@ -1103,7 +1181,7 @@ class SignatoryDetail(Resource):
 
 #Route to get banks and their code in intersend API
 @app.route('/api/v1.0/all_banks', methods=['GET'])
-@cache.cached(timeout=10) 
+@cache.cached(timeout=2)
 def bank_data():
     url = "https://api.intasend.com/api/v1/send-money/bank-codes/ke/"
     try:
@@ -1119,6 +1197,7 @@ def bank_data():
 # Route to withdraw money to M-pesa number-----------------------------------
 @app.route("/api/v1.0/withdraw",methods=["POST"])
 @jwt_required()
+@limiter.limit("10 per minute")
 def campaign_money_withdrawal():
     current_user = get_jwt_identity()
     organisation = Organisation.query.filter_by(id=current_user).first()
@@ -1228,6 +1307,7 @@ def campaign_money_withdrawal():
 #Route to buy airtime from a campaign
 @app.route("/api/v1.0/buy_airtime",methods=["POST"])
 @jwt_required()
+@limiter.limit("10 per minute")
 def campaign_buy_airtime():
     current_user = get_jwt_identity()
     organisation = Organisation.query.filter_by(id=current_user).first()
@@ -1405,6 +1485,7 @@ def reject_approval(approval_id):
 # #Route to pay to a paybill from a campaign
 @app.route("/api/v1.0/pay_to_paybill", methods=["POST"])
 @jwt_required()
+@limiter.limit("10 per minute")
 def campaign_pay_to_paybill():
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.filter_by(id=current_user_id).first()
@@ -1471,6 +1552,7 @@ def campaign_pay_to_paybill():
 # #Route to pay to a till number
 @app.route("/api/v1.0/pay_to_till", methods=["POST"])
 @jwt_required()
+@limiter.limit("10 per minute")
 def campaign_pay_to_till():
     current_user_id = get_jwt_identity()
     existing_org= Organisation.query.get(current_user_id)
@@ -1872,6 +1954,7 @@ def withdraw_pdf():
     
 #Express donations route for user who is not logged in
 class  ExpressDonations(Resource):
+    @api_key_required
     def post(self):
         data= request.get_json()
         donor_name= data.get("donorName")
@@ -1910,7 +1993,7 @@ class  ExpressDonations(Resource):
             db.session.add(new_donation)
             db.session.commit()
             # return make_response(jsonify({"message": "Donation initialised successfully!", "data": new_donation.serialize()}), 200)
-            return make_response(jsonify({"message": "Donation initialised successfully!", "data":data}), 200)
+            return make_response(jsonify({"message": "Donation initiated successfully!", "data":data}), 200)
             # else:
             #     return make_response(jsonify({'error':'Error making donation'}), 400)
         except TypeError as ex:
@@ -1961,6 +2044,7 @@ class Donate(Resource):
        
 
     @jwt_required()
+    @limiter.limit("10 per minute")
     def post(self):
         current_user= get_jwt_identity()
         user = User.query.filter_by(id=current_user).first()
@@ -1998,7 +2082,7 @@ class Donate(Resource):
                 # print(new_donation)
                 db.session.add(new_donation)
                 db.session.commit()
-                return make_response(jsonify({"message": "Donation initialised successfully!", "data": new_donation.serialize()}), 200)
+                return make_response(jsonify({"message": "Donation initiated successfully!", "data": new_donation.serialize()}), 200)
             except  Exception as e:
                 print (e)
                 db.session.rollback()
@@ -2010,6 +2094,7 @@ class Donate(Resource):
 
 ##Route to get all donations without authentication
 @app.route('/api/v1.0/all_donations', methods=['GET'])
+@api_key_required
 @cache.cached(timeout=30, key_prefix="all_donations")
 def get_all_donations():
     """Get a list of all Donations"""
@@ -2021,6 +2106,8 @@ def get_all_donations():
 #=======================Donate via card/bitcoin/cashapp=============================================================
 #---------------------Donate card when user is not logged in----------------------------------------------------------
 @app.route('/api/v1.0/donate_card', methods=['POST'])
+@api_key_required
+@limiter.limit("10 per minute")
 def donate_via_card():
     data= request.get_json()
     # donor_name= data.get("donorName")
@@ -2491,6 +2578,7 @@ def contact_us():
 
 # User forgot password reset
 @app.route('/api/v1.0/forgot_password', methods=['POST'])
+@api_key_required
 def forgot_password():
     email = request.json.get('email')
     user = User.query.filter_by(email=email).first()
@@ -2504,6 +2592,7 @@ def forgot_password():
 
 # verify OTP and update password
 @app.route('/api/v1.0/reset_password', methods=['PATCH'])
+@api_key_required
 def reset_password():
     email = request.json.get('email')
     otp_entered = request.json.get('otp')
@@ -2522,6 +2611,7 @@ def reset_password():
 
 #organisation forget password   
 @app.route('/api/v1.0/org_forgot_password', methods=['POST'])
+@api_key_required
 def org_forgot_password():
     orgEmail = request.json.get('email')
     organisation = Organisation.query.filter_by(orgEmail=orgEmail).first()
@@ -2535,6 +2625,7 @@ def org_forgot_password():
 
 # verify OTP and update password
 @app.route('/api/v1.0/org_reset_password', methods=['PATCH'])
+@api_key_required
 def org_reset_password():
     orgEmail = request.json.get('email')
     otp_entered = request.json.get('otp')
@@ -2553,6 +2644,7 @@ def org_reset_password():
 
 #Forgot account pin
 @app.route('/api/v1.0/acc_forgot_pin', methods=['POST'])
+@api_key_required
 def acc_forgot_pin():
     orgEmail = request.json.get('email')
     organisation = Organisation.query.filter_by(orgEmail=orgEmail).first()
@@ -2565,6 +2657,7 @@ def acc_forgot_pin():
         return jsonify({'message': 'OTP sent to your email'}), 200
 #Update pin
 @app.route('/api/v1.0/acc_reset_pin', methods=['PATCH'])
+@api_key_required
 def acc_reset_pin():
     orgEmail = request.json.get('email')
     otp_entered = request.json.get('otp')
@@ -2608,4 +2701,4 @@ api.add_resource(SignatoryDetail, '/api/v1.0/signatories/<int:id>')
 
 
 if __name__  =="__main__":
-    app.run (port =5555, debug =True)
+    app.run (port =5555)
