@@ -159,11 +159,13 @@ def google_login():
 
         # Generate access token for the user
         access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)  
 
         # Return response with JWT and user data
         return jsonify({
             "message": 'Welcome {}'.format(user.firstName),
             "access_token": access_token,
+            "refresh": refresh_token,
             "user": user.serialize(),
             "is_signatory": is_signatory
         }), 200
@@ -269,4 +271,12 @@ def logout_user():
     db.session.commit()
 
     return jsonify({"message":f"{token_type} token revoked successfully"}),200
+
+# Get a new token with a refresh token
+@auth_bp.route('/refresh', methods=["POST"])
+@jwt_required(refresh=True)
+def refresh():
+    identity = get_jwt_identity()
+    access_token = create_access_token(identity=identity, fresh=False)
+    return jsonify(access_token=access_token)
     
