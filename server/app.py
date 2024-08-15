@@ -57,7 +57,8 @@ application = app
 admin = Admin(app, name='My Admin Panel', template_mode='bootstrap4', url=os.getenv('ADMIN_URL') )
 
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 2 * 60 * 60
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 20 * 60  # 20 minutes
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = 7 * 24 * 60 * 60  # 7 days
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
@@ -74,8 +75,8 @@ app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['OTP_STORAGE'] = {}
 app.config['API_KEY'] = os.getenv('API_KEY') #APi key to secure routes
-logging.basicConfig(filename='app.log', level=logging.ERROR,
-                    format='%(asctime)s %(levelname)s %(name)s %(message)s')
+# logging.basicConfig(filename='app.log', level=logging.ERROR,
+#                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
 
 
 migrate = Migrate(app, db)
@@ -1685,6 +1686,14 @@ def collection_webhook():
                 error_message = approved_response.get("errors")[0].get("detail")
                 return  make_response(jsonify({'error':error_message}))
             
+            sendMail.send_mail_on_donation(amount,
+                                           donation.donationDate,
+                                           donation.donor_name,
+                                           donation_campaign.campaignName,
+                                           campaign_organisation.orgEmail,
+                                           campaign_organisation.orgName
+                                        )
+            
             if donating_user:
                 sendMail.send_mail_on_donation_completion(donation.amount, 
                                                         donation.donationDate, 
@@ -1701,7 +1710,7 @@ def collection_webhook():
                     donation_campaign.campaignName,
                     account,
                     campaign_organisation.orgName)              
-                
+            
 
             return jsonify({"message":approved_response})
                 
@@ -1814,21 +1823,21 @@ class GetTransactions(Resource):
     @cache.cached(timeout=30, key_prefix=lambda: f"alltransactions_{get_jwt_identity()}")
     def get(self):
         current_user_id = get_jwt_identity()
-        existing_org = Organisation.query.get(current_user_id)
+        existing_org = Organisation.query.filter_by(id=current_user_id).first()
         if not existing_org:
             return jsonify({"error": "organisation not found"}), 404
         try:
             # Get all campaigns for the current organisation
             all_transactions = Transactions.query.filter_by(org_id=existing_org.id).all()
-            if not all_transactions:
-                return jsonify({"error": "No transactions found"}), 404
+            if not all_transactions or len(all_transactions) == 0:
+                return jsonify({"error": "No withdrawals found"}), 404
             
             response_dict= [transaction.serialize() for transaction in all_transactions]
-            return jsonify({"message":response_dict})
+            return make_response(jsonify({"message": response_dict}), 200)
 
         except Exception as e:
             error_message = str(e)
-            logging.error(error_message)
+            # logging.error(error_message)
             print("Error in GetTransactions:", error_message)
             return jsonify({"error": error_message}), 500
 
