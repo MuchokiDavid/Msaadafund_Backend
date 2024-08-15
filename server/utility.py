@@ -55,6 +55,14 @@ class sendMail():
         body = f"Dear {name},\n\nUnfortunately your contribution to {campaign} campaign on {date} was not successiful. Please try again\n\n Best regards,\n {organisation}"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
+        
+    # Send email to organisation after a donation has been made
+    def send_mail_on_donation(amount, date, name, campaign, email, organisation):
+        from app import mail
+        subject = f"Donation to {campaign} by {name}"
+        body = f"Dear {organisation},\n\nA donation of Ksh {amount} has been made to {campaign} campaign on {date} by {name}.\n\n Best regards,\n {name}"
+        recipients = [email]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
 
     #Send mail after withdrawal has completed successifully
     def send_mail_on_successiful_withdrawal(amount, date, name, campaign, email, organisation):
