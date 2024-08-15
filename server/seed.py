@@ -4,8 +4,9 @@ from faker import Faker
 from random import choice as rc
 from flask_bcrypt import Bcrypt
 import datetime
-from .models import db, Campaign, User, Organisation, Donation
-from .app import app
+from datetime import datetime
+from models import db, Campaign, User, Organisation, Donation,Transactions
+from app import app
 
 fake=Faker()
 bcrypt= Bcrypt()
@@ -13,10 +14,113 @@ bcrypt= Bcrypt()
 with app.app_context():
     print("Deleting data.......................")
     # db.session.query(User).delete()
-    db.session.query(Campaign).delete()
+    # db.session.query(Campaign).delete()
     # db.session.query(Organisation).delete()
-    # db.session.query(Donation).delete()
+    db.session.query(Donation).delete()
+    db.session.query(Transactions).delete()
     db.session.commit()
+
+    donations = [
+        Donation(
+            amount=500.00,
+            currency='KES',
+            donationDate=datetime(2024, 8, 10, 10, 30),
+            donor_name='John Doe',
+            user_id=1,  # Ensure this user exists in your database
+            campaign_id=1,  # Ensure this campaign exists in your database
+            status='Completed',
+            invoice_id='INV123456',
+            method='Credit Card',
+            api_ref='API123456'
+        ),
+        Donation(
+            amount=1500.00,
+            currency='KES',
+            donationDate=datetime(2024, 8, 11, 14, 45),
+            donor_name='Jane Smith',
+            user_id=2,  # Ensure this user exists in your database
+            campaign_id=1,  # Ensure this campaign exists in your database
+            status='Pending',
+            invoice_id='INV654321',
+            method='M-Pesa',
+            api_ref='API654321'
+        ),
+        Donation(
+            amount=750.00,
+            currency='KES',
+            donationDate=datetime(2024, 8, 12, 16, 00),
+            donor_name='Alice Johnson',
+            user_id=3,  # Ensure this user exists in your database
+            campaign_id=1,  # Ensure this campaign exists in your database
+            status='Completed',
+            invoice_id='INV789123',
+            method='PayPal',
+            api_ref='API789123'
+        ),
+    ]
+
+    # Add donations to the database
+    db.session.add_all(donations)
+    db.session.commit()
+    print("Seed data added to the Donations table.")
+
+    transactions = [
+        Transactions(
+            tracking_id='TXN123456',
+            batch_status='Completed',
+            trans_type='Credit',
+            trans_status='Success',
+            amount=1500.75,
+            transaction_account_no='ACCT123456',
+            request_ref_id='REQ123456',
+            name='John Doe',
+            acc_refence='REF123',
+            narrative='Donation for Campaign A',
+            transaction_date=datetime(2024, 8, 10, 14, 30),
+            org_id='1',
+            campaign_name='Campaign A',
+            bank_code='1',
+            signatory_status='Approved'
+        ),
+        Transactions(
+            tracking_id='TXN123457',
+            batch_status='Pending',
+            trans_type='Debit',
+            trans_status='Failed',
+            amount=200.00,
+            transaction_account_no='ACCT654321',
+            request_ref_id='REQ654321',
+            name='Jane Smith',
+            narrative='Payment for Services',
+            transaction_date=datetime(2024, 8, 11, 9, 45),
+            org_id='1',
+            campaign_name='Campaign B',
+            bank_code='1',
+            signatory_status='Pending'
+        ),
+        Transactions(
+            tracking_id='TXN123458',
+            batch_status='Completed',
+            trans_type='Credit',
+            trans_status='Success',
+            amount=750.00,
+            transaction_account_no='ACCT112233',
+            request_ref_id='REQ112233',
+            name='Alice Johnson',
+            acc_refence='REF456',
+            narrative='Contribution to Campaign C',
+            transaction_date=datetime(2024, 8, 12, 16, 00),
+            org_id='1',
+            campaign_name='Campaign C',
+            bank_code='BANK003',
+            signatory_status='Approved'
+        ),
+    ]
+
+    # Add transactions to the database
+    db.session.add_all(transactions)
+    db.session.commit()
+    print("Seed data added to the Transactions table.")
 
 #Seeding users
 #     print("Seeding user........................")
@@ -131,5 +235,6 @@ with app.app_context():
 #     db.session.add(camp1)
 #     db.session.commit()
 #     print('Campaign added successfully')
+
 
     
