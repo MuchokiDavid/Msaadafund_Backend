@@ -628,7 +628,6 @@ def readOne(campaignId):
 # .................................................................................................................................
 #Get one campaign by id in unprotected route
 @app.route("/api/v1.0/onecampaign/<int:campaignId>", methods=["GET"])
-@api_key_required
 def read_one(campaignId):
     """Get the details of one specific campaign."""
     try:
