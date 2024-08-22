@@ -1827,7 +1827,7 @@ class GetTransactions(Resource):
             return jsonify({"error": "organisation not found"}), 404
         try:
             # Get all campaigns for the current organisation
-            all_transactions = Transactions.query.filter_by(org_id=existing_org.id).all()
+            all_transactions = Transactions.query.filter_by(org_id=str(existing_org.id)).all()
             if not all_transactions or len(all_transactions) == 0:
                 return jsonify({"error": "No withdrawals found"}), 404
             
