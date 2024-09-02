@@ -189,6 +189,13 @@ class sendMail():
         body = f"Dear {organisation},\n\nYou have successfully added {name} as your signatory on MsaadaFund Platform.\n\nBest regards,\nMsaadaFund Team"
         recipients = [email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
+
+    def send_signatory_delete_notification(email,sig_name,removed_sig,org_name):
+        from app import mail
+        msg = Message(f"Signatory Removed from {org_name}", recipients=[email])
+        msg.body = f"Dear {sig_name},\n\nPlease be informed that {removed_sig} has been removed as a signatory from {org_name}.\n\nBest regards,\nMsaadaFund Team"
+        mail.send(msg)
+
     
     def send_approval_message(name,email,organisation,amount,trans_type,trans_account):
         from app import mail
@@ -265,6 +272,12 @@ class  OTPGenerator():
         msg = Message('Account Creation request OTP', recipients=[email])
         msg.body = f'Your OTP is: {otp}.\n\n<b>Disclaimer</b>: <i>Please do not share this OTP with anyone. It is confidential and should be used solely for account verification purposes.\nIf you believe you did not authorize this OTP creation, Please contact management to discuss the way forward.</i> '
         msg.html = msg.body
+        mail.send(msg)
+
+    def delete_signatory_otp(signatory,email,otp):
+        from app import mail
+        msg = Message(f"Delete signatory {signatory} Otp", recipients=[email])
+        msg.body = f"Delete OTP is :{otp}"
         mail.send(msg)
 
     def generate_otp():
