@@ -1128,29 +1128,45 @@ class SignatoryDetail(Resource):
         if not existing_organisation:
             return {"error": "Organisation not found"}, 404
 
-        try:
-            signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
-            if not signatory:
-                return {"error": "Signatory not found"}, 404
-            user = User.query.filter_by(id=signatory.user_id).first()
-            if not user:
-                return {"error": "User not found"}, 404      
-            
-            TransactionApproval.query.filter_by(signatory_id=id).delete()
+        data = request.get_json()
+        orgEmail = existing_organisation.orgEmail
+        otp = data.get('otp')
+     
+        # if the generated email is equal to the one in storage
 
-            db.session.delete(signatory)
-            db.session.commit()
-            sendMail.send_signatory_email_removal(user.email, user.firstName, existing_organisation.orgName)
-            return {"message": "Signatory deleted successfully"}, 200
-        
-        except IntegrityError as e:
-            db.session.rollback()
-            raise ValueError(f"Database integrity error: {str(e)}")
-        except Exception as e:
-            db.session.rollback()
-            logging.error(e)
-            return {"error": f"Unexpected error: {str(e)}"}, 500
-    
+        if existing_organisation and orgEmail in app.config['OTP_STORAGE'] and app.config['OTP_STORAGE'][orgEmail] == otp:
+            try:
+                signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
+                if not signatory:
+                    return {"error": "Signatory not found"}, 404
+                
+                user = User.query.filter_by(id=signatory.user_id).first()
+                if not user:
+                    return {"error": "User not found"}, 404      
+                
+                TransactionApproval.query.filter_by(signatory_id=id).delete()
+
+                db.session.delete(signatory)
+                db.session.commit()
+                sendMail.send_signatory_email_removal(user.email, user.firstName, existing_organisation.orgName)
+
+                existing_signatories = Signatory.query.filter_by(org_id=existing_organisation.id).all()
+                for signatory in existing_signatories:
+                    sig_user = User.query.filter_by(id=signatory.user_id).first()
+                    if sig_user:
+                        sendMail.send_signatory_delete_notification(sig_user.email, sig_user.firstName,user.firstName, existing_organisation.orgName)
+
+                return {"message": "Signatory deleted successfully and notification sent"}, 200
+            
+            except IntegrityError as e:
+                db.session.rollback()
+                raise ValueError(f"Database integrity error: {str(e)}")
+            except Exception as e:
+                db.session.rollback()
+                logging.error(e)
+                return {"error": f"Unexpected error: {str(e)}"}, 500
+        else:
+            return {"error": "Invalid OTP"}, 400
     @jwt_required()
     def patch(self, id):
         current_user = get_jwt_identity()
@@ -1176,6 +1192,36 @@ class SignatoryDetail(Resource):
         except Exception as e:
             logging.error(e)
             return {"error":str(e)}, 500
+
+
+#================================= request otp to delete signatory ==================================================#
+@app.route('/api/v1.0/signatory/<int:id>/request-otp', methods=['POST'])
+@jwt_required()
+def request_otp(id):
+    current_user = get_jwt_identity()
+    existing_organisation = Organisation.query.filter_by(id=current_user).first()
+    if not existing_organisation:
+        return {"error": "Organisation not found"}, 404
+
+    data = request.get_json()
+    orgEmail = existing_organisation.orgEmail
+
+# Phase 1: OTP Request
+    signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
+    if not signatory:
+        return {"error": "Signatory not found"}, 404
+    user = User.query.filter_by(id=signatory.user_id).first()
+    if not user:
+        return {"error": "User not found"}, 404
+
+    # Send OTP to the user's email
+    otp = OTPGenerator.generate_otp()
+    app.config['OTP_STORAGE'][orgEmail] = otp
+    OTPGenerator.delete_signatory_otp(user.firstName,orgEmail, otp)
+
+    return {"message": "OTP sent to your email"}, 200
+        
+
     
 #=====================================Intasend sdk routes==============================================================
 
