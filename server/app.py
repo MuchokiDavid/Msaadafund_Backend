@@ -1131,7 +1131,6 @@ class SignatoryDetail(Resource):
         data = request.get_json()
         orgEmail = existing_organisation.orgEmail
         otp = data.get('otp')
-        print(otp)
      
         # if the generated email is equal to the one in storage
 
