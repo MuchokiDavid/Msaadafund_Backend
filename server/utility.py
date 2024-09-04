@@ -252,6 +252,15 @@ class sendMail():
         recipients = [default_email]
         mail.send_message(subject=subject, recipients=recipients, body=body)
 
+    # send email to organisation after signatory removal
+    def send_org_removal(orgEmail,firstName):
+        from app import mail
+        subject = f"Removal of signatory"
+        body = f"We are writing to inform you that a signatory {firstName} associated with your organization has been successfully removed from our system.\n\n Best regards,\n MsaadaFund Team"
+        recipients = [orgEmail]
+        mail.send_message(subject=subject, recipients=recipients, body=body)
+  
+
 
 # Generate otp
 class  OTPGenerator():
