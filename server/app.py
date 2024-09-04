@@ -1108,7 +1108,7 @@ class Signatories(Resource):
             
 class SignatoryDetail(Resource):
     @jwt_required()
-    @cache.cached(timeout=30, key_prefix=lambda: f"signatory_{get_jwt_identity()}")
+    # @cache.cached(timeout=30, key_prefix=lambda: f"signatory_{get_jwt_identity()}")
     def get(self, id):
         current_user = get_jwt_identity()
         existing_organisation = Organisation.query.filter_by(id=current_user).first()
@@ -1149,6 +1149,8 @@ class SignatoryDetail(Resource):
                 db.session.delete(signatory)
                 db.session.commit()
                 sendMail.send_signatory_email_removal(user.email, user.firstName, existing_organisation.orgName)
+                # sendemail to the organisation 
+                sendMail.send_org_removal(existing_organisation.orgEmail,user.firstName)
 
                 existing_signatories = Signatory.query.filter_by(org_id=existing_organisation.id).all()
                 for signatory in existing_signatories:
@@ -1203,8 +1205,9 @@ def request_otp(id):
     if not existing_organisation:
         return {"error": "Organisation not found"}, 404
 
-    data = request.get_json()
+    # data = request.get_json()
     orgEmail = existing_organisation.orgEmail
+    print(id,orgEmail)
 
 # Phase 1: OTP Request
     signatory = Signatory.query.filter_by(id=id, org_id=existing_organisation.id).first()
