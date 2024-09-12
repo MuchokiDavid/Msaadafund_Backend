@@ -1286,7 +1286,7 @@ def campaign_money_withdrawal():
             # #Initiate intasend M-Pesa transaction
             new_transaction=Transactions(tracking_id='Pending',
                             batch_status= 'Pending',
-                            trans_type= 'Withdraw to M-Pesa',
+                            trans_type= 'M-Pesa',
                             trans_status= 'Pending',
                             signatory_status='Pending',
                             amount= amount,
@@ -1317,7 +1317,7 @@ def campaign_money_withdrawal():
             try:
                 new_transaction=Transactions(tracking_id='Pending',
                                 batch_status= 'Pending',
-                                trans_type= 'Withdraw to bank',
+                                trans_type= 'Bank',
                                 trans_status= 'Pending',
                                 signatory_status='Pending',
                                 amount= amount,
@@ -1387,7 +1387,7 @@ def campaign_buy_airtime():
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
-                                    trans_type= 'Buy Airtime',
+                                    trans_type= 'Airtime',
                                     trans_status= 'Pending',
                                     signatory_status='Pending',
                                     amount= amount,
@@ -1480,15 +1480,15 @@ def approve_transaction():
         
         wallet_id = existing_campaign.walletId
 
-        if transaction.trans_type == 'Buy Airtime':
+        if transaction.trans_type == 'Airtime':
             return buy_airtime(wallet_id, transaction, existing_organisation.orgName)
-        elif transaction.trans_type == 'Pay to Paybill':
+        elif transaction.trans_type == 'Paybill':
             return pay_to_paybill(wallet_id, transaction)
-        elif transaction.trans_type == 'Withdraw to M-Pesa':
+        elif transaction.trans_type == 'M-Pesa':
             return withdraw_to_mpesa(wallet_id, transaction)
-        elif transaction.trans_type == 'Withdraw to bank':
+        elif transaction.trans_type == 'Bank':
             return withdraw_to_bank(wallet_id, transaction)
-        elif transaction.trans_type == 'Pay to Till':
+        elif transaction.trans_type == 'TillNumber':
             return pay_to_till(wallet_id, transaction)       
         else:
             return {"error": "Invalid transaction type"}, 400
@@ -1571,7 +1571,7 @@ def campaign_pay_to_paybill():
     
     new_transaction=Transactions(tracking_id='Pending',
                                     batch_status= 'Pending',
-                                    trans_type= 'Pay to Paybill',
+                                    trans_type= 'Paybill',
                                     trans_status= 'Pending',
                                     signatory_status='Pending',
                                     amount= amount,
@@ -1635,7 +1635,7 @@ def campaign_pay_to_till():
         
         new_transaction=Transactions(tracking_id='Pending',
                                         batch_status= 'Pending',
-                                        trans_type= 'Pay to Till',
+                                        trans_type= 'TillNumber',
                                         trans_status= 'Pending',
                                         signatory_status='Pending',
                                         amount= amount,
