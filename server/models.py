@@ -98,7 +98,7 @@ class Organisation(db.Model, SerializerMixin):
     accounts= db.relationship('Account', backref= 'organisation')
     subscriptions = db.relationship('Subscription',backref='organisation')
     signatories = db.relationship('Signatory', backref='organisation')
-
+    loans= db.relationship('Loan', backref='organisation')
 
     @validates('orgPhoneNumber')
     def validate_phone_number(self, key, number):
@@ -146,7 +146,8 @@ class Organisation(db.Model, SerializerMixin):
             "campaigns": [camp.serialize() for camp in self.campaigns],
             "accounts": [acc.serialize() for acc in self.accounts],
             "subscriptions":[sub.serialize() for sub in self.subscriptions],
-            "signatories":[sign.serialize() for sign in self.signatories]
+            "signatories":[sign.serialize() for sign in self.signatories],
+            "loans":[loan.serialize() for loan in self.loans]
         }
 
 
@@ -392,7 +393,7 @@ class Transactions(db.Model):
     acc_refence = db.Column(db.String,nullable=True)
     narrative = db.Column(db.String,nullable=True)
     transaction_date = db.Column(db.DateTime, server_default=db.func.now())#Intasend created at
-    org_id= db.Column(db.String())
+    org_id= db.Column(db.Integer)
     campaign_name = db.Column(db.String)
     bank_code= db.Column(db.String, nullable= True)
     signatory_status = db.Column(db.String)
@@ -507,3 +508,42 @@ class Subscription(db.Model,SerializerMixin):
 
     def __repr__(self):
         return f"Subscription: {self.id}, User ID: {self.user_id}, Organisation ID: {self.organisation_id}"
+
+# Loan Model
+class Loan(db.Model):
+    __tablename__ = 'loans'
+
+    id = db.Column(db.Integer, primary_key=True)
+    loan_amount = db.Column(db.Float, nullable=False)
+    interest_rate = db.Column(db.Float, nullable=False)  # As percentage
+    repayment_period = db.Column(db.Integer, nullable=False)  # in months or days
+    loan_status = db.Column(db.String(50), nullable=False, default="Pending")  # Pending, Active, Repaid
+    disbursed_at = db.Column(db.DateTime, nullable=True)
+    due_date = db.Column(db.DateTime, nullable=True)
+    repaid_at = db.Column(db.DateTime, nullable=True)
+    narrative= db.Column(db.String(), nullable=True)
+
+    # Relationships
+    organization_id = db.Column(db.Integer, db.ForeignKey('organisations.id'), nullable=False)
+
+    # Optional Fields
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, onupdate=db.func.now(), nullable=True)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "loan_amount": self.loan_amount,
+            "interest_rate": self.interest_rate,
+            "repayment_period": self.repayment_period,
+            "loan_status": self.loan_status,
+            "disbursed_at": self.disbursed_at.strftime("%Y-%m-%d %H:%M:%S") if self.disbursed_at else None,
+            "due_date": self.due_date.strftime("%Y-%m-%d %H:%M:%S") if self.due_date else None,
+            "repaid_at": self.repaid_at.strftime("%Y-%m-%d %H:%M:%S") if self.repaid_at else None,
+            "organization_id": self.organization_id,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None,
+            "updated_at": self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at else None,
+        }
+    
+    def __repr__(self):
+        return f"Loan: {self.loan_amount}, Interest: {self.interest_rate}, repayment: {self.repayment_period}"
