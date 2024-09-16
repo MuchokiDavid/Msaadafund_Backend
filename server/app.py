@@ -3,7 +3,7 @@
 from flask import Flask, request,jsonify,make_response,Response
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
-from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription, TransactionApproval, Signatory
+from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription, TransactionApproval, Signatory, Loan
 from utility import check_wallet_balance, sendMail, OTPGenerator
 import os
 from dotenv import load_dotenv
@@ -49,7 +49,7 @@ from werkzeug.exceptions import TooManyRequests
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
 main_pocket= os.getenv('MAIN_WALLET')
-service = APIService(token=token,publishable_key=publishable_key, test=True)
+service = APIService(token=token,publishable_key=publishable_key, test=False)
 cache = Cache()
 
 app = Flask(__name__)
@@ -1275,7 +1275,7 @@ def campaign_money_withdrawal():
     signatories = Signatory.query.filter_by(org_id=organisation.id).all()
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
-    elif len(signatories) < 2:
+    elif len(signatories) < 3:
         return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
     
     #check wallet balance
@@ -1382,7 +1382,7 @@ def campaign_buy_airtime():
     signatories = Signatory.query.filter_by(org_id=organisation.id).all()
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
-    elif len(signatories) < 2:
+    elif len(signatories) < 3:
         return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
@@ -1566,7 +1566,7 @@ def campaign_pay_to_paybill():
     signatories = Signatory.query.filter_by(org_id=existing_org.id).all()
     if len(signatories) < 1:
         return jsonify({"error": "No signatories found!"}), 404
-    elif len(signatories) < 2:
+    elif len(signatories) < 3:
         return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
     
     new_transaction=Transactions(tracking_id='Pending',
@@ -1630,7 +1630,7 @@ def campaign_pay_to_till():
         signatories = Signatory.query.filter_by(org_id=existing_org.id).all()
         if len(signatories) < 1:
             return jsonify({"error": "No signatories found!"}), 404
-        elif len(signatories) < 2:
+        elif len(signatories) < 3:
             return jsonify({"error": "Please register atleast three signatories to initiate a transaction."}), 400
         
         new_transaction=Transactions(tracking_id='Pending',
@@ -1725,7 +1725,7 @@ def collection_webhook():
             amount=app_commission
             narrative= "Msaada"
 
-            if app_commission < float(10):
+            if app_commission < 0.01:
                 return jsonify({"message":"No commission for this donation"})
 
             approved_response = service.wallets.intra_transfer(donation_campaign.walletId, main_pocket, amount, narrative) #wallet to wallet
@@ -1876,7 +1876,7 @@ class GetTransactions(Resource):
             return jsonify({"error": "organisation not found"}), 404
         try:
             # Get all campaigns for the current organisation
-            all_transactions = Transactions.query.filter_by(org_id=str(existing_org.id)).all()
+            all_transactions = Transactions.query.filter_by(org_id=existing_org.id).all()
             if not all_transactions or len(all_transactions) == 0:
                 return jsonify({"error": "No withdrawals found"}), 404
             
