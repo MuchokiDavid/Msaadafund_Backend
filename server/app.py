@@ -1,6 +1,6 @@
 #Flask app
 # for admin comment line 23,51,100-107
-from flask import Flask, request,jsonify,make_response,Response
+from flask import Flask, request,jsonify,make_response,Response,send_file
 from flask_migrate import Migrate
 from flask_restful import Api,Resource
 from models import db, User, Donation, Campaign, Organisation,Account,TokenBlocklist, Enquiry,Transactions,Subscription, TransactionApproval, Signatory
@@ -38,11 +38,14 @@ from intasendrequests import buy_airtime,pay_to_paybill,pay_to_till,withdraw_to_
 from flask_caching import Cache
 import logging
 from urllib.parse import unquote
-
 from functools import wraps
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import TooManyRequests
+import openpyxl
+
+
+
 
 
 #fetch environment variables  for the api key and server url
@@ -77,7 +80,6 @@ app.config['OTP_STORAGE'] = {}
 app.config['API_KEY'] = os.getenv('API_KEY') #APi key to secure routes
 # logging.basicConfig(filename='app.log', level=logging.ERROR,
 #                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
-
 
 migrate = Migrate(app, db)
 db.init_app(app)
@@ -2605,6 +2607,57 @@ def get_org_donations_pdf():
         # return the error e
         logging.error(e)
         return jsonify({'error': str(e)}), 500
+
+#===================================generate excel file for transactions =================================#
+
+@app.route("/api/v1.0/transactions_excel", methods=["GET"])
+@jwt_required()
+def download_excel():
+    try:
+        current_user = get_jwt_identity()
+        existing_org = Organisation.query.filter_by(id=current_user).first()
+        if not existing_org:
+            return jsonify({"error": "Organisation not found"}), 404
+        
+        trasactions = Transactions.query.filter_by(org_id = existing_org.id).all()
+        # trasactions = Transactions.query.all()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Transactions"
+
+        # write headers 
+        headers = ["Tracking ID", "Status", "Transaction Type", "Transaction Status", "Amount","Transaction Account No", "Request Ref ID","Trasnsaction_Date","Campaign_Name","Account_referrence","Narrative"]
+        ws.append(headers)
+
+        # write transaction data
+        for transaction in trasactions:
+            ws.append([transaction.tracking_id,
+                        transaction.batch_status,
+                        transaction.trans_type,
+                        transaction.trans_status,
+                        transaction.amount,
+                        transaction.transaction_account_no,
+                        transaction.request_ref_id,
+                        transaction.transaction_date,
+                        transaction.campaign_name,
+                        transaction.acc_refence,
+                        transaction.narrative
+                        
+                        ])
+        
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return send_file(output, as_attachment=True, download_name="transactions.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+    except Exception as e:
+        logging.error(e)
+        return jsonify({'error': str(e)}), 500
+
+
 
 #===============================Contact us form route==============================================================
 
