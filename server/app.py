@@ -2656,6 +2656,55 @@ def download_excel():
     except Exception as e:
         logging.error(e)
         return jsonify({'error': str(e)}), 500
+    
+
+#===================================generate excel file for donations =================================#
+
+@app.route("/api/v1.0/donations_excel", methods=["GET"])
+@jwt_required()
+def generate_excel_donation():
+    try:
+        current_user = get_jwt_identity()
+        existing_org = Organisation.query.filter_by(id=current_user).first()
+        if not existing_org:
+            return jsonify({"error": "Organisation not found"}), 404
+        
+        donations = Donation.query.filter_by(org_id=existing_org.id).all()
+        if not donations:
+            return jsonify({"error": "No donations found"}), 404
+            
+        # donations = Donation.query.all()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Donations"
+
+        headers = ["ID", "Campaign","Currency","Amount","Method", "Invoice ID", "Status", "Donation Date"]
+        ws.append(headers)
+
+        for donation in donations:
+            campaign = Campaign.query.filter_by(id=donation.campaign_id).first()
+            campaign_name = campaign.campaignName if campaign else "Unknown Campaign"
+            ws.append([donation.id,
+                        campaign_name,
+                        donation.currency,
+                        donation.amount,
+                        donation.method,
+                        donation.invoice_id,
+                        donation.status,
+                        donation.donationDate.strftime("%Y-%m-%d")
+                        ])
+            
+            output = io.BytesIO()
+            wb.save(output)
+            output.seek(0)
+
+        return send_file(output, as_attachment=True, download_name="donations.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    except Exception as e:
+        logging.error(e)
+        return jsonify({'error': str(e)}), 500
+    
 
 
 
