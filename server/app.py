@@ -44,10 +44,6 @@ from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import TooManyRequests
 import openpyxl
 
-
-
-
-
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
 publishable_key= os.getenv('PUBLISHABLE_KEY')
