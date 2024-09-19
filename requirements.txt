@@ -65,6 +65,7 @@ mdurl==0.1.2
 more-itertools==10.2.0
 oauthlib==3.2.2
 ordered-set==4.1.0
+openpyxl==3.1.5
 packaging==24.1
 parso==0.8.3
 passlib==1.7.4
