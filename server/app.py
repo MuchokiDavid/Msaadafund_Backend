@@ -43,6 +43,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import TooManyRequests
 import openpyxl
+from flask_cors import cross_origin
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -74,8 +75,8 @@ app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['OTP_STORAGE'] = {}
 app.config['API_KEY'] = os.getenv('API_KEY') #APi key to secure routes
-# logging.basicConfig(filename='app.log', level=logging.ERROR,
-#                     format='%(asctime)s %(levelname)s %(name)s %(message)s')
+logging.basicConfig(filename='app.log', level=logging.ERROR,
+                    format='%(asctime)s %(levelname)s %(name)s %(message)s')
 
 migrate = Migrate(app, db)
 db.init_app(app)
@@ -2313,7 +2314,7 @@ def donate_via_card_logged_in():
 
 #=======================================Intasend routes==============================================================
 # Get campaign transactions filters
-@app.route('/api/v1.0/filter_transactions/<string:wallet_id>', methods=['POST','GET'])
+@app.route('/api/v1.0/filter_transactions/<string:wallet_id>', methods=['GET'])
 @jwt_required()
 @cache.cached(timeout=30, key_prefix=lambda: f"transactions_{get_jwt_identity()}")  
 def wallet_transactions_filters(wallet_id):
@@ -2322,63 +2323,22 @@ def wallet_transactions_filters(wallet_id):
     if not existing_org:
         return  jsonify({"error":"Organisation does not exist"}),401
     
-    if request.method== 'GET':
-        url = f"https://api.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
-        try:
-            headers = {
-                "accept": "application/json",
-                "Authorization": "Bearer " +token
-            }
-            response = requests.get(url, headers=headers)
-            data = response.json()
-            if data.get("errors"):
-                error_message = data.get("errors")
-                return make_response(jsonify({"error":error_message}),400)
-            return jsonify(data.get("results")), 200
-            
-        except Exception as e:
-            logging.error(e)
-            return jsonify({"error": "An error occurred while processing your request"}),500
-
-    if request.method == 'POST':
-        data= request.get_json()
-        trans_type= data.get('trans_type')
-        start_date=data.get('start_date')
-        end_date=data.get('end_date')
-
-        # existing_campaign= Campaign.query.filter_by(org_id=existing_org.id,id=id).first()
-        # if not existing_campaign:
-        #     return  jsonify({"error":"Campaign does not exist'"}),404
-        # wallet_id= existing_campaign.walletId
-        # if wallet_id:
-        url=f"https://api.intasend.com/api/v1/transactions/?wallet_id={wallet_id}"
-        if trans_type:
-            url = f"https://api.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}"
-        if  start_date and trans_type:
-            url = f"https://api.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}Q&start_date={start_date}"
-        if start_date and end_date:
-            url = f"https://api.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
-        if trans_type and end_date:
-            url = f"https://api.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&end_date={end_date}"
-        if trans_type and start_date and end_date:
-            url = f"https://api.intasend.com/api/v1/transactions/?trans_type={trans_type}&wallet_id={wallet_id}&start_date={start_date}&end_date={end_date}"
-        if end_date:
-            url = f"https://api.intasend.com/api/v1/transactions/?wallet_id={wallet_id}&end_date={end_date}"
-        try:
-            headers = {
-                "accept": "application/json",
-                "Authorization": "Bearer " +token
-            }
-            response = requests.get(url, headers=headers)
-            data = response.json()
-            if data.get("errors"):
-                error_message = data.get("errors")
-                return make_response(jsonify({"error":error_message}),400)
-            return jsonify(data.get("results")), 200
-            
-        except Exception as e:
-            logging.error(e)
-            return jsonify({"error": "An error occurred while processing your request"}),500
+    url = f"https://api.intasend.com/api/v1/wallets/{wallet_id}/transactions/"
+    try:
+        headers = {
+            "accept": "application/json",
+            "Authorization": "Bearer " +token
+        }
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        if data.get("errors"):
+            error_message = data.get("errors")
+            return make_response(jsonify({"error":error_message}),400)
+        return jsonify(data), 200
+        
+    except Exception as e:
+        logging.error(e)
+        return jsonify({"error": "An error occurred while processing your request"}),500
         
 #===============================Transaction pdf route==============================================================
 # @app.route("/api/v1.0/transactions_pdf/<string:wallet_id>", methods=["GET"])
@@ -2611,7 +2571,6 @@ def get_org_donations_pdf():
         return jsonify({'error': str(e)}), 500
 
 #===================================generate excel file for transactions =================================#
-
 @app.route("/api/v1.0/transactions_excel", methods=["GET"])
 @jwt_required()
 def download_excel():
@@ -2629,21 +2588,19 @@ def download_excel():
         ws.title = "Transactions"
 
         # write headers 
-        headers = ["Tracking ID", "Status", "Transaction Type", "Transaction Status", "Amount","Transaction Account No", "Request Ref ID","Trasnsaction_Date","Campaign_Name","Account_referrence","Narrative"]
+        headers = ["Tracking ID","Campaign_Name", "Transaction Type", "Transaction Status", "Amount","Transaction Account No", "Status","Transaction_Date","Narrative"]
         ws.append(headers)
 
         # write transaction data
         for transaction in trasactions:
             ws.append([transaction.tracking_id,
-                        transaction.batch_status,
+                        transaction.campaign_name,
                         transaction.trans_type,
                         transaction.trans_status,
                         transaction.amount,
                         transaction.transaction_account_no,
-                        transaction.request_ref_id,
+                        transaction.batch_status,
                         transaction.transaction_date,
-                        transaction.campaign_name,
-                        transaction.acc_refence,
                         transaction.narrative
                         
                         ])
@@ -2663,6 +2620,7 @@ def download_excel():
 #===================================generate excel file for donations =================================#
 
 @app.route("/api/v1.0/donations_excel", methods=["GET"])
+@cross_origin()
 @jwt_required()
 def generate_excel_donation():
     try:
@@ -2671,7 +2629,11 @@ def generate_excel_donation():
         if not existing_org:
             return jsonify({"error": "Organisation not found"}), 404
         
-        donations = Donation.query.filter_by(org_id=existing_org.id).all()
+        all_campaigns = Campaign.query.filter_by(org_id=existing_org.id).all()
+        all_campaign_id = [campaign.id for campaign in all_campaigns]
+        donations = Donation.query.filter(Donation.campaign_id.in_(all_campaign_id)).all()
+        
+        # donations = Donation.query.filter_by(org_id=existing_org.id).all()
         if not donations:
             return jsonify({"error": "No donations found"}), 404
             
@@ -2681,19 +2643,19 @@ def generate_excel_donation():
         ws = wb.active
         ws.title = "Donations"
 
-        headers = ["ID", "Campaign","Currency","Amount","Method", "Invoice ID", "Status", "Donation Date"]
+        headers = ["ID", "Invoice ID","Contributor", "Campaign","Currency","Amount","Method", "Donation Date"]
         ws.append(headers)
 
         for donation in donations:
             campaign = Campaign.query.filter_by(id=donation.campaign_id).first()
             campaign_name = campaign.campaignName if campaign else "Unknown Campaign"
             ws.append([donation.id,
+                        donation.invoice_id,
+                        donation.donor_name if  donation.donor_name else f"{User.query.filter_by(id=donation.user_id).first().firstName} {User.query.filter_by(id=donation.user_id).first().lastName}",
                         campaign_name,
                         donation.currency,
                         donation.amount,
                         donation.method,
-                        donation.invoice_id,
-                        donation.status,
                         donation.donationDate.strftime("%Y-%m-%d")
                         ])
             
@@ -2706,7 +2668,62 @@ def generate_excel_donation():
     except Exception as e:
         logging.error(e)
         return jsonify({'error': str(e)}), 500
-    
+
+# ===============================Excel route for intasend transactions============================================
+@app.route("/api/v1.0/intasend_excel/<string:wallet_id>", methods=["GET"])
+@cross_origin()
+@jwt_required()
+def download_intasend_excel(wallet_id):
+    try:
+        current_user = get_jwt_identity()
+        existing_org = Organisation.query.filter_by(id=current_user).first()
+        if not existing_org:
+            return jsonify({"error": "Organisation not found"}), 404
+
+        # trasactions = wallet_transactions_filters(wallet_id)
+        response = wallet_transactions_filters(wallet_id)
+        if isinstance(response, tuple):
+            transactions_data, status_code = response
+            if status_code != 200:
+                return jsonify({"error": "Failed to retrieve transactions"}), status_code
+
+        trasactions = transactions_data.get_json()
+        
+        logging.info(f"Transactions: {trasactions}")
+        # trasactions = Transactions.query.all()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Fundraiser Transactions"
+
+        # write headers
+        headers = ["Transaction ID", "Transaction Type", "Currency", "Amount","Running balance","Transaction_Date","Status", "Narrative"]
+        ws.append(headers)
+
+        # write transaction data
+        for transaction in trasactions:
+            transaction_date = datetime.fromisoformat(transaction['updated_at']).strftime("%d/%m/%Y %H:%M")
+            ws.append([ transaction['transaction_id'],
+                        transaction['trans_type'],
+                        transaction['currency'],
+                        transaction['value'],
+                        transaction['running_balance'],
+                        transaction_date,
+                        transaction['status'],
+                        transaction['narrative']
+
+                        ])
+
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        return send_file(output, as_attachment=True, download_name="all_campaign_transactions.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+    except Exception as e:
+        logging.error(e)
+        return jsonify({'error': str(e)}), 500
 
 
 
