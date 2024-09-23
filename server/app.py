@@ -1420,7 +1420,11 @@ def pending_transactions():
     if not signatory:
         return {"error": "Unauthorized Signatory"}, 401
 
-    transactions = Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting'])).all()
+    # transactions = Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting'])).all()
+    transactions = (
+        Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting']),
+                                  Transactions.org_id == signatory.org_id).all()
+    )
     trans_dict = [tra.serialize() for tra in transactions]
     response = make_response(jsonify(trans_dict), 200)
     return response
@@ -1430,13 +1434,17 @@ def pending_transactions():
 @jwt_required()
 def org_awaiting_approvals():
     current_user = get_jwt_identity()
-    organisation = Organisation.query.filter_by(id=current_user).first()
+    organisation = Organisation.query.get(current_user)
     if not organisation:
         return {"error": "Organisation not found"}, 404
 
-    transactions = Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting'])).all()
+    # transactions = Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting'])).all()
+    transactions = (
+        Transactions.query.filter(Transactions.signatory_status.in_(['Pending', 'Awaiting']),
+                                  Transactions.org_id == organisation.id).all()
+    )
     trans_dict = [tra.serialize() for tra in transactions]
-    response = make_response(jsonify(trans_dict), 200)
+    response = jsonify(trans_dict), 200
     return response
 
 # ===========================Approve and Reject transactions====================================================
