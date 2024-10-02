@@ -10,11 +10,21 @@ from google.auth.transport import requests
 import os
 from dotenv import load_dotenv
 load_dotenv()
+import threading
 
 auth_bp = Blueprint("auth", __name__)
 
 # import mail from app
 CLIENT_ID = os.getenv("CLIENT_ID")
+
+def send_emails_async(orgEmail, orgName, orgPhoneNumber):
+    from app import logging
+    try:
+        sendMail.send_registration_email(orgEmail, orgName)
+        sendMail.send_org_notification_mail(orgName, orgEmail, orgPhoneNumber)
+    except Exception as e:
+        # Log the error
+        logging.error(f"Failed to send emails: {e}")
 
 # signup for user 
 @auth_bp.route("/user/register", methods=["POST"])
@@ -210,13 +220,24 @@ def register_organisation():
         db.session.add(new_organisation)
         db.session.commit()
 
-        if sendMail.send_registration_email(orgEmail, orgName):
-            sendMail.send_org_notification_mail(orgName, orgEmail,orgPhoneNumber)
-            return jsonify({"message": "Organization registered successfully and email sent",
-                            "organisation":new_organisation.serialize()
-                            }), 200
-        else:
-            return jsonify({"message": "Organization registered successfully but failed to send email"}), 500
+        # Start a new thread for sending emails
+        threading.Thread(
+            target=send_emails_async,
+            args=(orgEmail, orgName, orgPhoneNumber)
+        ).start()
+
+        return jsonify({
+            "message": "Organization registered successfully. Confirmation email will be sent shortly.",
+            "organisation": new_organisation.serialize()
+        }), 200
+
+        # if sendMail.send_registration_email(orgEmail, orgName):
+        #     sendMail.send_org_notification_mail(orgName, orgEmail,orgPhoneNumber)
+        #     return jsonify({"message": "Organization registered successfully and email sent",
+        #                     "organisation":new_organisation.serialize()
+        #                     }), 200
+        # else:
+        #     return jsonify({"message": "Organization registered successfully but failed to send email"}), 500
     except  Exception as e:
         print(e)
         db.session.rollback()

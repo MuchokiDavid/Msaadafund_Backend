@@ -44,6 +44,8 @@ from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import TooManyRequests
 import openpyxl
 from flask_cors import cross_origin
+import threading
+
 
 #fetch environment variables  for the api key and server url
 token=os.getenv("INTA_SEND_API_KEY")
@@ -372,6 +374,20 @@ class OrgSubscriptions(Resource):
             return {"error": str(e)}, 500      
         
 #===============================Campaign model routes==============================================================
+def send_emails_async(org, campaign_name, description, category, target_amount, start_date, end_date, users_subscribed):
+    try:
+        sendMail.send_post_campaign(org, campaign_name, description, category, target_amount, start_date, end_date)
+
+        for user in users_subscribed:
+            user_detail = User.query.get(user.user_id)
+            sendMail.send_subscribers_createCampaign(
+                user_detail.email, user_detail.firstName, campaign_name,
+                description, start_date, end_date,
+                target_amount, org.orgName
+            )
+    except Exception as e:
+        logging.error(f"Failed to send emails: {e}")
+
 
 @app.route("/api/v1.0/setCampaign", methods=["POST"])
 @jwt_required()
@@ -453,17 +469,22 @@ def post():
             db.session.add(new_campaign)
             db.session.commit()
 
-            sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate, endDate)
+            # Send emails in the background using threading
+            threading.Thread(target=send_org_email, args=(available_org, campaignName, description, category, targetAmount, startDate, endDate)).start()
+            threading.Thread(target=send_subscribers_email, args=(available_org, new_campaign)).start()
+
+
+            # sendMail.send_post_campaign(available_org, campaignName, description, category, targetAmount, startDate, endDate)
             
-            # Notify subscribed users
-            users_subscribed = Subscription.query.filter_by(organisation_id=available_org.id).all()
-            for user in users_subscribed:
-                user_detail = User.query.get(user.user_id)
-                sendMail.send_subscribers_createCampaign(
-                    user_detail.email, user_detail.firstName, new_campaign.campaignName,
-                    new_campaign.description, new_campaign.startDate, new_campaign.endDate,
-                    new_campaign.targetAmount, available_org.orgName
-                )
+            # # Notify subscribed users
+            # users_subscribed = Subscription.query.filter_by(organisation_id=available_org.id).all()
+            # for user in users_subscribed:
+            #     user_detail = User.query.get(user.user_id)
+            #     sendMail.send_subscribers_createCampaign(
+            #         user_detail.email, user_detail.firstName, new_campaign.campaignName,
+            #         new_campaign.description, new_campaign.startDate, new_campaign.endDate,
+            #         new_campaign.targetAmount, available_org.orgName
+            #     )
 
         except Exception as e:
             db.session.rollback()
@@ -475,6 +496,27 @@ def post():
     except Exception as e:
         logging.error(e)
         return jsonify({"error": str(e)}), 404
+
+# Function to send email to the organization
+def send_org_email(organisation, campaign_name, description, category, target_amount, start_date, end_date):
+    try:
+        sendMail.send_post_campaign(organisation, campaign_name, description, category, target_amount, start_date, end_date)
+    except Exception as e:
+        logging.error(f"Failed to send email to organisation: {e}")
+
+# Function to send email to subscribed users
+def send_subscribers_email(organisation, campaign):
+    try:
+        users_subscribed = Subscription.query.filter_by(organisation_id=organisation.id).all()
+        for user in users_subscribed:
+            user_detail = User.query.get(user.user_id)
+            sendMail.send_subscribers_createCampaign(
+                user_detail.email, user_detail.firstName, campaign.campaignName,
+                campaign.description, campaign.startDate, campaign.endDate,
+                campaign.targetAmount, organisation.orgName
+            )
+    except Exception as e:
+        logging.error(f"Failed to send email to subscribers: {e}")
 
 #get campaigns
 class campaignData(Resource):
@@ -1741,7 +1783,7 @@ def collection_webhook():
                 error_message = approved_response.get("errors")[0].get("detail")
                 return  make_response(jsonify({'error':error_message}))
             
-            sendMail.send_mail_on_donation(amount,
+            sendMail.send_mail_on_donation(net_amount,
                                            donation.donationDate,
                                            donation.donor_name,
                                            donation_campaign.campaignName,
