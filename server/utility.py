@@ -109,14 +109,27 @@ class sendMail():
         msg.html = html_body
         mail.send(msg)
 
-    
-    #Function to send verification to organisation
     def send_org_verification_mail(org):
         from app import mail
-        subject = "Welcome to MsaadaFund"
-        body = f"Dear {org.orgName},\n\n Thank you for registering on our MsaadaFund Platform.\nYour account is not verified. Please reply to this email for verification\n\n Best regards,\n MsaadaFund Team"
+        subject = "Welcome to MsaadaFund - Verify Your Account"
+        google_form_link = "https://forms.gle/NWnxrgBxukMU6wym8"
+        body = f"""
+        Dear {org.orgName},
+        
+        Thank you for registering on our MsaadaFund platform.
+
+        To complete your registration and verify your account, please fill out the following verification form:
+        {google_form_link}
+        
+        If you have any questions or need further assistance, feel free to reply to this email.
+        
+        Best regards,
+        MsaadaFund Team
+        """
+        
         recipients = [org.orgEmail]
         mail.send_message(subject=subject, recipients=recipients, body=body)
+
     
     #Org registration mail
     def send_registration_email(org_email, org_name):

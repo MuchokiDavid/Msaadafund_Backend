@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 import threading
+import requests as rq
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -275,7 +276,34 @@ def login_Organisation():
         print(e)
         return {'error':str(e)},500
 
+@auth_bp.route('/recaptcha', methods=['POST'])
+def verify_recaptcha():
+    try:
+        # Destructuring response token and input field value from request body
+        data = request.get_json()
+        token = data.get('token')
 
+        # Sending secret key and response token to Google Recaptcha API for authentication
+        secret_key = os.getenv('RECAPTCHA_SECRET') 
+        # url= f'https://www.google.com/recaptcha/api/siteverify?secret={secret_key}&response={token}',
+        url= 'https://www.google.com/recaptcha/api/siteverify'
+        payload = {
+        'secret': secret_key,
+        'response': token
+    }
+        response = rq.post(url, data=payload)
+        result = response.json()
+
+        # Check response status and send back to the client-side
+        if result.get('success'):
+            return jsonify(message=result), 200
+        else:
+            return jsonify(message=result), 200
+
+    except Exception as e:
+        # Handle any errors that occur during the reCAPTCHA verification process
+        print(e)
+        return jsonify(error="Error verifying reCAPTCHA"), 500
 
 # logout for user
 @auth_bp.get('/logout')
